@@ -25,8 +25,12 @@ except Exception:
 # unreachable; in that case FastAPI will fail on startup with a clear
 # traceback.
 import os
-conn = psycopg2.connect(os.environ["DATABASE_URL"])
 
+db_url = os.environ.get("DATABASE_URL")
+if not db_url:
+    raise RuntimeError("Missing DATABASE_URL environment variable!")
+
+conn = psycopg2.connect(db_url)
 # Whitelist of allowed table names to prevent SQL injection
 ALLOWED_TABLES = {
     "clients", "projects", "files", "file_chunks", "questions", "chat_sessions", "chat_messages"
