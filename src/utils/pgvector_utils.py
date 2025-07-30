@@ -26,11 +26,25 @@ except Exception:
 # traceback.
 import os
 
+# Try to get DATABASE_URL first, then fall back to individual parameters
 db_url = os.environ.get("DATABASE_URL")
-if not db_url:
-    raise RuntimeError("Missing DATABASE_URL environment variable!")
+conn = None
 
-conn = psycopg2.connect(db_url)
+try:
+    if db_url:
+        conn = psycopg2.connect(db_url)
+    else:
+        # Use individual database parameters from config
+        conn = psycopg2.connect(
+            host=config.DB_HOSTNAME,
+            database=config.DB_NAME,
+            user=config.DB_USER,
+            password=config.DB_PASSWORD,
+        )
+except Exception as e:
+    print(f"Warning: Could not connect to database: {e}")
+    print("Running in demo mode without database persistence")
+    conn = None
 # Whitelist of allowed table names to prevent SQL injection
 ALLOWED_TABLES = {
     "clients", "projects", "files", "file_chunks", "questions", "chat_sessions", "chat_messages"
@@ -53,6 +67,10 @@ def query_data(table_name: str) -> Any:
     Returns:
         A list of rows, or False if an error occurred.
     """
+    if conn is None:
+        # Demo mode - return empty results
+        return []
+        
     # Validate table name against whitelist to prevent SQL injection
     if table_name not in ALLOWED_TABLES:
         print(f"Invalid table name: {table_name}")
@@ -103,6 +121,10 @@ def insert_project(project_name: str, project_description: str, client_id: int |
         project_description: A short description of the project.
         client_id: Optional ID of the client associated with this project.
     """
+    if conn is None:
+        # Demo mode - return success
+        return True
+        
     try:
         cur = conn.cursor()
         if client_id is not None:
@@ -273,6 +295,10 @@ def rag_context(question: str, files: list[str]) -> Any:
 # Chat-related database functions
 def save_chat_message(project_id: int, user_message: str, ai_response: str) -> bool:
     """Save a chat message and AI response to the database."""
+    if conn is None:
+        # Demo mode - return success
+        return True
+        
     try:
         cur = conn.cursor()
         cur.execute(
