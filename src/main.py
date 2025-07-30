@@ -10,9 +10,9 @@ except ImportError:
 
 # Optional: import your utility module safely
 try:
-    from utils import file_utils  # adjust to actual utils file if needed
+    from utils import file_utils  # from src/utils/file_utils.py
 except ImportError as e:
-    print(f"[Startup Warning] Could not import file_utils: {e}")
+    print(f"[Startup Warning] Could not import utils.file_utils: {e}")
 
 # Initialize the app
 app = FastAPI()
