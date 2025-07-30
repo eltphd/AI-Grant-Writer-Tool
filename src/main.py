@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request
-import os
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from datetime import datetime
+import json
 
 # Optional: Load .env file for local development
 try:
@@ -17,12 +19,15 @@ except ImportError as e:
 
 # Initialize the app
 app = FastAPI()
-from fastapi.middleware.cors import CORSMiddleware
 
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://ai-grant-writer-tool-8of3dhqh8-ericas-projects-637268fc.vercel.app",
+        "https://ai-grant-writer-tool-9fymds8sk-ericas-projects-637268fc.vercel.app",
+        "https://ai-grant-writer-tool-ericas-projects-637268fc.vercel.app",
+        "https://ai-grant-writer-tool-git-main-ericas-projects-637268fc.vercel.app",
         "https://ai-grant-writer-tool.vercel.app",
         "http://localhost:3000",  # for local development
         "*"  # fallback for any other domains
@@ -31,6 +36,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add error handler for CORS preflight
+@app.options("/{path:path}")
+async def options_handler(request: Request):
+    return JSONResponse(content={}, status_code=200)
 
 # Health check route
 @app.get("/ping")

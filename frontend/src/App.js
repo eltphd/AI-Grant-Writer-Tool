@@ -45,7 +45,8 @@ const API_BASE = process.env.REACT_APP_API_URL || "https://ai-grant-writer-tool-
 console.log("🔧 API_BASE configured as:", API_BASE);
 console.log("🔧 Environment check:", {
   NODE_ENV: process.env.NODE_ENV,
-  REACT_APP_API_URL: process.env.REACT_APP_API_URL
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL,
+  window_location: window.location.origin
 });
 
 // Test the backend connectivity immediately
