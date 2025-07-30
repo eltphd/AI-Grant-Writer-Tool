@@ -158,9 +158,9 @@ const App = () => {
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        console.warn("Backend returned error response:", text);
-        throw new Error("Backend error");
+        const errorText = await response.text();
+        console.warn("Backend Error:", errorText);
+        throw new Error("Bad response from server");
       }
 
       const data = await response.json();

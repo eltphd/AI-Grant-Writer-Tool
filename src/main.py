@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import os
+from datetime import datetime
 
 # Optional: Load .env file for local development
 try:
@@ -36,4 +37,29 @@ def ping():
 def root():
     return {"message": "Hello from FastAPI backend!"}
 
-# Optional: more routes here later (e.g., /generate)
+# Generate route for basic Q&A
+@app.post("/generate")
+async def generate(request: Request):
+    data = await request.json()
+    print("Data received:", data)
+    return {"result": f"Response to: {data.get('question')}"}
+
+# Chat message route
+@app.post("/chat/send_message")
+async def send_message(request: Request):
+    data = await request.json()
+    return {"ai_response": f"Simulated reply to: {data.get('message')}"}
+
+# Brainstorming route
+@app.post("/chat/brainstorm")
+async def brainstorm(request: Request):
+    data = await request.json()
+    return {
+        "ideas": [
+            {
+                "area": "Strategy",
+                "suggestions": ["Clarify timeline", "Add metrics"],
+                "examples": ["We will launch pilot by Q2"]
+            }
+        ]
+    }

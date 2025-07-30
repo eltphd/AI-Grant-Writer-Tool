@@ -36,7 +36,9 @@ import {
   EmojiObjects as EmojiObjectsIcon
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
-import axios from 'axios';
+
+// Set backend URL from Vercel or fallback to production Railway
+const API_BASE = process.env.REACT_APP_API_URL || "https://ai-grant-writer-tool-production.up.railway.app";
 
 const ChatComponent = ({ selectedProject, onNewChat }) => {
   const [messages, setMessages] = useState([]);
@@ -71,15 +73,29 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
     setLoading(true);
 
     try {
-      const response = await axios.post('/chat/send_message', {
-        message: inputMessage,
-        project_id: selectedProject?.id,
-        message_type: 'user'
+      const response = await fetch(`${API_BASE}/chat/send_message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: inputMessage,
+          project_id: selectedProject?.id,
+          message_type: 'user'
+        }),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn("Backend Error:", errorText);
+        throw new Error("Bad response from server");
+      }
+
+      const data = await response.json();
 
       const aiMessage = {
         id: Date.now() + 1,
-        text: response.data.ai_response,
+        text: data.ai_response,
         sender: 'assistant',
         timestamp: new Date().toISOString()
       };
@@ -90,7 +106,7 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
       if (onNewChat) {
         onNewChat({
           question: inputMessage,
-          answer: response.data.ai_response
+          answer: data.ai_response
         });
       }
     } catch (error) {
@@ -113,13 +129,26 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
 
     setBrainstormLoading(true);
     try {
-      const response = await axios.post('/chat/brainstorm', {
-        topic: brainstormTopic,
-        project_id: selectedProject?.id,
-        focus_areas: ['mission', 'vision', 'objectives', 'strategies']
+      const response = await fetch(`${API_BASE}/chat/brainstorm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topic: brainstormTopic,
+          project_id: selectedProject?.id,
+          focus_areas: ['mission', 'vision', 'objectives', 'strategies']
+        }),
       });
 
-      setBrainstormIdeas(response.data.ideas);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.warn("Backend Error:", errorText);
+        throw new Error("Bad response from server");
+      }
+
+      const data = await response.json();
+      setBrainstormIdeas(data.ideas);
       setShowBrainstormDialog(true);
     } catch (error) {
       console.error('Error brainstorming:', error);
