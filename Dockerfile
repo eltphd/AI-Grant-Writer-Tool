@@ -41,7 +41,7 @@ WORKDIR /app
 
 # Install system dependencies needed for psycopg2 and optional Whisper support
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential libpq-dev \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential libpq-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
