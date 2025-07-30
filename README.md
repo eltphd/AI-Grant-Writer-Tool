@@ -1,6 +1,6 @@
 # AI Grant Writer Tool
 
-An intelligent grant writing assistance tool powered by AI, combining Microsoft AutoGen with Retrieval-Augmented Generation (RAG) via PostgreSQL/pgvector and LangChain. Served through FastAPI and Streamlit with a modern React frontend.
+AI Grant Writer Tool is an end-to-end, container-native platform that lets researchers, non-profits and consultants draft, iterate and polish competitive grant proposals in minutes. It combines cutting-edge Large-Language-Model agents (Microsoft AutoGen + LangChain) with Retrieval-Augmented Generation, backed by PostgreSQL/pgvector for lightning-fast semantic search. A FastAPI micro-service and a Streamlit analytics dashboard power the API layer, while a modern React/Material-UI front-end delivers a seamless experience — all orchestrated by a single Docker Compose file.
 
 ## 🚀 Features
 
@@ -45,6 +45,25 @@ An intelligent grant writing assistance tool powered by AI, combining Microsoft 
 ### Infrastructure
 - **Docker**: Containerization for easy deployment
 - **Docker Compose**: Multi-container orchestration
+
+## ⚙️ Build & Deployment
+
+The entire platform is **container-native** — no local Python or Node setup required.
+
+```bash
+# Spin up PostgreSQL/pgvector, FastAPI, Streamlit & React dev server
+docker compose up --build
+```
+
+Hot-reloading is enabled by default for both Python and React services, so every code change is reflected instantly.
+
+### Production
+
+Deploy to any container host (Railway, Render, Azure Container Apps, ECS, etc.) by simply pushing this repository and running the same Compose file. An example Railway service is provided via `railway.json`.
+
+### CI/CD
+
+Ready for GitHub Actions — add your secrets (`OPENAI_API_KEY`, `DATABASE_URL`) and trigger on `main` to automatically build and publish an image to GHCR or Docker Hub.
 
 ## 📦 Installation
 
