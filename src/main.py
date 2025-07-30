@@ -44,7 +44,7 @@ except Exception:
     import utils.auto_gen_utils as auto_gen_utils  # type: ignore
     import utils.utils as utils  # type: ignore
 
-app = FastAPI(description="API for AI grant writing. 🧠")
+app = FastAPI()
 
 
 class Text(BaseModel):
