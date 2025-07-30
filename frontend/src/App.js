@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ChatComponent from './ChatComponent';
 import {
   Box,
   Container,
@@ -657,6 +658,46 @@ Would you like me to elaborate on any of these points or help you apply this to 
           ) : (
             <Alert severity="warning">
               Please create or select a project first.
+            </Alert>
+          )}
+        </Box>
+      )
+    },
+    {
+      label: 'Interactive Chat & Brainstorming',
+      description: 'Have real-time conversations with AI and brainstorm ideas for your grant proposal',
+      content: (
+        <Box sx={{ mt: 2 }}>
+          {selectedProject ? (
+            <Box sx={{ height: '600px' }}>
+              <ChatComponent 
+                selectedProject={selectedProject}
+                onNewChat={(chatData) => {
+                  // Add the chat to project questions
+                  const newQuestion = {
+                    id: Date.now(),
+                    question: chatData.question,
+                    answer: chatData.answer,
+                    timestamp: new Date().toISOString()
+                  };
+
+                  const updatedProject = {
+                    ...selectedProject,
+                    questions: [...selectedProject.questions, newQuestion]
+                  };
+
+                  const updatedProjects = projects.map(p => 
+                    p.id === selectedProject.id ? updatedProject : p
+                  );
+
+                  saveProjects(updatedProjects);
+                  setSelectedProject(updatedProject);
+                }}
+              />
+            </Box>
+          ) : (
+            <Alert severity="warning">
+              Please create or select a project first to start chatting with the AI assistant.
             </Alert>
           )}
         </Box>

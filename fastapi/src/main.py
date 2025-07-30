@@ -15,6 +15,7 @@ import os
 import io
 import json
 import zipfile
+from datetime import datetime
 
 # Read OpenAI API key from environment.  Replace this with your own key or
 # integrate with a different provider as needed.
@@ -79,6 +80,26 @@ class ClientUpdate(BaseModel):
     goals: Optional[str] = None
 
 
+class ChatMessage(BaseModel):
+    message: str
+    project_id: Optional[int] = None
+    message_type: str = "user"  # "user" or "assistant"
+    context: Optional[str] = None
+
+
+class ChatSession(BaseModel):
+    project_id: int
+    session_name: str
+    messages: List[ChatMessage] = []
+
+
+class BrainstormingRequest(BaseModel):
+    topic: str
+    project_id: Optional[int] = None
+    context: Optional[str] = None
+    focus_areas: Optional[List[str]] = None
+
+
 @app.get("/healthcheck")
 async def healthcheck() -> str:
     """Simple health check endpoint."""
@@ -129,6 +150,190 @@ async def update_client(client_id: int, client: ClientUpdate):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail=config.ERROR_MESSAGE,
     )
+
+
+# -----------------------------------------------------------------------------
+# Chat and Brainstorming endpoints
+# -----------------------------------------------------------------------------
+
+@app.post("/chat/send_message")
+async def send_chat_message(chat_message: ChatMessage):
+    """Send a chat message and get AI response."""
+    try:
+        # Get context from project files if project_id is provided
+        context = ""
+        if chat_message.project_id:
+            # Get project files and their content for context
+            project_files = db_utils.query_data("files")  # You might need to filter by project_id
+            if project_files:
+                context = "Project context available for reference."
+        
+        # Generate AI response based on message and context
+        ai_response = generate_chat_response(chat_message.message, context, chat_message.context)
+        
+        # Save the conversation to database
+        if chat_message.project_id:
+            db_utils.save_chat_message(chat_message.project_id, chat_message.message, ai_response)
+        
+        return {
+            "user_message": chat_message.message,
+            "ai_response": ai_response,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing chat message: {str(e)}"
+        )
+
+
+@app.post("/chat/brainstorm")
+async def brainstorm_ideas(brainstorm_request: BrainstormingRequest):
+    """Generate brainstorming ideas for mission, vision, or other topics."""
+    try:
+        ideas = generate_brainstorming_ideas(
+            brainstorm_request.topic,
+            brainstorm_request.context,
+            brainstorm_request.focus_areas
+        )
+        
+        return {
+            "topic": brainstorm_request.topic,
+            "ideas": ideas,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating brainstorming ideas: {str(e)}"
+        )
+
+
+@app.get("/chat/sessions/{project_id}")
+async def get_chat_sessions(project_id: int):
+    """Get all chat sessions for a project."""
+    try:
+        sessions = db_utils.get_chat_sessions(project_id)
+        return {"sessions": sessions}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving chat sessions: {str(e)}"
+        )
+
+
+@app.get("/chat/messages/{session_id}")
+async def get_chat_messages(session_id: int):
+    """Get all messages for a specific chat session."""
+    try:
+        messages = db_utils.get_chat_messages(session_id)
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving chat messages: {str(e)}"
+        )
+
+
+def generate_chat_response(user_message: str, project_context: str = "", additional_context: str = "") -> str:
+    """Generate AI response for chat messages."""
+    # This is a simplified response generator
+    # In a real implementation, you would use your LLM utilities
+    
+    context_parts = []
+    if project_context:
+        context_parts.append(f"Project Context: {project_context}")
+    if additional_context:
+        context_parts.append(f"Additional Context: {additional_context}")
+    
+    context_text = " ".join(context_parts)
+    
+    # Use the existing langchain utilities to generate response
+    if hasattr(langchain_utils, 'generate_response'):
+        return langchain_utils.generate_response(user_message, context_text)
+    else:
+        # Fallback response generation
+        return f"""Thank you for your question about "{user_message}". 
+
+Based on grant writing best practices, here are some key considerations:
+
+1. **Clarity and Specificity**: Ensure your writing is clear and specific
+2. **Evidence-Based**: Support your claims with concrete evidence
+3. **Alignment**: Make sure your proposal aligns with the funding agency's mission
+4. **Measurable Outcomes**: Include specific, measurable outcomes
+
+{context_text}
+
+Would you like me to elaborate on any of these points or help you with a specific aspect of your grant proposal?"""
+
+
+def generate_brainstorming_ideas(topic: str, context: str = "", focus_areas: List[str] = None) -> List[dict]:
+    """Generate brainstorming ideas for various topics."""
+    
+    if focus_areas is None:
+        focus_areas = ["mission", "vision", "objectives", "strategies"]
+    
+    ideas = []
+    
+    for area in focus_areas:
+        if area == "mission":
+            ideas.append({
+                "area": "Mission Statement",
+                "suggestions": [
+                    "Focus on the core problem your organization solves",
+                    "Emphasize the impact on your target population",
+                    "Use clear, inspiring language",
+                    "Keep it concise but comprehensive"
+                ],
+                "examples": [
+                    "To empower underserved communities through innovative educational programs",
+                    "To advance scientific discovery that improves human health and well-being"
+                ]
+            })
+        elif area == "vision":
+            ideas.append({
+                "area": "Vision Statement",
+                "suggestions": [
+                    "Describe your ideal future state",
+                    "Be aspirational but realistic",
+                    "Connect to broader societal impact",
+                    "Use forward-looking language"
+                ],
+                "examples": [
+                    "A world where every individual has access to quality education and opportunity",
+                    "Leading breakthrough discoveries that transform healthcare delivery"
+                ]
+            })
+        elif area == "objectives":
+            ideas.append({
+                "area": "Strategic Objectives",
+                "suggestions": [
+                    "Make objectives SMART (Specific, Measurable, Achievable, Relevant, Time-bound)",
+                    "Align with funding agency priorities",
+                    "Include both short-term and long-term goals",
+                    "Demonstrate clear impact pathways"
+                ],
+                "examples": [
+                    "Increase program participation by 25% within 18 months",
+                    "Develop three new partnerships with community organizations by year end"
+                ]
+            })
+        elif area == "strategies":
+            ideas.append({
+                "area": "Implementation Strategies",
+                "suggestions": [
+                    "Detail your approach to achieving objectives",
+                    "Include stakeholder engagement plans",
+                    "Address potential challenges and mitigation strategies",
+                    "Show evidence-based methodology"
+                ],
+                "examples": [
+                    "Implement community-based participatory research methods",
+                    "Establish partnerships with local healthcare providers"
+                ]
+            })
+    
+    return ideas
 
 
 # -----------------------------------------------------------------------------

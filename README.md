@@ -6,6 +6,7 @@ An intelligent grant writing assistance tool powered by AI, combining Microsoft 
 
 ### Core Functionality
 - **AI-Powered Grant Writing**: Get intelligent assistance for creating compelling grant proposals
+- **Interactive Chat**: Real-time conversations with AI for grant writing assistance and brainstorming
 - **Document Analysis**: Upload and analyze grant documents using RAG technology
 - **Interactive Q&A**: Ask questions about your grant proposals and get AI-powered responses
 - **Project Management**: Create and manage multiple grant writing projects
@@ -94,6 +95,12 @@ An intelligent grant writing assistance tool powered by AI, combining Microsoft 
    - Use the AI assistant to get help with your grant writing
    - Try template prompts for common tasks
    - Get personalized recommendations based on your documents
+
+4. **Interactive Chat & Brainstorming**
+   - Engage in real-time conversations with the AI assistant
+   - Brainstorm ideas for mission statements, vision statements, and project objectives
+   - Get feedback on your grant writing in a conversational format
+   - Use quick prompts for common grant writing scenarios
 
 ### Template Prompts
 

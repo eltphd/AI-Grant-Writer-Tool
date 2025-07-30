@@ -70,3 +70,25 @@ CREATE TABLE IF NOT EXISTS file_chunks (
   embedding VECTOR,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Chat sessions table stores information about chat conversations
+-- for each project. This allows users to have multiple chat sessions
+-- per project.
+CREATE TABLE IF NOT EXISTS chat_sessions (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id),
+  session_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Chat messages table stores individual messages in chat conversations.
+-- Each message is associated with a project and optionally a session.
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id),
+  session_id INTEGER REFERENCES chat_sessions(id),
+  user_message TEXT,
+  ai_response TEXT,
+  message_type TEXT DEFAULT 'user', -- 'user' or 'assistant'
+  created_at TIMESTAMPTZ DEFAULT now()
+);

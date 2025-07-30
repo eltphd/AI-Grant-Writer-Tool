@@ -33,7 +33,7 @@ conn = psycopg2.connect(
 
 # Whitelist of allowed table names to prevent SQL injection
 ALLOWED_TABLES = {
-    "clients", "projects", "files", "file_chunks", "questions"
+    "clients", "projects", "files", "file_chunks", "questions", "chat_sessions", "chat_messages"
 }
 
 def _log_and_rollback(e: Exception) -> None:
@@ -268,3 +268,52 @@ def rag_context(question: str, files: list[str]) -> Any:
     except Exception as e:
         _log_and_rollback(e)
         return None
+
+
+# Chat-related database functions
+def save_chat_message(project_id: int, user_message: str, ai_response: str) -> bool:
+    """Save a chat message and AI response to the database."""
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO chat_messages (project_id, user_message, ai_response, created_at) VALUES (%s, %s, %s, NOW())",
+            (project_id, user_message, ai_response),
+        )
+        conn.commit()
+        cur.close()
+        return True
+    except Exception as e:
+        _log_and_rollback(e)
+        return False
+
+
+def get_chat_sessions(project_id: int) -> Any:
+    """Get all chat sessions for a project."""
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT DISTINCT session_id FROM chat_messages WHERE project_id = %s ORDER BY created_at DESC",
+            (project_id,),
+        )
+        results = cur.fetchall()
+        cur.close()
+        return results
+    except Exception as e:
+        _log_and_rollback(e)
+        return []
+
+
+def get_chat_messages(session_id: int) -> Any:
+    """Get all messages for a specific chat session."""
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT * FROM chat_messages WHERE session_id = %s ORDER BY created_at ASC",
+            (session_id,),
+        )
+        results = cur.fetchall()
+        cur.close()
+        return results
+    except Exception as e:
+        _log_and_rollback(e)
+        return []
