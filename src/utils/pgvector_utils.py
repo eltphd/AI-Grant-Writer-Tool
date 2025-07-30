@@ -24,12 +24,8 @@ except Exception:
 # psycopg2.connect() will raise an exception if the database is
 # unreachable; in that case FastAPI will fail on startup with a clear
 # traceback.
-conn = psycopg2.connect(
-    host=config.DB_HOSTNAME,
-    database=config.DB_NAME,
-    user=config.DB_USER,
-    password=config.DB_PASSWORD,
-)
+import os
+conn = psycopg2.connect(os.environ["DATABASE_URL"])
 
 # Whitelist of allowed table names to prevent SQL injection
 ALLOWED_TABLES = {
