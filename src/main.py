@@ -21,7 +21,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["https://ai-grant-writer-tool.vercel.app"]
+    allow_origins=[
+        "https://ai-grant-writer-tool-8of3dhqh8-ericas-projects-637268fc.vercel.app",
+        "https://ai-grant-writer-tool.vercel.app",
+        "http://localhost:3000",  # for local development
+        "*"  # fallback for any other domains
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,28 +42,48 @@ def ping():
 def root():
     return {"message": "Hello from FastAPI backend!"}
 
+# Test endpoint for connectivity
+@app.get("/test")
+def test():
+    return {"status": "ok", "message": "Backend is working!"}
+
 # Generate route for basic Q&A
 @app.post("/generate")
 async def generate(request: Request):
-    data = await request.json()
-    return {"result": f"Echoing: {data.get('question')}"}
+    try:
+        data = await request.json()
+        print(f"✅ /generate called with data: {data}")
+        return {"result": f"Echoing: {data.get('question')}"}
+    except Exception as e:
+        print(f"❌ Error in /generate: {e}")
+        return {"error": str(e)}
 
 # Chat message route
 @app.post("/chat/send_message")
 async def send_message(request: Request):
-    data = await request.json()
-    return {"ai_response": f"Simulated reply: {data.get('message')}"}
+    try:
+        data = await request.json()
+        print(f"✅ /chat/send_message called with data: {data}")
+        return {"ai_response": f"Simulated reply: {data.get('message')}"}
+    except Exception as e:
+        print(f"❌ Error in /chat/send_message: {e}")
+        return {"error": str(e)}
 
 # Brainstorming route
 @app.post("/chat/brainstorm")
 async def brainstorm(request: Request):
-    data = await request.json()
-    return {
-        "ideas": [
-            {
-                "area": "Strategy",
-                "suggestions": ["Plan your timeline", "Define outcomes"],
-                "examples": ["Launch pilot in Q2"],
-            }
-        ]
-    }
+    try:
+        data = await request.json()
+        print(f"✅ /chat/brainstorm called with data: {data}")
+        return {
+            "ideas": [
+                {
+                    "area": "Strategy",
+                    "suggestions": ["Plan your timeline", "Define outcomes"],
+                    "examples": ["Launch pilot in Q2"],
+                }
+            ]
+        }
+    except Exception as e:
+        print(f"❌ Error in /chat/brainstorm: {e}")
+        return {"error": str(e)}
