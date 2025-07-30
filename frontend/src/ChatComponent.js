@@ -40,6 +40,9 @@ import ReactMarkdown from 'react-markdown';
 // Set backend URL from Vercel or fallback to production Railway
 const API_BASE = process.env.REACT_APP_API_URL || "https://ai-grant-writer-tool-production.up.railway.app";
 
+// Debug logging for API URLs
+console.log("🔧 ChatComponent API_BASE:", API_BASE);
+
 const ChatComponent = ({ selectedProject, onNewChat }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -73,6 +76,7 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
     setLoading(true);
 
     try {
+      console.log("🚀 Making chat API call to:", `${API_BASE}/chat/send_message`);
       const response = await fetch(`${API_BASE}/chat/send_message`, {
         method: 'POST',
         headers: {
@@ -92,6 +96,7 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
       }
 
       const data = await response.json();
+      console.log("✅ Chat API response received:", data);
 
       const aiMessage = {
         id: Date.now() + 1,
@@ -129,6 +134,7 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
 
     setBrainstormLoading(true);
     try {
+      console.log("🚀 Making brainstorm API call to:", `${API_BASE}/chat/brainstorm`);
       const response = await fetch(`${API_BASE}/chat/brainstorm`, {
         method: 'POST',
         headers: {
@@ -148,6 +154,7 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
       }
 
       const data = await response.json();
+      console.log("✅ Brainstorm API response received:", data);
       setBrainstormIdeas(data.ideas);
       setShowBrainstormDialog(true);
     } catch (error) {

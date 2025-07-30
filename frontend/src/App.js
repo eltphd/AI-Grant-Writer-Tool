@@ -41,6 +41,13 @@ import ChatComponent from './ChatComponent';
 // Set backend URL from Vercel or fallback to production Railway
 const API_BASE = process.env.REACT_APP_API_URL || "https://ai-grant-writer-tool-production.up.railway.app";
 
+// Debug logging for API URLs
+console.log("🔧 API_BASE configured as:", API_BASE);
+console.log("🔧 Environment check:", {
+  NODE_ENV: process.env.NODE_ENV,
+  REACT_APP_API_URL: process.env.REACT_APP_API_URL
+});
+
 // Optional: console log for debugging
 if (!process.env.NODE_ENV || process.env.NODE_ENV !== "production") {
   console.log("Using API base:", API_BASE);
@@ -146,6 +153,7 @@ const App = () => {
     setLoading(true);
 
     try {
+      console.log("🚀 Making API call to:", `${API_BASE}/generate`);
       const response = await fetch(`${API_BASE}/generate`, {
         method: "POST",
         headers: {
@@ -164,6 +172,7 @@ const App = () => {
       }
 
       const data = await response.json();
+      console.log("✅ API response received:", data);
 
       const aiResponse = typeof data.result === "string"
         ? data.result
