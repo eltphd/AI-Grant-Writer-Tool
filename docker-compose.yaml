@@ -1,0 +1,52 @@
+version: '3.4'
+
+services:
+  app:
+    container_name: ai-grant-writer-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./output:/output
+      - ./doc_store:/doc_store
+    environment:
+      - DOCKER_RUNNING=true
+      - OPENAI_API_KEY
+      - USE_SUPABASE=${USE_SUPABASE:-false}
+      - SUPABASE_URL
+      - SUPABASE_KEY
+      - SINGLE_CLIENT_MODE=${SINGLE_CLIENT_MODE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./config/.env
+    healthcheck:
+      test: wget --no-verbose -O /dev/null --tries=1 http://localhost:8080/healthcheck || exit 1
+      interval: 10s
+      timeout: 5s
+
+  db:
+    hostname: db
+    image: pgvector/pgvector:pg15
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: vectordb
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpwd
+      PGUSER: testuser
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PGDATA: /var/lib/postgresql/data/
+    volumes:
+      - ./pgvector/output/database:/var/lib/postgresql/data
+      - ./pgvector/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d vectordb -U testuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

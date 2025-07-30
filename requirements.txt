@@ -1,0 +1,33 @@
+# Top‑level Python dependencies for the AI Grant Writer tool.
+#
+# This file lists all packages needed to run the FastAPI back‑end and
+# optional Streamlit front‑end.  When building the Docker image on
+# Cloud Run (or any other environment) pip will install these
+# libraries.  Some packages may pull in additional transitive
+# dependencies.  Feel free to adjust versions or add extras as
+# required.
+
+fastapi
+uvicorn[standard]
+pydantic
+python-multipart
+requests
+streamlit
+streamlit-js-eval
+openai
+# The Whisper dependency is optional and only used for local
+# audio transcription.  The openai-whisper package includes the
+# necessary model and inference code.  If you do not plan to
+# transcribe audio locally you can remove this line.
+openai-whisper
+# psycopg2-binary is used by pgvector_utils when connecting to a
+# PostgreSQL database directly.  It is harmless when using
+# Supabase.
+psycopg2-binary
+# Supabase Python client for interacting with Supabase REST and
+# storage services.  This is required when USE_SUPABASE=true.
+supabase
+# Additional utilities used by the Streamlit front‑end.  If you
+# encounter import errors you may need to add more packages here.
+python-dotenv
+multiprocess
