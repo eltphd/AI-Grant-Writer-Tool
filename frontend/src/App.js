@@ -48,6 +48,12 @@ console.log("🔧 Environment check:", {
   REACT_APP_API_URL: process.env.REACT_APP_API_URL
 });
 
+// Test the backend connectivity immediately
+fetch(`${API_BASE}/test`)
+  .then(response => response.json())
+  .then(data => console.log("✅ Backend connectivity test:", data))
+  .catch(error => console.error("❌ Backend connectivity test failed:", error));
+
 // Optional: console log for debugging
 if (!process.env.NODE_ENV || process.env.NODE_ENV !== "production") {
   console.log("Using API base:", API_BASE);
@@ -137,6 +143,19 @@ const App = () => {
     setEditingProject(null);
     setNewProjectName('');
     setShowProjectDialog(false);
+  };
+
+  const handleTestConnection = async () => {
+    try {
+      console.log("🧪 Testing backend connection...");
+      const response = await fetch(`${API_BASE}/test`);
+      const data = await response.json();
+      console.log("✅ Backend test successful:", data);
+      alert("Backend connection successful!");
+    } catch (error) {
+      console.error("❌ Backend test failed:", error);
+      alert("Backend connection failed: " + error.message);
+    }
   };
 
   const handleAskQuestion = async () => {
@@ -263,6 +282,13 @@ const App = () => {
                 sx={{ mb: 2 }}
               >
                 Create New Project
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleTestConnection}
+                sx={{ ml: 2, mb: 2 }}
+              >
+                Test Backend Connection
               </Button>
             </Box>
 
