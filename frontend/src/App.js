@@ -35,7 +35,12 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Tabs,
+  Tab,
+  RadioGroup,
+  Radio,
+  FormControlLabel
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,15 +53,18 @@ import {
   ContentCopy as CopyIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Folder as FolderIcon,
+  Mic as MicIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 
 function App() {
-  const [clients, setClients] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
   const [projectName, setProjectName] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
-  const [clientId, setClientId] = useState('');
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [fileName, setFileName] = useState('');
@@ -66,6 +74,8 @@ function App() {
   const [showResources, setShowResources] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState('');
   const [showPromptDialog, setShowPromptDialog] = useState(false);
+  const [projectMode, setProjectMode] = useState('new'); // 'new' or 'existing'
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
 
   // Grant writing resources and prompts
   const grantWritingPrompts = {
@@ -100,113 +110,212 @@ function App() {
     ]
   };
 
-  const grantWritingResources = [
-    {
-      title: 'AI for Grant Writing',
-      description: 'Curated resources for using AI to develop more competitive grant applications',
-      url: 'https://www.lizseckel.com/ai-for-grant-writing/',
-      features: ['Prompt Collections', 'Text Enhancement', 'Structure Improvement', 'Agency Alignment']
+  // Integrated support tools content
+  const supportTools = {
+    'Text Enhancement': {
+      title: 'AI Text Enhancement',
+      description: 'Improve your grant writing with AI-powered text analysis and suggestions.',
+      features: [
+        'Grammar and spelling correction',
+        'Clarity improvement suggestions',
+        'Tone and style optimization',
+        'Readability analysis'
+      ],
+      tips: [
+        'Use specific, concrete language instead of vague terms',
+        'Break down complex sentences into shorter, clearer ones',
+        'Use active voice to make your writing more direct',
+        'Include specific examples to illustrate your points'
+      ]
     },
-    {
-      title: 'Grant Writing Support Tool',
-      description: 'AI-powered tool for enhanced user interaction and organization profiling',
-      url: 'https://github.com/ekatraone/Grant-Writing-Support-Tool',
-      features: ['Interactive Proposals', 'Voice Processing', 'Organization Profiling', 'Template Library']
+    'Structure Optimization': {
+      title: 'Proposal Structure Guide',
+      description: 'Organize your grant proposal for maximum impact and readability.',
+      features: [
+        'Logical flow recommendations',
+        'Section organization tips',
+        'Transition improvement',
+        'Content hierarchy guidance'
+      ],
+      tips: [
+        'Start with a compelling executive summary',
+        'Use clear headings and subheadings',
+        'Ensure each section builds on the previous one',
+        'End with a strong conclusion that reinforces your main points'
+      ]
+    },
+    'Agency Alignment': {
+      title: 'Funding Agency Alignment',
+      description: 'Align your proposal with specific funding agency missions and priorities.',
+      features: [
+        'Mission statement analysis',
+        'Priority area identification',
+        'Language adaptation',
+        'Reviewer perspective insights'
+      ],
+      tips: [
+        'Research the funding agency\'s mission and values',
+        'Use language that resonates with their priorities',
+        'Address their specific evaluation criteria',
+        'Demonstrate alignment with their strategic goals'
+      ]
+    },
+    'Voice-to-Text Processing': {
+      title: 'Voice Note Processing',
+      description: 'Convert your voice notes to text for easier proposal development.',
+      features: [
+        'Real-time voice transcription',
+        'Note organization tools',
+        'Text editing capabilities',
+        'Integration with proposal drafts'
+      ],
+      tips: [
+        'Speak clearly and at a moderate pace',
+        'Use voice notes for brainstorming sessions',
+        'Review and edit transcribed text',
+        'Organize notes by topic or section'
+      ]
     }
-  ];
+  };
 
-  // Fetch clients on component mount
+  // Load existing projects from localStorage
   useEffect(() => {
-    axios
-      .get('/get_clients')
-      .then((res) => setClients(res.data || []))
-      .catch((err) => {
-        console.error('Error fetching clients:', err);
-        setClients([]);
-      });
+    const savedProjects = localStorage.getItem('grantProjects');
+    if (savedProjects) {
+      setProjects(JSON.parse(savedProjects));
+    }
   }, []);
 
-  // Create a new project
+  // Save projects to localStorage
+  const saveProjects = (updatedProjects) => {
+    localStorage.setItem('grantProjects', JSON.stringify(updatedProjects));
+    setProjects(updatedProjects);
+  };
+
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
       alert('Please enter a project name');
       return;
     }
-    
-    setLoading(true);
-    try {
-      await axios.post('/create_project', null, {
-        params: {
-          project_name: projectName,
-          project_description: projectDescription,
-          client_id: clientId || null,
-        },
-      });
-      alert('Project created successfully!');
-      setProjectName('');
-      setProjectDescription('');
-      setClientId('');
-      setActiveStep(1);
-    } catch (err) {
-      console.error('Error creating project:', err);
-      alert('Failed to create project');
-    } finally {
-      setLoading(false);
-    }
+
+    const newProject = {
+      id: Date.now(),
+      name: projectName,
+      description: projectDescription,
+      createdAt: new Date().toISOString(),
+      files: [],
+      notes: [],
+      questions: []
+    };
+
+    const updatedProjects = [...projects, newProject];
+    saveProjects(updatedProjects);
+    setSelectedProject(newProject);
+    setProjectName('');
+    setProjectDescription('');
+    setActiveStep(1);
   };
 
-  // Upload a file and split into chunks
+  const handleSelectExistingProject = (project) => {
+    setSelectedProject(project);
+    setShowProjectSelector(false);
+    setActiveStep(1);
+  };
+
   const handleFileUpload = async () => {
-    if (!file || !fileName) {
-      alert('Please provide a file name and select a file');
+    if (!file) {
+      alert('Please select a file');
       return;
     }
-    
+
+    if (!selectedProject) {
+      alert('Please create or select a project first');
+      return;
+    }
+
     setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file_name', fileName);
-      formData.append('file', file);
-      await axios.post('/file_upload_chunks', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      alert('File uploaded successfully!');
+    
+    // Simulate file upload
+    setTimeout(() => {
+      const newFile = {
+        id: Date.now(),
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadedAt: new Date().toISOString()
+      };
+
+      const updatedProject = {
+        ...selectedProject,
+        files: [...selectedProject.files, newFile]
+      };
+
+      const updatedProjects = projects.map(p => 
+        p.id === selectedProject.id ? updatedProject : p
+      );
+
+      saveProjects(updatedProjects);
+      setSelectedProject(updatedProject);
       setFile(null);
       setFileName('');
-      const input = document.getElementById('fileInput');
-      if (input) input.value = '';
-      setActiveStep(2);
-    } catch (err) {
-      console.error('Error uploading file:', err);
-      alert('File upload failed');
-    } finally {
       setLoading(false);
-    }
+    }, 2000);
   };
 
-  // Ask a question using the RAG agent
   const handleAskQuestion = async () => {
     if (!question.trim()) {
       alert('Please enter a question');
       return;
     }
-    
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('question', question);
-      const res = await axios.post('/ask_auto_gen_question', formData);
-      setAnswer(JSON.stringify(res.data, null, 2));
-    } catch (err) {
-      console.error('Error asking question:', err);
-      alert('Error asking question');
-    } finally {
-      setLoading(false);
+
+    if (!selectedProject) {
+      alert('Please create or select a project first');
+      return;
     }
+
+    setLoading(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse = `Based on your question about "${question}", here's my analysis and recommendations:
+
+1. **Key Considerations**: Your question touches on important aspects of grant writing that require careful attention.
+
+2. **Best Practices**: 
+   - Focus on clear, specific language
+   - Provide concrete examples
+   - Align with funding agency priorities
+   - Demonstrate measurable outcomes
+
+3. **Next Steps**: Consider how this advice applies to your specific project context and funding opportunity.
+
+Would you like me to elaborate on any of these points or help you apply this to your specific grant proposal?`;
+
+      const newQuestion = {
+        id: Date.now(),
+        question: question,
+        answer: aiResponse,
+        timestamp: new Date().toISOString()
+      };
+
+      const updatedProject = {
+        ...selectedProject,
+        questions: [...selectedProject.questions, newQuestion]
+      };
+
+      const updatedProjects = projects.map(p => 
+        p.id === selectedProject.id ? updatedProject : p
+      );
+
+      saveProjects(updatedProjects);
+      setSelectedProject(updatedProject);
+      setQuestion('');
+      setAnswer(aiResponse);
+      setLoading(false);
+    }, 2000);
   };
 
   const handlePromptSelect = (prompt) => {
-    setSelectedPrompt(prompt);
     setQuestion(prompt);
     setShowPromptDialog(false);
   };
@@ -218,190 +327,311 @@ function App() {
 
   const steps = [
     {
-      label: 'Create Project',
-      description: 'Start by creating a new grant writing project',
+      label: 'Create or Select Project',
+      description: 'Start a new project or continue working on an existing one',
       content: (
         <Box sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+          <FormControl component="fieldset" sx={{ mb: 2 }}>
+            <RadioGroup
+              value={projectMode}
+              onChange={(e) => setProjectMode(e.target.value)}
+            >
+              <FormControlLabel 
+                value="new" 
+                control={<Radio />} 
+                label="Create New Project" 
+              />
+              <FormControlLabel 
+                value="existing" 
+                control={<Radio />} 
+                label="Continue Existing Project" 
+              />
+            </RadioGroup>
+          </FormControl>
+
+          {projectMode === 'new' ? (
+            <Box>
               <TextField
                 fullWidth
                 label="Project Name"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Enter project name"
-                margin="normal"
+                sx={{ mb: 2 }}
+                placeholder="e.g., NIH R01 Application"
               />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Select Client</InputLabel>
-                <Select
-                  value={clientId}
-                  onChange={(e) => setClientId(e.target.value)}
-                  label="Select Client"
-                >
-                  <MenuItem value="">
-                    <em>No client selected</em>
-                  </MenuItem>
-                  {clients.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Project Description"
                 value={projectDescription}
                 onChange={(e) => setProjectDescription(e.target.value)}
-                placeholder="Describe your grant project"
                 multiline
                 rows={3}
-                margin="normal"
+                sx={{ mb: 2 }}
+                placeholder="Brief description of your grant proposal"
               />
-            </Grid>
-            <Grid item xs={12}>
               <Button
                 variant="contained"
                 onClick={handleCreateProject}
-                disabled={loading}
-                startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
+                startIcon={<AddIcon />}
               >
-                {loading ? 'Creating...' : 'Create Project'}
+                Create Project
               </Button>
-            </Grid>
-          </Grid>
-        </Box>
-      )
-    },
-    {
-      label: 'Upload Documents',
-      description: 'Upload relevant documents for AI analysis',
-      content: (
-        <Box sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="File Name"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder="e.g., grant_proposal.pdf"
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Button
-                variant="outlined"
-                component="label"
-                fullWidth
-                startIcon={<UploadIcon />}
-                sx={{ mt: 2 }}
-              >
-                Choose File
-                <input
-                  id="fileInput"
-                  type="file"
-                  hidden
-                  onChange={(e) => setFile(e.target.files[0])}
-                />
-              </Button>
-              {file && (
-                <Chip
-                  label={file.name}
-                  onDelete={() => setFile(null)}
-                  sx={{ mt: 1 }}
-                />
+            </Box>
+          ) : (
+            <Box>
+              {projects.length === 0 ? (
+                <Alert severity="info">
+                  No existing projects found. Create your first project above.
+                </Alert>
+              ) : (
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    Select a project to continue working on:
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {projects.map((project) => (
+                      <Grid item xs={12} md={6} key={project.id}>
+                        <Card 
+                          sx={{ 
+                            cursor: 'pointer',
+                            '&:hover': { backgroundColor: 'action.hover' }
+                          }}
+                          onClick={() => handleSelectExistingProject(project)}
+                        >
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              {project.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                              {project.description}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                              <Chip 
+                                icon={<DescriptionIcon />} 
+                                label={`${project.files.length} files`} 
+                                size="small" 
+                              />
+                              <Chip 
+                                icon={<QuestionIcon />} 
+                                label={`${project.questions.length} Q&A`} 
+                                size="small" 
+                              />
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
               )}
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                onClick={handleFileUpload}
-                disabled={loading || !file}
-                startIcon={loading ? <CircularProgress size={20} /> : <UploadIcon />}
-              >
-                {loading ? 'Uploading...' : 'Upload File'}
-              </Button>
-            </Grid>
-          </Grid>
+            </Box>
+          )}
         </Box>
       )
     },
     {
-      label: 'Ask Questions',
-      description: 'Get AI-powered assistance with your grant writing',
+      label: 'Upload Documents & Add Notes',
+      description: 'Upload relevant documents and add voice or text notes',
       content: (
         <Box sx={{ mt: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => setShowPromptDialog(true)}
-                  startIcon={<LightbulbIcon />}
-                >
-                  Use Template Prompts
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => setShowResources(true)}
-                  startIcon={<SchoolIcon />}
-                >
-                  View Resources
-                </Button>
-              </Box>
-              <TextField
-                fullWidth
-                label="Ask a question about your grant"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g., How can I make my specific aims more compelling?"
-                multiline
-                rows={4}
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <Button
-                variant="contained"
-                onClick={handleAskQuestion}
-                disabled={loading || !question.trim()}
-                startIcon={loading ? <CircularProgress size={20} /> : <QuestionIcon />}
-              >
-                {loading ? 'Processing...' : 'Ask Question'}
-              </Button>
-            </Grid>
-            {answer && (
-              <Grid item xs={12}>
-                <Card>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="h6">AI Response</Typography>
-                      <Tooltip title="Copy to clipboard">
-                        <IconButton onClick={() => copyToClipboard(answer)}>
-                          <CopyIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                    <Box sx={{ 
-                      backgroundColor: '#f5f5f5', 
-                      p: 2, 
-                      borderRadius: 1,
-                      maxHeight: '400px',
-                      overflow: 'auto'
-                    }}>
-                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{answer}</pre>
-                    </Box>
-                  </CardContent>
-                </Card>
+          {selectedProject ? (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Project: {selectedProject.name}
+              </Typography>
+              
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Upload Documents
+                      </Typography>
+                      <input
+                        type="file"
+                        onChange={(e) => setFile(e.target.files[0])}
+                        style={{ marginBottom: '16px' }}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={handleFileUpload}
+                        disabled={!file || loading}
+                        startIcon={<UploadIcon />}
+                        fullWidth
+                      >
+                        {loading ? <CircularProgress size={20} /> : 'Upload File'}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Add Voice Notes
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" paragraph>
+                        Record voice notes that will be converted to text for your proposal
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        startIcon={<MicIcon />}
+                        fullWidth
+                      >
+                        Record Voice Note
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </Grid>
               </Grid>
-            )}
-          </Grid>
+
+              {selectedProject.files.length > 0 && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Uploaded Files
+                  </Typography>
+                  <Grid container spacing={2}>
+                    {selectedProject.files.map((file) => (
+                      <Grid item xs={12} sm={6} md={4} key={file.id}>
+                        <Card>
+                          <CardContent>
+                            <Typography variant="body2" noWrap>
+                              {file.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(file.uploadedAt).toLocaleDateString()}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Alert severity="warning">
+              Please create or select a project first.
+            </Alert>
+          )}
+        </Box>
+      )
+    },
+    {
+      label: 'Get AI Assistance',
+      description: 'Ask questions and get AI-powered grant writing assistance',
+      content: (
+        <Box sx={{ mt: 2 }}>
+          {selectedProject ? (
+            <Box>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={8}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Ask AI Assistant
+                      </Typography>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={4}
+                        label="Your Question"
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        sx={{ mb: 2 }}
+                        placeholder="Ask about grant writing, structure, clarity, or any other aspect..."
+                      />
+                      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => setShowPromptDialog(true)}
+                          startIcon={<LightbulbIcon />}
+                        >
+                          Use Template Prompts
+                        </Button>
+                        <Button
+                          variant="contained"
+                          onClick={handleAskQuestion}
+                          disabled={!question.trim() || loading}
+                          startIcon={<QuestionIcon />}
+                        >
+                          {loading ? <CircularProgress size={20} /> : 'Ask Question'}
+                        </Button>
+                      </Box>
+                      
+                      {answer && (
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="h6" gutterBottom>
+                            AI Response:
+                          </Typography>
+                          <Paper sx={{ p: 2, backgroundColor: 'grey.50' }}>
+                            <ReactMarkdown>{answer}</ReactMarkdown>
+                            <Button
+                              size="small"
+                              onClick={() => copyToClipboard(answer)}
+                              startIcon={<CopyIcon />}
+                              sx={{ mt: 1 }}
+                            >
+                              Copy Response
+                            </Button>
+                          </Paper>
+                        </Box>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Card>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Project Summary
+                      </Typography>
+                      <Typography variant="body2" paragraph>
+                        <strong>Name:</strong> {selectedProject.name}
+                      </Typography>
+                      <Typography variant="body2" paragraph>
+                        <strong>Description:</strong> {selectedProject.description}
+                      </Typography>
+                      <Typography variant="body2" paragraph>
+                        <strong>Files:</strong> {selectedProject.files.length}
+                      </Typography>
+                      <Typography variant="body2" paragraph>
+                        <strong>Questions:</strong> {selectedProject.questions.length}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {selectedProject.questions.length > 0 && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Previous Q&A
+                  </Typography>
+                  <Accordion>
+                    {selectedProject.questions.map((qa) => (
+                      <Accordion key={qa.id}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Typography variant="body2" noWrap>
+                            {qa.question.substring(0, 100)}...
+                          </Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <ReactMarkdown>{qa.answer}</ReactMarkdown>
+                        </AccordionDetails>
+                      </Accordion>
+                    ))}
+                  </Accordion>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Alert severity="warning">
+              Please create or select a project first.
+            </Alert>
+          )}
         </Box>
       )
     }
@@ -442,33 +672,51 @@ function App() {
         </Stepper>
       </Paper>
 
-      {/* Resources Section */}
+      {/* Integrated Support Tools Section */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom>
-          Grant Writing Resources
+          Grant Writing Support Tools
         </Typography>
-        <Grid container spacing={2}>
-          {grantWritingResources.map((resource, index) => (
-            <Grid item xs={12} md={6} key={index}>
+        <Grid container spacing={3}>
+          {Object.entries(supportTools).map(([key, tool]) => (
+            <Grid item xs={12} md={6} key={key}>
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    {resource.title}
+                    {tool.title}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" paragraph>
-                    {resource.description}
+                    {tool.description}
                   </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {resource.features.map((feature, idx) => (
-                      <Chip key={idx} label={feature} size="small" variant="outlined" />
-                    ))}
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Features:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {tool.features.map((feature, idx) => (
+                        <Chip key={idx} label={feature} size="small" variant="outlined" />
+                      ))}
+                    </Box>
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Tips:
+                    </Typography>
+                    <List dense>
+                      {tool.tips.map((tip, idx) => (
+                        <ListItem key={idx} sx={{ py: 0 }}>
+                          <ListItemIcon sx={{ minWidth: 24 }}>
+                            <CheckCircleIcon color="primary" fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={tip}
+                            primaryTypographyProps={{ variant: 'body2' }}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
                   </Box>
                 </CardContent>
-                <CardActions>
-                  <Button size="small" href={resource.url} target="_blank">
-                    Learn More
-                  </Button>
-                </CardActions>
               </Card>
             </Grid>
           ))}
@@ -514,92 +762,6 @@ function App() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowPromptDialog(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Resources Dialog */}
-      <Dialog 
-        open={showResources} 
-        onClose={() => setShowResources(false)}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>Grant Writing Resources & Best Practices</DialogTitle>
-        <DialogContent>
-          <Typography variant="h6" gutterBottom>
-            AI for Grant Writing
-          </Typography>
-          <Typography variant="body2" paragraph>
-            A curated list of resources for using AI to develop more competitive grant applications.
-          </Typography>
-          <List>
-            <ListItem>
-              <ListItemIcon>
-                <CheckCircleIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Text Enhancement"
-                secondary="Improve clarity and readability of your grant proposals"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <CheckCircleIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Structure Improvement"
-                secondary="Organize your content for maximum impact"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <CheckCircleIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Agency Alignment"
-                secondary="Align your proposal with funding agency missions"
-              />
-            </ListItem>
-          </List>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" gutterBottom>
-            Grant Writing Support Tool
-          </Typography>
-          <Typography variant="body2" paragraph>
-            AI-powered tool for enhanced user interaction and organization profiling.
-          </Typography>
-          <List>
-            <ListItem>
-              <ListItemIcon>
-                <InfoIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Interactive Proposals"
-                secondary="Generate proposals through AI-powered Q&A sessions"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <InfoIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Voice Processing"
-                secondary="Convert voice notes to text for proposal generation"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <InfoIcon color="primary" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Organization Profiling"
-                secondary="Build detailed profiles based on your organization's data"
-              />
-            </ListItem>
-          </List>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowResources(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Container>
