@@ -47,7 +47,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend source code
-COPY fastapi ./fastapi
+COPY src ./src
 COPY pgvector ./pgvector
 
 # Copy built React assets from the previous stage into the image.  These
@@ -56,7 +56,7 @@ COPY pgvector ./pgvector
 COPY --from=frontend-build /app/frontend/build ./frontend/build
 
 # Set PYTHONPATH to include back‑end src folder
-ENV PYTHONPATH="/app/fastapi/src"
+ENV PYTHONPATH="/app"
 
 # Default configuration values.  These can be overridden at run time via
 # environment variables.  ``FASTAPI_URL`` is unused in the combined
@@ -70,5 +70,5 @@ ENV SINGLE_CLIENT_MODE=false
 EXPOSE 8080
 
 # Start the FastAPI application.  The React front‑end is served via
-# FastAPI's static file mount and catch‑all route in ``fastapi/src/main.py``.
-CMD ["uvicorn", "fastapi.src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# FastAPI's static file mount and catch‑all route in ``src/main.py``.
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
