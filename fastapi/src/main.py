@@ -7,7 +7,7 @@ the bridge between incoming requests and the database/LLM utilities.
 from fastapi import FastAPI, UploadFile, Form, HTTPException, status
 from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
 from pydantic import BaseModel
-from typing import List, Annotated, Optional
+from typing import List, Annotated, Optional, Any, Dict
 import uvicorn
 import os
 from fastapi.staticfiles import StaticFiles
@@ -307,9 +307,9 @@ def export_all_data() -> StreamingResponse:
         chunks_raw = db_utils.query_data("file_chunks") or []
         questions_raw = db_utils.query_data("questions") or []
 
-        def map_rows(rows: list[Any], columns: list[str]) -> list[dict[str, Any]]:
+        def map_rows(rows: List[Any], columns: List[str]) -> List[Dict[str, Any]]:
             """Map a list of row tuples to dictionaries using the provided columns."""
-            mapped: list[dict[str, Any]] = []
+            mapped: List[Dict[str, Any]] = []
             for row in rows:
                 # If Supabase returns dicts already, keep them
                 if isinstance(row, dict):

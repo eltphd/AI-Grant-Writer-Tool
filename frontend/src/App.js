@@ -70,6 +70,7 @@ function App() {
   const [fileName, setFileName] = useState('');
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadQueue, setUploadQueue] = useState([]);
   const [activeStep, setActiveStep] = useState(0);
   const [showResources, setShowResources] = useState(false);
   const [selectedPrompt, setSelectedPrompt] = useState('');
@@ -233,29 +234,48 @@ function App() {
       return;
     }
 
+    // Prevent concurrent uploads by checking if already uploading
+    if (loading) {
+      alert('Upload already in progress. Please wait for it to complete.');
+      return;
+    }
+
     setLoading(true);
+    
+    // Create upload ID to track this specific upload
+    const uploadId = Date.now() + Math.random();
+    const currentFile = file;
+    
+    // Add to upload queue for tracking
+    setUploadQueue(prev => [...prev, { id: uploadId, fileName: currentFile.name }]);
     
     // Simulate file upload
     setTimeout(() => {
-      const newFile = {
-        id: Date.now(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uploadedAt: new Date().toISOString()
-      };
+      // Check if this upload is still relevant (project hasn't changed)
+      if (selectedProject) {
+        const newFile = {
+          id: uploadId,
+          name: currentFile.name,
+          size: currentFile.size,
+          type: currentFile.type,
+          uploadedAt: new Date().toISOString()
+        };
 
-      const updatedProject = {
-        ...selectedProject,
-        files: [...selectedProject.files, newFile]
-      };
+        const updatedProject = {
+          ...selectedProject,
+          files: [...selectedProject.files, newFile]
+        };
 
-      const updatedProjects = projects.map(p => 
-        p.id === selectedProject.id ? updatedProject : p
-      );
+        const updatedProjects = projects.map(p => 
+          p.id === selectedProject.id ? updatedProject : p
+        );
 
-      saveProjects(updatedProjects);
-      setSelectedProject(updatedProject);
+        saveProjects(updatedProjects);
+        setSelectedProject(updatedProject);
+      }
+      
+      // Remove from upload queue
+      setUploadQueue(prev => prev.filter(upload => upload.id !== uploadId));
       setFile(null);
       setFileName('');
       setLoading(false);
@@ -461,6 +481,13 @@ Would you like me to elaborate on any of these points or help you apply this to 
                       >
                         {loading ? <CircularProgress size={20} /> : 'Upload File'}
                       </Button>
+                      {uploadQueue.length > 0 && (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Uploads in progress: {uploadQueue.map(u => u.fileName).join(', ')}
+                          </Typography>
+                        </Box>
+                      )}
                     </CardContent>
                   </Card>
                 </Grid>

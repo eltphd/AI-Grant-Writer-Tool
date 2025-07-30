@@ -31,6 +31,11 @@ conn = psycopg2.connect(
     password=config.DB_PASSWORD,
 )
 
+# Whitelist of allowed table names to prevent SQL injection
+ALLOWED_TABLES = {
+    "clients", "projects", "files", "file_chunks", "questions"
+}
+
 def _log_and_rollback(e: Exception) -> None:
     """Helper to log an exception and roll back the current transaction."""
     print(e)
@@ -48,6 +53,11 @@ def query_data(table_name: str) -> Any:
     Returns:
         A list of rows, or False if an error occurred.
     """
+    # Validate table name against whitelist to prevent SQL injection
+    if table_name not in ALLOWED_TABLES:
+        print(f"Invalid table name: {table_name}")
+        return False
+        
     try:
         cur = conn.cursor()
         cur.execute(f"SELECT * FROM {table_name}")
