@@ -15,12 +15,9 @@ FROM node:18 AS frontend-build
 # Create app directory for front‑end build
 WORKDIR /app/frontend
 
-# Install front‑end dependencies first to leverage cached layers.  If
-# package‑lock.json is present it will also be copied; otherwise the
-# command will be ignored.  Using ``true`` prevents a build failure
-# when package‑lock.json does not exist.
+# Install front‑end dependencies first to leverage cached layers
 COPY frontend/package.json ./
-COPY frontend/package-lock.json ./ || true
+COPY frontend/package-lock.json ./
 RUN npm install
 
 # Copy the rest of the front‑end source and build the production assets
