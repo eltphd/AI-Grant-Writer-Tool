@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 """Main FastAPI app for the AI Grant Writer.
 
 This module defines all HTTP endpoints exposed by the service.  It acts as
