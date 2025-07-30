@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or your exact Vercel URL for more security
+    allow_origins=["*"],  # or ["https://ai-grant-writer-tool.vercel.app"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,14 +41,13 @@ def root():
 @app.post("/generate")
 async def generate(request: Request):
     data = await request.json()
-    print("Data received:", data)
-    return {"result": f"Response to: {data.get('question')}"}
+    return {"result": f"Echoing: {data.get('question')}"}
 
 # Chat message route
 @app.post("/chat/send_message")
 async def send_message(request: Request):
     data = await request.json()
-    return {"ai_response": f"Simulated reply to: {data.get('message')}"}
+    return {"ai_response": f"Simulated reply: {data.get('message')}"}
 
 # Brainstorming route
 @app.post("/chat/brainstorm")
@@ -58,8 +57,8 @@ async def brainstorm(request: Request):
         "ideas": [
             {
                 "area": "Strategy",
-                "suggestions": ["Clarify timeline", "Add metrics"],
-                "examples": ["We will launch pilot by Q2"]
+                "suggestions": ["Plan your timeline", "Define outcomes"],
+                "examples": ["Launch pilot in Q2"],
             }
         ]
     }
