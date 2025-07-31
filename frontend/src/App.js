@@ -37,37 +37,24 @@ function App() {
 
   const createProject = async () => {
     try {
-      setLoading(true);
-      const projectData = {
-        name: `Grant Project ${Date.now()}`,
-        description: 'New grant writing project'
+      const newProject = {
+        id: Date.now().toString(),
+        name: `New Project ${projects.length + 1}`,
+        description: 'A new grant writing project',
+        created_at: new Date().toISOString()
       };
-
-      const response = await fetch(`${API_BASE}/projects`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(projectData),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProjects([...projects, data.project]);
-        setCurrentProject(data.project);
-        setCurrentStep(2);
-      }
+      
+      setProjects([...projects, newProject]);
+      setCurrentProject(newProject);
+      setCurrentStep(2);
     } catch (error) {
       console.error('Error creating project:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const selectProject = (project) => {
     setCurrentProject(project);
-    setCurrentStep(3); // Go straight to chat for existing projects
-    loadProjectContext(project.id);
+    setCurrentStep(2);
   };
 
   const loadProjectContext = async (projectId) => {
@@ -185,7 +172,7 @@ function App() {
         )}
 
         {/* Step 2: Upload & Context */}
-        {currentStep === 2 && currentProject && (
+        {currentStep === 2 && (
           <div className="step-container">
             <div className="step-header">
               <h2>Upload Documents & Set Context</h2>
@@ -241,78 +228,39 @@ function App() {
                     <div className="upload-text">
                       <h4>Drop files here or click to upload</h4>
                       <p>Supported formats: PDF, DOCX, DOC, TXT, MD</p>
-                      <p className="upload-note">Max file size: 10MB</p>
                     </div>
                   </label>
                 </div>
-              </div>
-              
-              <div className="continue-section">
-                <button 
-                  className="btn btn-secondary btn-large"
-                  onClick={() => setCurrentStep(3)}
-                  disabled={loading}
-                >
-                  {loading ? 'Processing...' : 'Continue to Chat'}
-                </button>
-                <p className="continue-note">
-                  You can always come back to add more context or documents later
-                </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Step 3: Main Chat Interface */}
-        {currentStep === 3 && currentProject && (
+        {/* Step 3: Chat */}
+        {currentStep === 3 && (
           <div className="step-container">
             <div className="step-header">
-              <h2>Interactive Chat & AI Assistant</h2>
-              <p>Everything you need in one powerful chat interface</p>
+              <h2>AI-Powered Grant Writing</h2>
+              <p>Chat with AI to brainstorm ideas and get writing assistance</p>
             </div>
             
-            <div className="chat-and-export-section">
-              {/* Export Panel */}
-              <div className="export-panel">
-                <h3>📋 Export Options</h3>
-                <div className="export-actions">
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => setCurrentStep(4)}
-                  >
-                    📄 Grant Sections
-                  </button>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => window.open(`${API_BASE}/grant/sections/${currentProject.id}/export/markdown`, '_blank')}
-                  >
-                    📝 Export Markdown
-                  </button>
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => window.open(`${API_BASE}/grant/sections/${currentProject.id}/export/docx`, '_blank')}
-                  >
-                    📄 Export DOCX
-                  </button>
-                </div>
-                
-                <div className="export-info">
-                  <p>Quick access to your grant application sections and export options.</p>
-                </div>
-              </div>
-              
-              {/* Chat Component */}
-              <div className="chat-main">
-                <ChatComponent projectId={currentProject.id} />
-              </div>
+            <div className="chat-main">
+              <ChatComponent />
             </div>
           </div>
         )}
 
         {/* Step 4: Grant Sections */}
-        {currentStep === 4 && currentProject && (
+        {currentStep === 4 && (
           <div className="step-container">
-            <GrantSections projectId={currentProject.id} />
+            <div className="step-header">
+              <h2>Grant Sections</h2>
+              <p>View and edit structured grant sections</p>
+            </div>
+            
+            <div className="grant-sections-main">
+              <GrantSections />
+            </div>
           </div>
         )}
       </main>
