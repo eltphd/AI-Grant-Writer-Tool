@@ -1,823 +1,643 @@
-from fastapi import FastAPI, Request, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from datetime import datetime
-import json
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
-import sys
-import traceback
-
-print("🚀 Starting FastAPI application...")
-
-# Optional: Load .env file for local development
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-    print("✅ Loaded .env file")
-except ImportError:
-    print("python-dotenv not installed. Skipping .env loading.")
-except Exception as e:
-    print(f"⚠️ Error loading .env: {e}")
-
-# Debug environment variables at startup
 import os
-print("🔧 Environment variables at startup:")
-print(f"🔧 OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
-print(f"🔧 USE_SUPABASE: {os.getenv('USE_SUPABASE', 'not set')}")
-print(f"🔧 SUPABASE_URL: {'set' if os.getenv('SUPABASE_URL') else 'not set'}")
-print(f"🔧 DB_HOSTNAME: {os.getenv('DB_HOSTNAME', 'not set')}")
-print(f"🔧 PORT: {os.getenv('PORT', 'not set')}")
+import sys
+import json
+import uuid
+from datetime import datetime, timedelta
+from typing import Optional, Dict, Any
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel, EmailStr
+import jwt
+from passlib.context import CryptContext
 
-# Import utility modules
-try:
-    print("🔧 Attempting to import utils modules...")
-    # Add src directory to Python path
-    import sys
-    import os
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    parent_dir = os.path.dirname(current_dir)
-    if parent_dir not in sys.path:
-        sys.path.insert(0, parent_dir)
-        print(f"🔧 Added {parent_dir} to Python path")
-    
-    from src.utils import file_utils
-    from src.utils import openai_utils
-    from src.utils import storage_utils
-    from src.utils import postgres_storage
-    from src.utils import config
-    from src.utils import privacy_utils
-    from src.utils import embedding_utils
-    from src.utils import grant_sections
-    
-    print("✅ Successfully imported utils modules")
-    print("✅ file_utils type:", type(file_utils))
-    print("✅ openai_utils type:", type(openai_utils))
-    print("✅ storage_utils type:", type(storage_utils))
-    print("✅ postgres_storage type:", type(postgres_storage))
-    print("✅ grant_sections type:", type(grant_sections))
-    
-except ImportError as e:
-    print(f"❌ Error importing utils modules: {e}")
-    import traceback
-    traceback.print_exc()
-    sys.exit(1)
+# Add parent directory to path for imports
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, parent_dir)
 
-print("🔧 Initializing FastAPI app...")
+from src.utils import file_utils, openai_utils, storage_utils, postgres_storage, supabase_utils, privacy_utils, embedding_utils, grant_sections
 
-# Initialize the app
-app = FastAPI()
+# Security configuration
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-print("✅ FastAPI app initialized")
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
-@app.on_event("startup")
-async def startup_event():
-    print("🚀 FastAPI startup event triggered")
-    import os
-    print(f"🔧 Startup - OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
-    print(f"🔧 Startup - PORT: {os.getenv('PORT', 'not set')}")
-    print(f"🔧 Startup - RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT', 'not set')}")
+# Pydantic models for authentication
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
 
-# Custom CORS middleware to ensure headers are always present
-class CustomCORSMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        # Handle preflight requests
-        if request.method == "OPTIONS":
-            return Response(
-                content="",
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "*",
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Max-Age": "86400",
-                }
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str
+    created_at: datetime
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+# Authentication utilities
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-        
-        response = await call_next(request)
-        
-        # Add CORS headers to all responses
-        response.headers["Access-Control-Allow-Origin"] = "https://ai-grant-writer-tool.vercel.app"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "*"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        
-        return response
+        token_data = TokenData(email=email)
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Get user from database
+    user = get_user_by_email(token_data.email)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
 
-# Add CORS middleware
-app.add_middleware(CustomCORSMiddleware)
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Get user from database by email"""
+    if config.USE_SUPABASE:
+        return supabase_utils.get_user_by_email(email)
+    else:
+        return postgres_storage.get_user_by_email(email)
+
+def create_user_in_db(user_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Create user in database"""
+    if config.USE_SUPABASE:
+        return supabase_utils.create_user(user_data)
+    else:
+        return postgres_storage.create_user(user_data)
+
+# Initialize FastAPI app
+app = FastAPI(title="GWAT API", version="1.0.0")
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ai-grant-writer-tool.vercel.app"],
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
-# Add error handler for CORS preflight
-@app.options("/{path:path}")
-async def options_handler(request: Request):
-    return JSONResponse(
-        content={}, 
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
-
-# Health check route
-@app.get("/ping")
-def ping():
-    print("✅ /ping endpoint called")
-    return JSONResponse(
-        content={"message": "pong", "timestamp": datetime.now().isoformat()},
-        headers={
-            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
-
-# Simple health check that doesn't depend on imports
-@app.get("/health")
-def health():
-    print("✅ /health endpoint called")
-    import os
-    return JSONResponse(
-        content={
-            "status": "ok",
-            "timestamp": datetime.now().isoformat(),
-            "python_version": sys.version,
-            "environment_vars": {
-                "OPENAI_API_KEY_set": bool(os.getenv("OPENAI_API_KEY")),
-                "PORT": os.getenv("PORT", "not set"),
-                "RAILWAY_ENVIRONMENT": os.getenv("RAILWAY_ENVIRONMENT", "not set")
-            }
-        },
-        headers={
-            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
-
-# Super simple test endpoint
-@app.get("/simple")
-def simple():
-    print("✅ /simple endpoint called")
-    return JSONResponse(
-        content={
-            "message": "Simple endpoint working!",
-            "timestamp": datetime.now().isoformat()
-        },
-        headers={
-            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
-
-# Root route to prevent 404 on /
-@app.get("/")
-def root():
-    print("✅ / endpoint called")
-    return JSONResponse(
-        content={"message": "Hello from FastAPI backend!", "timestamp": datetime.now().isoformat()},
-        headers={
-            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
-
-# Test endpoint for connectivity
-@app.get("/test")
-def test():
-    print("✅ /test endpoint called")
-    
-    # Test OpenAI connection
-    openai_status = "unknown"
-    api_key_status = "not found"
-    
-    # Check environment variable directly
-    import os
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key:
-        api_key_status = f"found (length: {len(api_key)}, starts with: {api_key[:7]}...)"
-    else:
-        api_key_status = "not found in environment"
-    
+# Authentication endpoints
+@app.post("/auth/register", response_model=Token)
+async def register(user: UserCreate):
+    """Register a new user"""
     try:
-        response = openai_utils.get_openai_response("Hello", "You are a helpful assistant.", max_tokens=10)
-        if response and not response.startswith("⚠️"):
-            openai_status = "working"
+        # Check if user already exists
+        existing_user = get_user_by_email(user.email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Create user data
+        user_data = {
+            "id": str(uuid.uuid4()),
+            "email": user.email,
+            "name": user.name,
+            "hashed_password": get_password_hash(user.password),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        # Save to database
+        created_user = create_user_in_db(user_data)
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user.email}, expires_delta=access_token_expires
+        )
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+        
+    except Exception as e:
+        print(f"❌ Error registering user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error creating user"
+        )
+
+@app.post("/auth/login", response_model=Token)
+async def login(user_credentials: UserLogin):
+    """Login user"""
+    try:
+        # Get user from database
+        user = get_user_by_email(user_credentials.email)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Verify password
+        if not verify_password(user_credentials.password, user["hashed_password"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Create access token
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = create_access_token(
+            data={"sub": user_credentials.email}, expires_delta=access_token_expires
+        )
+        
+        return {"access_token": access_token, "token_type": "bearer"}
+        
+    except Exception as e:
+        print(f"❌ Error logging in user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error during login"
+        )
+
+@app.get("/auth/me", response_model=UserResponse)
+async def get_current_user(current_user: Dict[str, Any] = Depends(verify_token)):
+    """Get current user information"""
+    return {
+        "id": current_user["id"],
+        "email": current_user["email"],
+        "name": current_user["name"],
+        "created_at": current_user["created_at"]
+    }
+
+@app.post("/auth/refresh")
+async def refresh_token(current_user: Dict[str, Any] = Depends(verify_token)):
+    """Refresh access token"""
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": current_user["email"]}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# User-specific project endpoints
+@app.get("/projects")
+async def get_user_projects(current_user: Dict[str, Any] = Depends(verify_token)):
+    """Get all projects for the current user"""
+    try:
+        user_id = current_user["id"]
+        if config.USE_SUPABASE:
+            projects = supabase_utils.get_user_projects(user_id)
         else:
-            openai_status = f"not working: {response}"
+            projects = postgres_storage.get_user_projects(user_id)
+        
+        return {"success": True, "projects": projects}
     except Exception as e:
-        openai_status = f"error: {str(e)}"
-    
-    return JSONResponse(
-        content={
-            "status": "ok", 
-            "message": "Backend is working!", 
-            "timestamp": datetime.now().isoformat(),
-            "openai_status": openai_status,
-            "api_key_status": api_key_status,
-            "environment_vars": {
-                "OPENAI_API_KEY_set": bool(api_key),
-                "USE_SUPABASE": os.getenv("USE_SUPABASE", "not set"),
-                "SUPABASE_URL_set": bool(os.getenv("SUPABASE_URL")),
-                "DB_HOSTNAME": os.getenv("DB_HOSTNAME", "not set")
-            }
-        },
-        headers={
-            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
+        print(f"❌ Error getting user projects: {e}")
+        return {"success": False, "error": str(e)}
 
-# Generate route for basic Q&A
-@app.post("/generate")
-async def generate(request: Request):
+@app.post("/projects")
+async def create_user_project(
+    project_data: dict,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Create a new project for the current user"""
     try:
-        data = await request.json()
-        question = data.get('question', '')
-        project_id = data.get('projectId')
+        user_id = current_user["id"]
+        project_data["user_id"] = user_id
+        project_data["created_at"] = datetime.utcnow()
+        project_data["updated_at"] = datetime.utcnow()
         
-        print(f"✅ /generate called with question: {question}")
+        if config.USE_SUPABASE:
+            project = supabase_utils.create_user_project(project_data)
+        else:
+            project = postgres_storage.create_user_project(project_data)
         
-        # Get project context if available
-        project_context = ""
-        if project_id:
-            if storage_utils_available:
-                project_context = storage_utils.get_context_summary(project_id)
-            elif postgres_storage_available:
-                project_context = postgres_storage.get_context_summary(project_id)
-            else:
-                project_context = file_utils.get_context_summary(project_id)
-        
-        # Generate AI response using OpenAI
-        try:
-            ai_response = openai_utils.generate_grant_response(question, project_context)
-        except Exception as e:
-            print(f"❌ OpenAI error: {e}")
-            ai_response = f"I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later. Error: {str(e)}"
-        
-        return {"result": ai_response}
+        return {"success": True, "project": project}
     except Exception as e:
-        print(f"❌ Error in /generate: {e}")
-        return {"error": str(e)}
+        print(f"❌ Error creating user project: {e}")
+        return {"success": False, "error": str(e)}
 
-# Chat message route
-@app.post("/chat/send_message")
-async def send_message(request: Request):
+@app.get("/projects/{project_id}")
+async def get_user_project(
+    project_id: str,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Get a specific project for the current user"""
     try:
-        data = await request.json()
-        message = data.get('message', '')
-        project_id = data.get('project_id')
-        message_type = data.get('message_type', 'user')
+        user_id = current_user["id"]
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
         
-        print(f"✅ /chat/send_message called with message: {message}")
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
         
-        # Get project context if available
-        project_context = ""
-        if project_id:
-            if storage_utils_available:
-                project_context = storage_utils.get_context_summary(project_id)
-            elif postgres_storage_available:
-                project_context = postgres_storage.get_context_summary(project_id)
-            else:
-                project_context = file_utils.get_context_summary(project_id)
-        
-        # Get chat history for RAG context
-        chat_history = ""
-        if project_id:
-            try:
-                if storage_utils_available:
-                    chat_history = storage_utils.get_chat_history(project_id)
-                elif postgres_storage_available:
-                    chat_history = postgres_storage.get_chat_history(project_id)
-                else:
-                    chat_history = file_utils.get_chat_history(project_id)
-            except Exception as e:
-                print(f"⚠️ Could not retrieve chat history: {e}")
-        
-        # Get semantic search context for better AI responses
-        semantic_context = ""
-        if project_id:
-            try:
-                semantic_context = embedding_utils.embedding_manager.create_context_for_ai(
-                    message, project_id, max_context_length=2000
-                )
-            except Exception as e:
-                print(f"⚠️ Could not retrieve semantic context: {e}")
-        
-        # Combine context for RAG (prioritize semantic search, then chat history, then project context)
-        context_parts = []
-        if semantic_context:
-            context_parts.append(f"Relevant Context: {semantic_context}")
-        if chat_history:
-            context_parts.append(f"Chat History: {chat_history}")
-        if project_context:
-            context_parts.append(f"Project Context: {project_context}")
-        
-        full_context = "\n\n".join(context_parts)
-        
-        # Generate AI response using OpenAI
-        try:
-            ai_response = openai_utils.chat_grant_assistant(message, full_context)
-            
-            # Store the conversation for future RAG
-            if project_id:
-                conversation_data = {
-                    "user_message": message,
-                    "ai_response": ai_response,
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                try:
-                    if storage_utils_available:
-                        storage_utils.save_chat_message(project_id, conversation_data)
-                    elif postgres_storage_available:
-                        postgres_storage.save_chat_message(project_id, conversation_data)
-                    else:
-                        file_utils.save_chat_message(project_id, conversation_data)
-                except Exception as e:
-                    print(f"⚠️ Could not save chat message: {e}")
-                    
-        except Exception as e:
-            print(f"❌ OpenAI chat error: {e}")
-            ai_response = f"I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later. Error: {str(e)}"
-        
-        return {"ai_response": ai_response}
+        return {"success": True, "project": project}
     except Exception as e:
-        print(f"❌ Error in /chat/send_message: {e}")
-        return {"error": str(e)}
+        print(f"❌ Error getting user project: {e}")
+        return {"success": False, "error": str(e)}
 
-# Brainstorming route
-@app.post("/chat/brainstorm")
-async def brainstorm(request: Request):
+@app.delete("/projects/{project_id}")
+async def delete_user_project(
+    project_id: str,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Delete a project for the current user"""
     try:
-        data = await request.json()
-        topic = data.get('topic', '')
-        project_id = data.get('project_id')
+        user_id = current_user["id"]
+        if config.USE_SUPABASE:
+            success = supabase_utils.delete_user_project(project_id, user_id)
+        else:
+            success = postgres_storage.delete_user_project(project_id, user_id)
         
-        print(f"✅ /chat/brainstorm called with topic: {topic}")
-        
-        # Get project context if available
-        project_context = ""
-        if project_id:
-            if storage_utils_available:
-                project_context = storage_utils.get_context_summary(project_id)
-            elif postgres_storage_available:
-                project_context = postgres_storage.get_context_summary(project_id)
-            else:
-                project_context = file_utils.get_context_summary(project_id)
-        
-        # Generate brainstorming ideas using OpenAI
-        try:
-            ideas = openai_utils.brainstorm_grant_ideas(topic, project_context)
-        except Exception as e:
-            print(f"❌ OpenAI brainstorm error: {e}")
-            ideas = {
-                "topic": topic,
-                "suggestions": f"I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later. Error: {str(e)}",
-                "error": str(e)
-            }
-        
-        return ideas
+        return {"success": success}
     except Exception as e:
-        print(f"❌ Error in /chat/brainstorm: {e}")
-        return {"error": str(e)}
+        print(f"❌ Error deleting user project: {e}")
+        return {"success": False, "error": str(e)}
 
-# File upload endpoint
+# Update existing endpoints to be user-specific
 @app.post("/upload")
 async def upload_file(
-    file: UploadFile = File(...),
-    project_id: str = Form(...)
+    project_id: str,
+    file: UploadFile,
+    current_user: Dict[str, Any] = Depends(verify_token)
 ):
+    """Upload a file for a specific user's project"""
     try:
-        print(f"✅ /upload called for project {project_id}, file: {file.filename}")
+        user_id = current_user["id"]
         
-        # Validate file size (max 10MB)
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        # Process file upload
         file_content = await file.read()
-        if len(file_content) > 10 * 1024 * 1024:  # 10MB
-            return {
-                "success": False,
-                "error": "File size too large. Maximum size is 10MB."
-            }
-        
-        # Validate file type
-        allowed_extensions = ['.pdf', '.docx', '.doc', '.txt', '.md']
-        file_extension = '.' + file.filename.split('.')[-1].lower()
-        if file_extension not in allowed_extensions:
-            return {
-                "success": False,
-                "error": f"File type not supported. Allowed types: {', '.join(allowed_extensions)}"
-            }
-        
-        # Save file and extract context
-        if storage_utils_available:
-            result = storage_utils.save_uploaded_file(file_content, file.filename, project_id)
-        elif postgres_storage_available:
-            result = postgres_storage.save_uploaded_file(file_content, file.filename, project_id)
-        else:
-            result = file_utils.save_uploaded_file(file_content, file.filename, project_id)
-        
-        if result.get("success"):
-            # Process for privacy compliance and create embeddings
-            try:
-                extracted_text = result.get("extracted_text", "")
-                if extracted_text:
-                    # Process text for privacy compliance
-                    privacy_record = privacy_utils.privacy_manager.process_text_for_storage(
-                        extracted_text, project_id, "file_upload"
-                    )
-                    
-                    # Create embeddings for semantic search
-                    embeddings = embedding_utils.embedding_manager.create_embeddings_for_text(
-                        extracted_text, project_id, "file_upload"
-                    )
-                    
-                    # Add privacy and embedding info to result
-                    result["privacy_info"] = {
-                        "entities_detected": len(privacy_record["entities"]),
-                        "privacy_level": privacy_record["privacy_level"],
-                        "redacted_text_length": len(privacy_record["redacted_text"])
-                    }
-                    result["embedding_info"] = {
-                        "embeddings_created": len(embeddings),
-                        "chunks_processed": len(embeddings)
-                    }
-                    
-                    print(f"✅ Privacy processing: {len(privacy_record['entities'])} entities detected")
-                    print(f"✅ Embeddings created: {len(embeddings)} chunks")
-                    
-            except Exception as e:
-                print(f"⚠️ Privacy/embedding processing error: {e}")
-                # Continue with upload even if privacy processing fails
-            
-            return {
-                "success": True,
-                "message": f"File {file.filename} uploaded successfully",
-                "file_info": result
-            }
-        else:
-            return {
-                "success": False,
-                "error": result.get("error", "Unknown error")
-            }
-            
-    except Exception as e:
-        print(f"❌ Error in /upload: {e}")
-        return {"success": False, "error": str(e)}
-
-# Get project context
-@app.get("/context/{project_id}")
-async def get_context(project_id: str):
-    try:
-        print(f"✅ /context/{project_id} called")
-        
-        if storage_utils_available:
-            context = storage_utils.get_project_context(project_id)
-        elif postgres_storage_available:
-            context = postgres_storage.get_project_context(project_id)
-        else:
-            context = file_utils.get_project_context(project_id)
-        return context
-        
-    except Exception as e:
-        print(f"❌ Error in /context/{project_id}: {e}")
-        return {
-            "project_id": project_id,
-            "files": [],
-            "organization_info": "",
-            "initiative_description": "",
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-            "error": str(e)
-        }
-
-# Update project information
-@app.post("/context/{project_id}")
-async def update_context(project_id: str, request: Request):
-    try:
-        data = await request.json()
-        organization_info = data.get('organization_info', '')
-        initiative_description = data.get('initiative_description', '')
-        
-        print(f"✅ /context/{project_id} update called")
-        
-        if storage_utils_available:
-            success = storage_utils.update_project_info(project_id, organization_info, initiative_description)
-        elif postgres_storage_available:
-            success = postgres_storage.update_project_info(project_id, organization_info, initiative_description)
-        else:
-            success = file_utils.update_project_info(project_id, organization_info, initiative_description)
-        
-        if success:
-            return {"success": True, "message": "Project information updated successfully"}
-        else:
-            return {"success": False, "error": "Failed to update project information"}
-            
-    except Exception as e:
-        print(f"❌ Error in /context/{project_id} update: {e}")
-        return {"success": False, "error": str(e)}
-
-# Delete project context
-@app.delete("/context/{project_id}")
-async def delete_context(project_id: str):
-    try:
-        print(f"✅ /context/{project_id} delete called")
-        
-        if storage_utils_available:
-            success = storage_utils.delete_project_context(project_id)
-        elif postgres_storage_available:
-            success = postgres_storage.delete_project_context(project_id)
-        else:
-            success = file_utils.delete_project_context(project_id)
-        
-        if success:
-            return {"success": True, "message": "Project context deleted successfully"}
-        else:
-            return {"success": False, "error": "Failed to delete project context"}
-            
-    except Exception as e:
-        print(f"❌ Error in /context/{project_id} delete: {e}")
-        return {"success": False, "error": str(e)}
-
-# Get chat history for a project
-@app.get("/chat/history/{project_id}")
-async def get_chat_history(project_id: str):
-    try:
-        print(f"✅ /chat/history/{project_id} called")
-        
-        if storage_utils_available:
-            messages = storage_utils.get_chat_messages(project_id)
-        elif postgres_storage_available:
-            messages = postgres_storage.get_chat_messages(project_id)
-        else:
-            messages = file_utils.get_chat_messages(project_id)
-        
-        return {
-            "project_id": project_id,
-            "messages": messages,
-            "message_count": len(messages)
+        file_info = {
+            "filename": file.filename,
+            "file_size": len(file_content),
+            "content_type": file.content_type,
+            "user_id": user_id,
+            "project_id": project_id
         }
         
-    except Exception as e:
-        print(f"❌ Error in /chat/history/{project_id}: {e}")
-        return {
-            "project_id": project_id,
-            "messages": [],
-            "message_count": 0,
-            "error": str(e)
-        }
-
-# Privacy audit endpoint
-@app.get("/privacy/audit/{project_id}")
-async def privacy_audit(project_id: str):
-    try:
-        print(f"✅ /privacy/audit/{project_id} called")
+        # Save file and process
+        if config.USE_SUPABASE:
+            result = supabase_utils.save_file(file_info, file_content)
+        else:
+            result = file_utils.save_file(file_info, file_content)
         
-        # Get project context for audit
+        # Process for privacy and embeddings
+        if result["success"]:
+            # Privacy processing
+            privacy_result = privacy_utils.privacy_manager.process_text_for_storage(
+                result["text_content"], project_id, user_id
+            )
+            
+            # Embedding processing
+            embedding_result = embedding_utils.embedding_manager.create_embeddings_for_text(
+                privacy_result["redacted_text"], project_id, user_id
+            )
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error uploading file: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/chat/send_message")
+async def send_message(
+    project_id: str,
+    message: dict,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Send a chat message for a specific user's project"""
+    try:
+        user_id = current_user["id"]
+        
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        # Save message with user context
+        message_data = {
+            "project_id": project_id,
+            "user_id": user_id,
+            "message": message.get("message", ""),
+            "timestamp": datetime.utcnow(),
+            "message_type": "user"
+        }
+        
+        if config.USE_SUPABASE:
+            supabase_utils.save_chat_message(message_data)
+        else:
+            postgres_storage.save_chat_message(message_data)
+        
+        # Get context for AI response
         project_context = ""
-        if storage_utils_available:
-            project_context = storage_utils.get_context_summary(project_id)
-        elif postgres_storage_available:
-            project_context = postgres_storage.get_context_summary(project_id)
+        if config.USE_SUPABASE:
+            context_data = supabase_utils.get_project_context(project_id, user_id)
         else:
-            project_context = file_utils.get_context_summary(project_id)
+            context_data = postgres_storage.get_project_context(project_id, user_id)
         
-        # Get chat messages for audit
-        chat_messages = []
-        if storage_utils_available:
-            chat_messages = storage_utils.get_chat_messages(project_id)
-        elif postgres_storage_available:
-            chat_messages = postgres_storage.get_chat_messages(project_id)
+        if context_data:
+            if "organization_info" in context_data:
+                project_context += f"Organization: {context_data['organization_info']}\n"
+            if "initiative_description" in context_data:
+                project_context += f"Initiative: {context_data['initiative_description']}"
+        
+        # Get chat history and semantic context
+        if config.USE_SUPABASE:
+            chat_history = supabase_utils.get_chat_history(project_id, user_id)
+            semantic_context = embedding_utils.embedding_manager.create_context_for_ai(
+                project_id, user_id, message.get("message", "")
+            )
         else:
-            chat_messages = file_utils.get_chat_messages(project_id)
+            chat_history = postgres_storage.get_chat_history(project_id, user_id)
+            semantic_context = embedding_utils.embedding_manager.create_context_for_ai(
+                project_id, user_id, message.get("message", "")
+            )
         
-        # Create audit records for analysis
-        audit_records = []
+        # Combine context for AI
+        full_context = f"{project_context}\n\nChat History: {chat_history}\n\nSemantic Context: {semantic_context}"
         
-        # Audit project context
-        if project_context and project_context != "No context available.":
-            audit_records.append({
-                "content_type": "project_context",
-                "content": project_context,
-                "privacy_level": "high" if any(keyword in project_context.lower() for keyword in ['ssn', 'phone', 'email', 'address']) else "low"
-            })
+        # Get AI response
+        ai_response = openai_utils.chat_grant_assistant(
+            message.get("message", ""), 
+            project_id, 
+            full_context
+        )
         
-        # Audit chat messages
-        for msg in chat_messages:
-            audit_records.append({
-                "content_type": "chat_message",
-                "content": f"{msg.get('user_message', '')} {msg.get('ai_response', '')}",
-                "timestamp": msg.get('timestamp'),
-                "privacy_level": "high" if any(keyword in str(msg).lower() for keyword in ['ssn', 'phone', 'email', 'address']) else "low"
-            })
-        
-        # Perform privacy audit
-        audit_result = privacy_utils.privacy_manager.audit_privacy_compliance(project_id, audit_records)
-        
-        return {
+        # Save AI response
+        ai_message_data = {
             "project_id": project_id,
-            "audit_result": audit_result,
-            "total_records_audited": len(audit_records),
-            "audit_timestamp": datetime.now().isoformat()
+            "user_id": user_id,
+            "message": ai_response,
+            "timestamp": datetime.utcnow(),
+            "message_type": "ai"
         }
         
-    except Exception as e:
-        print(f"❌ Error in /privacy/audit/{project_id}: {e}")
-        return {
-            "project_id": project_id,
-            "error": str(e),
-            "audit_timestamp": datetime.now().isoformat()
-        }
-
-# Analyze organization and initiative for grant writing guidance
-@app.post("/analyze")
-async def analyze_organization(request: Request):
-    try:
-        data = await request.json()
-        organization_info = data.get('organization_info', '')
-        initiative_description = data.get('initiative_description', '')
-        
-        print(f"✅ /analyze called with organization info and initiative description")
-        
-        # Generate analysis using OpenAI
-        analysis = openai_utils.analyze_grant_requirements(organization_info, initiative_description)
-        
-        return analysis
-    except Exception as e:
-        print(f"❌ Error in /analyze: {e}")
-        return {"error": str(e)}
-
-@app.get("/grant/sections/{project_id}")
-async def get_grant_sections(project_id: str):
-    """Get grant sections for a project."""
-    try:
-        # Get or create grant document
-        document = grant_sections.grant_section_manager.get_grant_document(project_id)
-        if not document:
-            document = grant_sections.grant_section_manager.create_grant_document(project_id)
-        
-        # Return document state
-        doc_state = {section_id: section.content for section_id, section in document.sections.items()}
+        if config.USE_SUPABASE:
+            supabase_utils.save_chat_message(ai_message_data)
+        else:
+            postgres_storage.save_chat_message(ai_message_data)
         
         return {
             "success": True,
-            "project_id": project_id,
-            "doc_state": doc_state,
-            "stats": grant_sections.grant_section_manager.get_document_stats(project_id)
+            "response": ai_response,
+            "project_id": project_id
         }
+        
+    except Exception as e:
+        print(f"❌ Error sending message: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/chat/history/{project_id}")
+async def get_chat_history(
+    project_id: str,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Get chat history for a specific user's project"""
+    try:
+        user_id = current_user["id"]
+        
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        if config.USE_SUPABASE:
+            messages = supabase_utils.get_chat_messages(project_id, user_id)
+        else:
+            messages = postgres_storage.get_chat_messages(project_id, user_id)
+        
+        return {"success": True, "messages": messages}
+        
+    except Exception as e:
+        print(f"❌ Error getting chat history: {e}")
+        return {"success": False, "error": str(e)}
+
+# Update context endpoint to be user-specific
+@app.post("/context/{project_id}")
+async def update_project_context(
+    project_id: str,
+    context_data: dict,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Update project context for a specific user"""
+    try:
+        user_id = current_user["id"]
+        
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        context_data["user_id"] = user_id
+        context_data["updated_at"] = datetime.utcnow()
+        
+        if config.USE_SUPABASE:
+            result = supabase_utils.update_project_context(project_id, context_data)
+        else:
+            result = postgres_storage.update_project_context(project_id, context_data)
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error updating project context: {e}")
+        return {"success": False, "error": str(e)}
+
+# Update grant sections endpoints to be user-specific
+@app.get("/grant/sections/{project_id}")
+async def get_grant_sections(
+    project_id: str,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Get grant sections for a specific user's project"""
+    try:
+        user_id = current_user["id"]
+        
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        result = grant_sections.grant_section_manager.get_grant_document(project_id, user_id)
+        return result
+        
     except Exception as e:
         print(f"❌ Error getting grant sections: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/grant/sections/{project_id}/{section_id}")
-async def update_grant_section(project_id: str, section_id: str, request: dict):
-    """Update a specific grant section."""
+async def update_grant_section(
+    project_id: str,
+    section_id: str,
+    content: dict,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Update a grant section for a specific user's project"""
     try:
-        content = request.get("content", "")
+        user_id = current_user["id"]
         
-        # Update section
-        result = grant_sections.grant_section_manager.update_section(project_id, section_id, content)
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
         
-        return {
-            "success": True,
-            "project_id": project_id,
-            "section_id": section_id,
-            **result
-        }
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        result = grant_sections.grant_section_manager.update_section(
+            project_id, section_id, content.get("content", ""), user_id
+        )
+        return result
+        
     except Exception as e:
         print(f"❌ Error updating grant section: {e}")
         return {"success": False, "error": str(e)}
 
-@app.post("/grant/sections/{project_id}/{section_id}/regenerate")
-async def regenerate_grant_section(project_id: str, section_id: str, request: dict):
-    """Regenerate a grant section using AI."""
+# Keep existing endpoints for backward compatibility but add user context
+@app.get("/test")
+async def test_endpoint():
+    """Test endpoint to verify API is working"""
+    return {
+        "message": "GWAT API is running!",
+        "timestamp": datetime.utcnow(),
+        "api_key_status": "configured" if os.getenv("OPENAI_API_KEY") else "not configured",
+        "environment_vars": {
+            "OPENAI_API_KEY": "set" if os.getenv("OPENAI_API_KEY") else "not set",
+            "USE_SUPABASE": os.getenv("USE_SUPABASE", "false"),
+            "SUPABASE_URL": "set" if os.getenv("SUPABASE_URL") else "not set",
+            "DB_HOSTNAME": "set" if os.getenv("DB_HOSTNAME") else "not set",
+            "PORT": os.getenv("PORT", "8080")
+        }
+    }
+
+@app.get("/simple")
+async def simple_test():
+    """Simple test endpoint"""
+    return {"status": "ok", "message": "Simple endpoint working"}
+
+@app.post("/generate")
+async def generate_response(request: dict):
+    """Generate AI response (legacy endpoint)"""
     try:
-        context = request.get("context", "")
-        
-        # Get project context for AI generation
-        project_context = ""
-        if config.USE_SUPABASE:
-            context_data = storage_utils.get_project_context(project_id)
-            if context_data and "organization_info" in context_data:
-                project_context = f"Organization: {context_data['organization_info']}\n"
-                if "initiative_description" in context_data:
-                    project_context += f"Initiative: {context_data['initiative_description']}"
-        else:
-            context_data = postgres_storage.get_project_context(project_id)
-            if context_data and "organization_info" in context_data:
-                project_context = f"Organization: {context_data['organization_info']}\n"
-                if "initiative_description" in context_data:
-                    project_context += f"Initiative: {context_data['initiative_description']}"
-        
-        # Generate new content using AI
-        section_info = grant_sections.grant_section_manager.CORE_SECTIONS.get(section_id, {})
-        prompt = f"""
-        Generate content for the '{section_info.get('title', 'Grant Section')}' section.
-        
-        Section Description: {section_info.get('description', '')}
-        Target Length: {section_info.get('target_length', '')}
-        
-        Project Context:
-        {project_context}
-        
-        Additional Context:
-        {context}
-        
-        Please generate comprehensive, professional content for this grant section.
-        """
+        question = request.get("question", "")
+        project_id = request.get("project_id", "default")
         
         # Get AI response
-        ai_response = openai_utils.chat_grant_assistant(prompt, project_id)
+        response = openai_utils.chat_grant_assistant(question, project_id)
         
-        # Update section with AI-generated content
-        result = grant_sections.grant_section_manager.update_section(project_id, section_id, ai_response)
-        
-        return {
-            "success": True,
-            "project_id": project_id,
-            "section_id": section_id,
-            "ai_generated": True,
-            **result
-        }
+        return {"response": response}
     except Exception as e:
-        print(f"❌ Error regenerating grant section: {e}")
-        return {"success": False, "error": str(e)}
+        print(f"❌ Error generating response: {e}")
+        return {"error": str(e)}
 
-@app.get("/grant/sections/{project_id}/export/markdown")
-async def export_grant_markdown(project_id: str):
-    """Export grant document as markdown."""
+@app.post("/analyze")
+async def analyze_content(request: dict):
+    """Analyze content (legacy endpoint)"""
     try:
-        markdown_content = grant_sections.grant_section_manager.export_to_markdown(project_id)
+        content = request.get("content", "")
+        analysis_type = request.get("type", "general")
         
-        return {
-            "success": True,
-            "project_id": project_id,
-            "content": markdown_content,
-            "format": "markdown"
-        }
+        # Get AI analysis
+        response = openai_utils.analyze_content(content, analysis_type)
+        
+        return {"analysis": response}
     except Exception as e:
-        print(f"❌ Error exporting grant markdown: {e}")
-        return {"success": False, "error": str(e)}
+        print(f"❌ Error analyzing content: {e}")
+        return {"error": str(e)}
 
-@app.get("/grant/sections/{project_id}/export/docx")
-async def export_grant_docx(project_id: str):
-    """Export grant document as DOCX."""
-    try:
-        docx_content = grant_sections.grant_section_manager.export_to_docx(project_id)
-        
-        return {
-            "success": True,
-            "project_id": project_id,
-            "content": docx_content.decode('utf-8'),
-            "format": "docx"
-        }
-    except Exception as e:
-        print(f"❌ Error exporting grant DOCX: {e}")
-        return {"success": False, "error": str(e)}
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 FastAPI startup event triggered")
+    print(f"🔧 Startup - OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
+    print(f"🔧 Startup - PORT: {os.getenv('PORT', '8080')}")
+    print(f"🔧 Startup - RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT', 'development')}")
 
-@app.get("/grant/sections/{project_id}/stats")
-async def get_grant_stats(project_id: str):
-    """Get grant document statistics."""
-    try:
-        stats = grant_sections.grant_section_manager.get_document_stats(project_id)
-        
-        return {
-            "success": True,
-            "project_id": project_id,
-            **stats
-        }
-    except Exception as e:
-        print(f"❌ Error getting grant stats: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.get("/grant/templates")
-async def get_grant_templates():
-    """Get grant section templates."""
-    try:
-        templates = grant_sections.grant_section_manager.get_section_templates()
-        
-        return {
-            "success": True,
-            **templates
-        }
-    except Exception as e:
-        print(f"❌ Error getting grant templates: {e}")
-        return {"success": False, "error": str(e)}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8080)))

@@ -2,51 +2,86 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import ChatComponent from './ChatComponent';
 import GrantSections from './GrantSections';
+import AuthComponent from './AuthComponent';
+import NavigationComponent from './NavigationComponent';
 
-const API_BASE = "https://ai-grant-writer-tool-production.up.railway.app";
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://ai-grant-writer-tool-production.up.railway.app';
 
 function App() {
-  const [projects, setProjects] = useState([]);
-  const [currentProject, setCurrentProject] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [projectContext, setProjectContext] = useState({});
-  const [showContextDialog, setShowContextDialog] = useState(false);
-  const [contextLoading, setContextLoading] = useState(false);
-  const [fileUploadLoading, setFileUploadLoading] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [currentProject, setCurrentProject] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [organizationInfo, setOrganizationInfo] = useState('');
   const [initiativeDescription, setInitiativeDescription] = useState('');
+  const [projectContext, setProjectContext] = useState({ files: [] });
 
-  // Debug logging
-  console.log('🔧 App.js: API_BASE configured as:', API_BASE);
-  console.log('🔧 Environment check:', process.env);
-
+  // Check authentication on app load
   useEffect(() => {
-    // Load projects from localStorage
-    const savedProjects = localStorage.getItem('grantProjects');
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
+    const token = localStorage.getItem('authToken');
+    const userData = localStorage.getItem('user');
+    
+    if (token && userData) {
+      setUser(JSON.parse(userData));
+      setIsAuthenticated(true);
+      loadUserProjects();
     }
   }, []);
 
-  const saveProjects = (newProjects) => {
-    setProjects(newProjects);
-    localStorage.setItem('grantProjects', JSON.stringify(newProjects));
+  const handleAuthSuccess = (userData) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+    loadUserProjects();
   };
 
-  const createProject = () => {
-    const projectName = prompt('Enter project name:');
-    if (projectName) {
-      const newProject = {
-        id: Date.now().toString(),
-        name: projectName,
-        createdAt: new Date().toISOString()
+  const loadUserProjects = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE}/projects`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data.projects || []);
+      }
+    } catch (error) {
+      console.error('Error loading projects:', error);
+    }
+  };
+
+  const createProject = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      const projectData = {
+        name: `Grant Project ${Date.now()}`,
+        description: 'New grant writing project'
       };
-      const updatedProjects = [...projects, newProject];
-      saveProjects(updatedProjects);
-      setCurrentProject(newProject);
-      setCurrentStep(2);
+
+      const response = await fetch(`${API_BASE}/projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(projectData),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProjects([...projects, data.project]);
+        setCurrentProject(data.project);
+        setCurrentStep(2);
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,173 +92,124 @@ function App() {
   };
 
   const loadProjectContext = async (projectId) => {
-    setContextLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/context/${projectId}`);
-      const context = await response.json();
-      setProjectContext(context);
-      if (context.organization_info) setOrganizationInfo(context.organization_info);
-      if (context.initiative_description) setInitiativeDescription(context.initiative_description);
-    } catch (error) {
-      console.error('Error loading context:', error);
-    } finally {
-      setContextLoading(false);
-    }
-  };
-
-  const handleSaveContext = async () => {
-    if (!currentProject) return;
-    
-    setContextLoading(true);
-    try {
-      const response = await fetch(`${API_BASE}/context/${currentProject.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organization_info: organizationInfo,
-          initiative_description: initiativeDescription
-        })
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE}/context/${projectId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
-      
+
       if (response.ok) {
-        alert('Context saved successfully!');
-        setShowContextDialog(false);
-        setCurrentStep(3);
-      } else {
-        alert('Failed to save context');
+        const context = await response.json();
+        setOrganizationInfo(context.organization_info || '');
+        setInitiativeDescription(context.initiative_description || '');
+        setProjectContext(context);
       }
     } catch (error) {
-      console.error('Error saving context:', error);
-      alert('Error saving context');
-    } finally {
-      setContextLoading(false);
+      console.error('Error loading project context:', error);
     }
   };
 
-  const handleFileUpload = async (event) => {
-    const files = Array.from(event.target.files);
-    setSelectedFiles(files);
-    setFileUploadLoading(true);
+  const handleFileUpload = async (files) => {
+    if (!currentProject) return;
 
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('project_id', currentProject.id);
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('authToken');
+      
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('project_id', currentProject.id);
 
-      try {
         const response = await fetch(`${API_BASE}/upload`, {
           method: 'POST',
-          body: formData
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          body: formData,
         });
-        
-        const result = await response.json();
-        if (result.success) {
-          console.log(`✅ File uploaded: ${file.name}`);
-          // Reload project context to show new files
-          loadProjectContext(currentProject.id);
-        } else {
-          console.error(`❌ Upload failed for ${file.name}:`, result.error);
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            console.log(`File ${file.name} uploaded successfully`);
+          }
         }
-      } catch (error) {
-        console.error(`❌ Error uploading ${file.name}:`, error);
       }
-    }
 
-    setFileUploadLoading(false);
-    setSelectedFiles([]);
-    event.target.value = '';
-    
-    // Automatically proceed to chat after successful upload
-    setTimeout(() => {
       setCurrentStep(3);
-    }, 1000);
-  };
-
-
-
-  const deleteProject = (projectId) => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      const updatedProjects = projects.filter(p => p.id !== projectId);
-      saveProjects(updatedProjects);
-      if (currentProject && currentProject.id === projectId) {
-        setCurrentProject(null);
-        setCurrentStep(1);
-      }
+    } catch (error) {
+      console.error('Error uploading files:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const steps = [
-    { id: 1, title: 'Create or Select Project', description: 'Start a new grant project or continue existing work' },
-    { id: 2, title: 'Upload Documents & Set Context', description: 'Add files and describe your organization and initiative' },
-    { id: 3, title: 'Interactive Chat & AI Assistant', description: 'Everything you need in one powerful chat interface' },
-    { id: 4, title: 'Grant Application Sections', description: 'Build your complete grant application with structured sections' }
-  ];
+  const updateProjectContext = async () => {
+    if (!currentProject) return;
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE}/context/${currentProject.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          organization_info: organizationInfo,
+          initiative_description: initiativeDescription,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('Project context updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating project context:', error);
+    }
+  };
+
+  const handleStepChange = (stepId) => {
+    setCurrentStep(stepId);
+  };
+
+  // If not authenticated, show auth component
+  if (!isAuthenticated) {
+    return <AuthComponent onAuthSuccess={handleAuthSuccess} />;
+  }
 
   return (
     <div className="app">
-      {/* Header */}
-      <header className="app-header">
-        <div className="header-content">
-          <h1 className="app-title">
-            <span className="title-icon">📋</span>
-            GWAT
-          </h1>
-          <p className="app-subtitle">Grant Writing Assisted Toolkit</p>
-        </div>
-      </header>
+      <NavigationComponent 
+        currentStep={currentStep} 
+        onStepChange={handleStepChange}
+        user={user}
+      />
 
-      {/* Progress Steps */}
-      <div className="progress-container">
-        <div className="progress-steps">
-          {steps.map((step, index) => (
-            <div 
-              key={step.id} 
-              className={`progress-step ${currentStep >= step.id ? 'active' : ''} ${currentStep === step.id ? 'current' : ''}`}
-              onClick={() => {
-                // Allow navigation to any step if a project is selected
-                if (currentProject || step.id === 1) {
-                  setCurrentStep(step.id);
-                }
-              }}
-              style={{ cursor: (currentProject || step.id === 1) ? 'pointer' : 'default' }}
-            >
-              <div className="step-number">{step.id}</div>
-              <div className="step-info">
-                <div className="step-title">{step.title}</div>
-                <div className="step-description">{step.description}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Main Content */}
       <main className="app-main">
         {/* Step 1: Project Selection */}
         {currentStep === 1 && (
           <div className="step-container">
             <div className="step-header">
-              <h2>Create or Select Project</h2>
-              <p>Start a new grant project or continue with an existing one</p>
+              <h2>Your Grant Projects</h2>
+              <p>Select an existing project or create a new one to get started</p>
             </div>
             
             <div className="project-grid">
-              {projects.map(project => (
-                <div key={project.id} className="project-card" onClick={() => selectProject(project)}>
-                  <div className="project-icon">📋</div>
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="project-card"
+                  onClick={() => selectProject(project)}
+                >
+                  <div className="project-icon">📁</div>
                   <div className="project-info">
                     <h3>{project.name}</h3>
-                    <p>Created: {new Date(project.createdAt).toLocaleDateString()}</p>
+                    <p>{project.description}</p>
                   </div>
-                  <button 
-                    className="delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteProject(project.id);
-                    }}
-                  >
-                    🗑️
-                  </button>
                 </div>
               ))}
               
@@ -238,89 +224,79 @@ function App() {
           </div>
         )}
 
-        {/* Step 2: Document Upload & Context Setup */}
+        {/* Step 2: Upload & Context */}
         {currentStep === 2 && currentProject && (
           <div className="step-container">
             <div className="step-header">
               <h2>Upload Documents & Set Context</h2>
-              <p>Add files and describe your organization and initiative for better AI assistance</p>
+              <p>Add relevant documents and provide context for your grant project</p>
             </div>
             
             <div className="context-and-upload-section">
-              {/* Context Form */}
               <div className="context-form">
-                <h3>📝 Project Information</h3>
+                <h3>📝 Project Context</h3>
                 <div className="form-group">
-                  <label>Organization Information</label>
+                  <label htmlFor="organization">Organization Information</label>
                   <textarea
+                    id="organization"
                     value={organizationInfo}
                     onChange={(e) => setOrganizationInfo(e.target.value)}
-                    placeholder="Describe your organization, its mission, history, and key achievements..."
+                    placeholder="Describe your organization, mission, and key accomplishments..."
                     rows={4}
                   />
                 </div>
                 
                 <div className="form-group">
-                  <label>Initiative Description</label>
+                  <label htmlFor="initiative">Initiative Description</label>
                   <textarea
+                    id="initiative"
                     value={initiativeDescription}
                     onChange={(e) => setInitiativeDescription(e.target.value)}
-                    placeholder="Describe the specific initiative or project you're seeking funding for..."
+                    placeholder="Describe the initiative or project you're seeking funding for..."
                     rows={4}
                   />
                 </div>
                 
-                <div className="form-actions">
-                  <button 
-                    className="btn btn-primary"
-                    onClick={handleSaveContext}
-                    disabled={contextLoading}
-                  >
-                    {contextLoading ? 'Saving...' : 'Save Context'}
-                  </button>
-                </div>
+                <button 
+                  className="btn btn-primary"
+                  onClick={updateProjectContext}
+                >
+                  Save Context
+                </button>
               </div>
               
-              {/* File Upload */}
               <div className="upload-section">
-                <h3>📁 Upload Documents</h3>
+                <h3>📄 Upload Documents</h3>
                 <div className="upload-area">
                   <input
                     type="file"
                     multiple
                     accept=".pdf,.docx,.doc,.txt,.md"
-                    onChange={handleFileUpload}
-                    id="file-upload"
+                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
                     className="file-input"
+                    id="file-upload"
                   />
                   <label htmlFor="file-upload" className="upload-label">
-                    <div className="upload-icon">📁</div>
+                    <div className="upload-icon">📤</div>
                     <div className="upload-text">
-                      <h4>Drop files here or click to browse</h4>
-                      <p>Supports PDF, DOCX, TXT, and MD files (max 10MB each)</p>
-                      <p className="upload-note">Files are automatically processed for privacy protection</p>
+                      <h4>Drop files here or click to upload</h4>
+                      <p>Supported formats: PDF, DOCX, DOC, TXT, MD</p>
+                      <p className="upload-note">Max file size: 10MB</p>
                     </div>
                   </label>
                 </div>
-                
-                {fileUploadLoading && (
-                  <div className="loading-indicator">
-                    <div className="spinner"></div>
-                    <p>Uploading and processing files...</p>
-                  </div>
-                )}
               </div>
               
-              {/* Continue to Chat */}
               <div className="continue-section">
                 <button 
-                  className="btn btn-primary btn-large"
+                  className="btn btn-secondary btn-large"
                   onClick={() => setCurrentStep(3)}
+                  disabled={loading}
                 >
-                  🚀 Start Chat & AI Assistant
+                  {loading ? 'Processing...' : 'Continue to Chat'}
                 </button>
                 <p className="continue-note">
-                  You can always come back to add more documents or update context
+                  You can always come back to add more context or documents later
                 </p>
               </div>
             </div>
@@ -373,25 +349,13 @@ function App() {
           </div>
         )}
 
-        {/* Step 4: Grant Application Sections */}
+        {/* Step 4: Grant Sections */}
         {currentStep === 4 && currentProject && (
           <div className="step-container">
-            <div className="step-header">
-              <h2>Grant Application Sections</h2>
-              <p>Build your complete grant application with structured sections</p>
-            </div>
-            
             <GrantSections projectId={currentProject.id} />
           </div>
         )}
-
-
       </main>
-
-      {/* Footer */}
-      <footer className="app-footer">
-        <p>&copy; 2024 AI Grant Writer. Professional grant writing with AI assistance.</p>
-      </footer>
     </div>
   );
 }
