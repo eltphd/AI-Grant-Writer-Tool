@@ -47,12 +47,16 @@ try:
     from src.utils import storage_utils  # from src/utils/storage_utils.py
     from src.utils import postgres_storage  # from src/utils/postgres_storage.py
     from src.utils import config  # from src/utils/config.py
+    from src.utils import privacy_utils  # from src/utils/privacy_utils.py
+    from src.utils import embedding_utils  # from src/utils/embedding_utils.py
     
     print("✅ Successfully imported utils modules")
     print(f"✅ file_utils type: {type(file_utils)}")
     print(f"✅ openai_utils type: {type(openai_utils)}")
     print(f"✅ storage_utils type: {type(storage_utils)}")
     print(f"✅ postgres_storage type: {type(postgres_storage)}")
+    print(f"✅ privacy_utils type: {type(privacy_utils)}")
+    print(f"✅ embedding_utils type: {type(embedding_utils)}")
     
     # Check storage options
     if config.USE_SUPABASE and config.SUPABASE_URL and config.SUPABASE_KEY:
@@ -359,8 +363,26 @@ async def send_message(request: Request):
             except Exception as e:
                 print(f"⚠️ Could not retrieve chat history: {e}")
         
-        # Combine context for RAG
-        full_context = f"Project Context: {project_context}\n\nChat History: {chat_history}"
+        # Get semantic search context for better AI responses
+        semantic_context = ""
+        if project_id:
+            try:
+                semantic_context = embedding_utils.embedding_manager.create_context_for_ai(
+                    message, project_id, max_context_length=2000
+                )
+            except Exception as e:
+                print(f"⚠️ Could not retrieve semantic context: {e}")
+        
+        # Combine context for RAG (prioritize semantic search, then chat history, then project context)
+        context_parts = []
+        if semantic_context:
+            context_parts.append(f"Relevant Context: {semantic_context}")
+        if chat_history:
+            context_parts.append(f"Chat History: {chat_history}")
+        if project_context:
+            context_parts.append(f"Project Context: {project_context}")
+        
+        full_context = "\n\n".join(context_parts)
         
         # Generate AI response using OpenAI
         try:
@@ -464,6 +486,38 @@ async def upload_file(
             result = file_utils.save_uploaded_file(file_content, file.filename, project_id)
         
         if result.get("success"):
+            # Process for privacy compliance and create embeddings
+            try:
+                extracted_text = result.get("extracted_text", "")
+                if extracted_text:
+                    # Process text for privacy compliance
+                    privacy_record = privacy_utils.privacy_manager.process_text_for_storage(
+                        extracted_text, project_id, "file_upload"
+                    )
+                    
+                    # Create embeddings for semantic search
+                    embeddings = embedding_utils.embedding_manager.create_embeddings_for_text(
+                        extracted_text, project_id, "file_upload"
+                    )
+                    
+                    # Add privacy and embedding info to result
+                    result["privacy_info"] = {
+                        "entities_detected": len(privacy_record["entities"]),
+                        "privacy_level": privacy_record["privacy_level"],
+                        "redacted_text_length": len(privacy_record["redacted_text"])
+                    }
+                    result["embedding_info"] = {
+                        "embeddings_created": len(embeddings),
+                        "chunks_processed": len(embeddings)
+                    }
+                    
+                    print(f"✅ Privacy processing: {len(privacy_record['entities'])} entities detected")
+                    print(f"✅ Embeddings created: {len(embeddings)} chunks")
+                    
+            except Exception as e:
+                print(f"⚠️ Privacy/embedding processing error: {e}")
+                # Continue with upload even if privacy processing fails
+            
             return {
                 "success": True,
                 "message": f"File {file.filename} uploaded successfully",
@@ -579,6 +633,68 @@ async def get_chat_history(project_id: str):
             "messages": [],
             "message_count": 0,
             "error": str(e)
+        }
+
+# Privacy audit endpoint
+@app.get("/privacy/audit/{project_id}")
+async def privacy_audit(project_id: str):
+    try:
+        print(f"✅ /privacy/audit/{project_id} called")
+        
+        # Get project context for audit
+        project_context = ""
+        if storage_utils_available:
+            project_context = storage_utils.get_context_summary(project_id)
+        elif postgres_storage_available:
+            project_context = postgres_storage.get_context_summary(project_id)
+        else:
+            project_context = file_utils.get_context_summary(project_id)
+        
+        # Get chat messages for audit
+        chat_messages = []
+        if storage_utils_available:
+            chat_messages = storage_utils.get_chat_messages(project_id)
+        elif postgres_storage_available:
+            chat_messages = postgres_storage.get_chat_messages(project_id)
+        else:
+            chat_messages = file_utils.get_chat_messages(project_id)
+        
+        # Create audit records for analysis
+        audit_records = []
+        
+        # Audit project context
+        if project_context and project_context != "No context available.":
+            audit_records.append({
+                "content_type": "project_context",
+                "content": project_context,
+                "privacy_level": "high" if any(keyword in project_context.lower() for keyword in ['ssn', 'phone', 'email', 'address']) else "low"
+            })
+        
+        # Audit chat messages
+        for msg in chat_messages:
+            audit_records.append({
+                "content_type": "chat_message",
+                "content": f"{msg.get('user_message', '')} {msg.get('ai_response', '')}",
+                "timestamp": msg.get('timestamp'),
+                "privacy_level": "high" if any(keyword in str(msg).lower() for keyword in ['ssn', 'phone', 'email', 'address']) else "low"
+            })
+        
+        # Perform privacy audit
+        audit_result = privacy_utils.privacy_manager.audit_privacy_compliance(project_id, audit_records)
+        
+        return {
+            "project_id": project_id,
+            "audit_result": audit_result,
+            "total_records_audited": len(audit_records),
+            "audit_timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in /privacy/audit/{project_id}: {e}")
+        return {
+            "project_id": project_id,
+            "error": str(e),
+            "audit_timestamp": datetime.now().isoformat()
         }
 
 # Analyze organization and initiative for grant writing guidance

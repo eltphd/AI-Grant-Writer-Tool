@@ -11,6 +11,7 @@ function ChatComponent({ projectId }) {
   const [showBrainstorm, setShowBrainstorm] = useState(false);
   const [fileUploadLoading, setFileUploadLoading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const [privacyStatus, setPrivacyStatus] = useState({ level: 'low', entities: 0 });
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -49,6 +50,7 @@ function ChatComponent({ projectId }) {
   useEffect(() => {
     if (projectId) {
       loadChatHistory();
+      checkPrivacyStatus(); // Check privacy status on mount
     }
   }, [projectId]);
 
@@ -82,6 +84,22 @@ function ChatComponent({ projectId }) {
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
+    }
+  };
+
+  const checkPrivacyStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/privacy/audit/${projectId}`);
+      const data = await response.json();
+      
+      if (data.audit_result) {
+        setPrivacyStatus({
+          level: data.audit_result.compliance_status === 'compliant' ? 'high' : 'low',
+          entities: data.audit_result.total_entities_detected || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error checking privacy status:', error);
     }
   };
 
@@ -259,6 +277,13 @@ ${data.suggestions || 'Sorry, I encountered an error. Please try again.'}`,
       <div className="chat-header">
         <h3>💬 Interactive Chat & Brainstorming</h3>
         <p>Ask questions, get advice, and brainstorm grant ideas</p>
+        {privacyStatus.entities > 0 && (
+          <div className="privacy-indicator">
+            <span className={`privacy-badge ${privacyStatus.level}`}>
+              🔒 Privacy Protected ({privacyStatus.entities} entities redacted)
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Messages Area */}

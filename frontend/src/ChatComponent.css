@@ -474,3 +474,37 @@
     right: 1rem;
   }
 } 
+
+/* Privacy indicator styles */
+.privacy-indicator {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.privacy-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.privacy-badge.high {
+  background-color: #dc3545;
+  color: white;
+  border: 1px solid #c82333;
+}
+
+.privacy-badge.low {
+  background-color: #28a745;
+  color: white;
+  border: 1px solid #1e7e34;
+}
+
+.privacy-badge.medium {
+  background-color: #ffc107;
+  color: #212529;
+  border: 1px solid #e0a800;
+} 

@@ -2,7 +2,7 @@
 #
 # This file lists all packages needed to run the FastAPI back‑end and
 # optional Streamlit front‑end.  When building the Docker image on
-# Cloud Run (or any other environment) pip will install these
+# Cloud Run (or any other environment) pip will install these
 # libraries.  Some packages may pull in additional transitive
 # dependencies.  Feel free to adjust versions or add extras as
 # required.
@@ -35,3 +35,8 @@ multiprocess
 PyPDF2
 python-docx
 psycopg2-binary
+# Privacy and embedding dependencies
+spacy
+numpy
+# For vector operations and similarity calculations
+scikit-learn
