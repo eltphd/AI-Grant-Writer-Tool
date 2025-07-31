@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
 import json
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 # Optional: Load .env file for local development
 try:
@@ -20,34 +22,99 @@ except ImportError as e:
 # Initialize the app
 app = FastAPI()
 
+# Custom CORS middleware to ensure headers are always present
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Handle preflight requests
+        if request.method == "OPTIONS":
+            return Response(
+                content="",
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Max-Age": "86400",
+                }
+            )
+        
+        response = await call_next(request)
+        
+        # Add CORS headers to all responses
+        response.headers["Access-Control-Allow-Origin"] = "https://ai-grant-writer-tool.vercel.app"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return response
+
 # Add CORS middleware
+app.add_middleware(CustomCORSMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ai-grant-writer-tool.vercel.app"],  # or ["*"] temporarily
+    allow_origins=["https://ai-grant-writer-tool.vercel.app"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Add error handler for CORS preflight
 @app.options("/{path:path}")
 async def options_handler(request: Request):
-    return JSONResponse(content={}, status_code=200)
+    return JSONResponse(
+        content={}, 
+        status_code=200,
+        headers={
+            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # Health check route
 @app.get("/ping")
 def ping():
-    return {"message": "pong"}
+    print("✅ /ping endpoint called")
+    return JSONResponse(
+        content={"message": "pong", "timestamp": datetime.now().isoformat()},
+        headers={
+            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # Root route to prevent 404 on /
 @app.get("/")
 def root():
-    return {"message": "Hello from FastAPI backend!"}
+    print("✅ / endpoint called")
+    return JSONResponse(
+        content={"message": "Hello from FastAPI backend!", "timestamp": datetime.now().isoformat()},
+        headers={
+            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # Test endpoint for connectivity
 @app.get("/test")
 def test():
-    return {"status": "ok", "message": "Backend is working!"}
+    print("✅ /test endpoint called")
+    return JSONResponse(
+        content={"status": "ok", "message": "Backend is working!", "timestamp": datetime.now().isoformat()},
+        headers={
+            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # Generate route for basic Q&A
 @app.post("/generate")
