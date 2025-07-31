@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 import ChatComponent from './ChatComponent';
 import GrantSections from './GrantSections';
-import AuthComponent from './AuthComponent';
 import NavigationComponent from './NavigationComponent';
 
 const API_BASE = process.env.REACT_APP_API_BASE || 'https://ai-grant-writer-tool-production.up.railway.app';
@@ -12,38 +11,18 @@ function App() {
   const [currentProject, setCurrentProject] = useState(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [organizationInfo, setOrganizationInfo] = useState('');
   const [initiativeDescription, setInitiativeDescription] = useState('');
   const [projectContext, setProjectContext] = useState({ files: [] });
 
-  // Check authentication on app load
+  // Load projects on app load (no auth required)
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
-      setUser(JSON.parse(userData));
-      setIsAuthenticated(true);
-      loadUserProjects();
-    }
+    loadProjects();
   }, []);
 
-  const handleAuthSuccess = (userData) => {
-    setUser(userData);
-    setIsAuthenticated(true);
-    loadUserProjects();
-  };
-
-  const loadUserProjects = async () => {
+  const loadProjects = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE}/projects`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(`${API_BASE}/projects`);
 
       if (response.ok) {
         const data = await response.json();
@@ -57,7 +36,6 @@ function App() {
   const createProject = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
       const projectData = {
         name: `Grant Project ${Date.now()}`,
         description: 'New grant writing project'
@@ -67,7 +45,6 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(projectData),
       });
@@ -93,18 +70,10 @@ function App() {
 
   const loadProjectContext = async (projectId) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE}/context/${projectId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
+      const response = await fetch(`${API_BASE}/context/${projectId}`);
       if (response.ok) {
-        const context = await response.json();
-        setOrganizationInfo(context.organization_info || '');
-        setInitiativeDescription(context.initiative_description || '');
-        setProjectContext(context);
+        const data = await response.json();
+        setProjectContext(data.context || { files: [] });
       }
     } catch (error) {
       console.error('Error loading project context:', error);
@@ -116,7 +85,6 @@ function App() {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
       
       for (const file of files) {
         const formData = new FormData();
@@ -125,9 +93,6 @@ function App() {
 
         const response = await fetch(`${API_BASE}/upload`, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
           body: formData,
         });
 
@@ -151,12 +116,10 @@ function App() {
     if (!currentProject) return;
 
     try {
-      const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE}/context/${currentProject.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           organization_info: organizationInfo,
@@ -176,17 +139,11 @@ function App() {
     setCurrentStep(stepId);
   };
 
-  // If not authenticated, show auth component
-  if (!isAuthenticated) {
-    return <AuthComponent onAuthSuccess={handleAuthSuccess} />;
-  }
-
   return (
     <div className="app">
       <NavigationComponent 
         currentStep={currentStep} 
         onStepChange={handleStepChange}
-        user={user}
       />
 
       <main className="app-main">

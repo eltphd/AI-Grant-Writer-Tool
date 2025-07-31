@@ -4,109 +4,15 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
-import jwt
-from passlib.context import CryptContext
+from pydantic import BaseModel
 
 # Add parent directory to path for imports
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, parent_dir)
 
-from src.utils import file_utils, openai_utils, storage_utils, postgres_storage, supabase_utils, privacy_utils, embedding_utils, grant_sections
-
-# Security configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
-
-# Pydantic models for authentication
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-class UserResponse(BaseModel):
-    id: str
-    email: str
-    name: str
-    created_at: datetime
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class TokenData(BaseModel):
-    email: Optional[str] = None
-
-# Authentication utilities
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
-    try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        token_data = TokenData(email=email)
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Get user from database
-    user = get_user_by_email(token_data.email)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
-
-def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
-    """Get user from database by email"""
-    if config.USE_SUPABASE:
-        return supabase_utils.get_user_by_email(email)
-    else:
-        return postgres_storage.get_user_by_email(email)
-
-def create_user_in_db(user_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Create user in database"""
-    if config.USE_SUPABASE:
-        return supabase_utils.create_user(user_data)
-    else:
-        return postgres_storage.create_user(user_data)
+from src.utils import file_utils, openai_utils, storage_utils, postgres_storage, supabase_utils, privacy_utils, embedding_utils, grant_sections, config
 
 # Initialize FastAPI app
 app = FastAPI(title="GWAT API", version="1.0.0")
@@ -120,152 +26,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Authentication endpoints
-@app.post("/auth/register", response_model=Token)
-async def register(user: UserCreate):
-    """Register a new user"""
-    try:
-        # Check if user already exists
-        existing_user = get_user_by_email(user.email)
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-        
-        # Create user data
-        user_data = {
-            "id": str(uuid.uuid4()),
-            "email": user.email,
-            "name": user.name,
-            "hashed_password": get_password_hash(user.password),
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
-        }
-        
-        # Save to database
-        created_user = create_user_in_db(user_data)
-        
-        # Create access token
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": user.email}, expires_delta=access_token_expires
-        )
-        
-        return {"access_token": access_token, "token_type": "bearer"}
-        
-    except Exception as e:
-        print(f"❌ Error registering user: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error creating user"
-        )
-
-@app.post("/auth/login", response_model=Token)
-async def login(user_credentials: UserLogin):
-    """Login user"""
-    try:
-        # Get user from database
-        user = get_user_by_email(user_credentials.email)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Verify password
-        if not verify_password(user_credentials.password, user["hashed_password"]):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Create access token
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        access_token = create_access_token(
-            data={"sub": user_credentials.email}, expires_delta=access_token_expires
-        )
-        
-        return {"access_token": access_token, "token_type": "bearer"}
-        
-    except Exception as e:
-        print(f"❌ Error logging in user: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error during login"
-        )
-
-@app.get("/auth/me", response_model=UserResponse)
-async def get_current_user(current_user: Dict[str, Any] = Depends(verify_token)):
-    """Get current user information"""
-    return {
-        "id": current_user["id"],
-        "email": current_user["email"],
-        "name": current_user["name"],
-        "created_at": current_user["created_at"]
-    }
-
-@app.post("/auth/refresh")
-async def refresh_token(current_user: Dict[str, Any] = Depends(verify_token)):
-    """Refresh access token"""
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": current_user["email"]}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-# User-specific project endpoints
+# Project endpoints (no auth required)
 @app.get("/projects")
-async def get_user_projects(current_user: Dict[str, Any] = Depends(verify_token)):
-    """Get all projects for the current user"""
+async def get_projects():
+    """Get all projects"""
     try:
-        user_id = current_user["id"]
         if config.USE_SUPABASE:
-            projects = supabase_utils.get_user_projects(user_id)
+            projects = supabase_utils.get_all_projects()
         else:
-            projects = postgres_storage.get_user_projects(user_id)
+            projects = postgres_storage.get_all_projects()
         
         return {"success": True, "projects": projects}
     except Exception as e:
-        print(f"❌ Error getting user projects: {e}")
+        print(f"❌ Error getting projects: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/projects")
-async def create_user_project(
-    project_data: dict,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Create a new project for the current user"""
+async def create_project(project_data: dict):
+    """Create a new project"""
     try:
-        user_id = current_user["id"]
-        project_data["user_id"] = user_id
+        project_data["id"] = str(uuid.uuid4())
         project_data["created_at"] = datetime.utcnow()
         project_data["updated_at"] = datetime.utcnow()
         
         if config.USE_SUPABASE:
-            project = supabase_utils.create_user_project(project_data)
+            project = supabase_utils.create_project(project_data)
         else:
-            project = postgres_storage.create_user_project(project_data)
+            project = postgres_storage.create_project(project_data)
         
         return {"success": True, "project": project}
     except Exception as e:
-        print(f"❌ Error creating user project: {e}")
+        print(f"❌ Error creating project: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/projects/{project_id}")
-async def get_user_project(
-    project_id: str,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Get a specific project for the current user"""
+async def get_project(project_id: str):
+    """Get a specific project"""
     try:
-        user_id = current_user["id"]
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -275,43 +76,33 @@ async def get_user_project(
         
         return {"success": True, "project": project}
     except Exception as e:
-        print(f"❌ Error getting user project: {e}")
+        print(f"❌ Error getting project: {e}")
         return {"success": False, "error": str(e)}
 
 @app.delete("/projects/{project_id}")
-async def delete_user_project(
-    project_id: str,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Delete a project for the current user"""
+async def delete_project(project_id: str):
+    """Delete a project"""
     try:
-        user_id = current_user["id"]
         if config.USE_SUPABASE:
-            success = supabase_utils.delete_user_project(project_id, user_id)
+            success = supabase_utils.delete_project(project_id)
         else:
-            success = postgres_storage.delete_user_project(project_id, user_id)
+            success = postgres_storage.delete_project(project_id)
         
         return {"success": success}
     except Exception as e:
-        print(f"❌ Error deleting user project: {e}")
+        print(f"❌ Error deleting project: {e}")
         return {"success": False, "error": str(e)}
 
-# Update existing endpoints to be user-specific
+# File upload endpoint (no auth required)
 @app.post("/upload")
-async def upload_file(
-    project_id: str,
-    file: UploadFile,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Upload a file for a specific user's project"""
+async def upload_file(project_id: str, file: UploadFile):
+    """Upload a file for a project"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -325,7 +116,6 @@ async def upload_file(
             "filename": file.filename,
             "file_size": len(file_content),
             "content_type": file.content_type,
-            "user_id": user_id,
             "project_id": project_id
         }
         
@@ -339,12 +129,12 @@ async def upload_file(
         if result["success"]:
             # Privacy processing
             privacy_result = privacy_utils.privacy_manager.process_text_for_storage(
-                result["text_content"], project_id, user_id
+                result["text_content"], project_id
             )
             
             # Embedding processing
             embedding_result = embedding_utils.embedding_manager.create_embeddings_for_text(
-                privacy_result["redacted_text"], project_id, user_id
+                privacy_result["redacted_text"], project_id
             )
         
         return result
@@ -353,21 +143,16 @@ async def upload_file(
         print(f"❌ Error uploading file: {e}")
         return {"success": False, "error": str(e)}
 
+# Chat endpoints (no auth required)
 @app.post("/chat/send_message")
-async def send_message(
-    project_id: str,
-    message: dict,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Send a chat message for a specific user's project"""
+async def send_message(project_id: str, message: dict):
+    """Send a chat message for a project"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -375,10 +160,9 @@ async def send_message(
                 detail="Project not found"
             )
         
-        # Save message with user context
+        # Save message
         message_data = {
             "project_id": project_id,
-            "user_id": user_id,
             "message": message.get("message", ""),
             "timestamp": datetime.utcnow(),
             "message_type": "user"
@@ -392,9 +176,9 @@ async def send_message(
         # Get context for AI response
         project_context = ""
         if config.USE_SUPABASE:
-            context_data = supabase_utils.get_project_context(project_id, user_id)
+            context_data = supabase_utils.get_project_context(project_id)
         else:
-            context_data = postgres_storage.get_project_context(project_id, user_id)
+            context_data = postgres_storage.get_project_context(project_id)
         
         if context_data:
             if "organization_info" in context_data:
@@ -404,14 +188,14 @@ async def send_message(
         
         # Get chat history and semantic context
         if config.USE_SUPABASE:
-            chat_history = supabase_utils.get_chat_history(project_id, user_id)
+            chat_history = supabase_utils.get_chat_history(project_id)
             semantic_context = embedding_utils.embedding_manager.create_context_for_ai(
-                project_id, user_id, message.get("message", "")
+                project_id, message.get("message", "")
             )
         else:
-            chat_history = postgres_storage.get_chat_history(project_id, user_id)
+            chat_history = postgres_storage.get_chat_history(project_id)
             semantic_context = embedding_utils.embedding_manager.create_context_for_ai(
-                project_id, user_id, message.get("message", "")
+                project_id, message.get("message", "")
             )
         
         # Combine context for AI
@@ -427,7 +211,6 @@ async def send_message(
         # Save AI response
         ai_message_data = {
             "project_id": project_id,
-            "user_id": user_id,
             "message": ai_response,
             "timestamp": datetime.utcnow(),
             "message_type": "ai"
@@ -449,19 +232,14 @@ async def send_message(
         return {"success": False, "error": str(e)}
 
 @app.get("/chat/history/{project_id}")
-async def get_chat_history(
-    project_id: str,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Get chat history for a specific user's project"""
+async def get_chat_history(project_id: str):
+    """Get chat history for a project"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -470,9 +248,9 @@ async def get_chat_history(
             )
         
         if config.USE_SUPABASE:
-            messages = supabase_utils.get_chat_messages(project_id, user_id)
+            messages = supabase_utils.get_chat_messages(project_id)
         else:
-            messages = postgres_storage.get_chat_messages(project_id, user_id)
+            messages = postgres_storage.get_chat_messages(project_id)
         
         return {"success": True, "messages": messages}
         
@@ -480,22 +258,16 @@ async def get_chat_history(
         print(f"❌ Error getting chat history: {e}")
         return {"success": False, "error": str(e)}
 
-# Update context endpoint to be user-specific
+# Context endpoint (no auth required)
 @app.post("/context/{project_id}")
-async def update_project_context(
-    project_id: str,
-    context_data: dict,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Update project context for a specific user"""
+async def update_project_context(project_id: str, context_data: dict):
+    """Update project context"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -503,7 +275,6 @@ async def update_project_context(
                 detail="Project not found"
             )
         
-        context_data["user_id"] = user_id
         context_data["updated_at"] = datetime.utcnow()
         
         if config.USE_SUPABASE:
@@ -517,21 +288,16 @@ async def update_project_context(
         print(f"❌ Error updating project context: {e}")
         return {"success": False, "error": str(e)}
 
-# Update grant sections endpoints to be user-specific
+# Grant sections endpoints (no auth required)
 @app.get("/grant/sections/{project_id}")
-async def get_grant_sections(
-    project_id: str,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
-    """Get grant sections for a specific user's project"""
+async def get_grant_sections(project_id: str):
+    """Get grant sections for a project"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -540,20 +306,20 @@ async def get_grant_sections(
             )
         
         # Get or create grant document
-        document = grant_sections.grant_section_manager.get_grant_document(project_id, user_id)
+        document = grant_sections.grant_section_manager.get_grant_document(project_id)
         if not document:
-            document = grant_sections.grant_section_manager.create_grant_document(project_id, user_id)
+            document = grant_sections.grant_section_manager.create_grant_document(project_id)
         
         # Get chat messages for auto-population
         if config.USE_SUPABASE:
-            chat_messages = supabase_utils.get_chat_messages(project_id, user_id)
+            chat_messages = supabase_utils.get_chat_messages(project_id)
         else:
-            chat_messages = postgres_storage.get_chat_messages(project_id, user_id)
+            chat_messages = postgres_storage.get_chat_messages(project_id)
         
         # Auto-populate sections from chat if document is empty
         if document.total_words == 0 and chat_messages:
-            grant_sections.grant_section_manager.auto_populate_from_chat(project_id, user_id, chat_messages)
-            document = grant_sections.grant_section_manager.get_grant_document(project_id, user_id)
+            grant_sections.grant_section_manager.auto_populate_from_chat(project_id, chat_messages)
+            document = grant_sections.grant_section_manager.get_grant_document(project_id)
         
         # Prepare response
         sections = {}
@@ -569,7 +335,7 @@ async def get_grant_sections(
                 "last_updated": section.last_updated
             }
         
-        stats = grant_sections.grant_section_manager.get_document_stats(project_id, user_id)
+        stats = grant_sections.grant_section_manager.get_document_stats(project_id)
         
         return {
             "success": True,
@@ -584,19 +350,14 @@ async def get_grant_sections(
         return {"success": False, "error": str(e)}
 
 @app.post("/grant/sections/{project_id}/auto-populate")
-async def auto_populate_sections(
-    project_id: str,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
+async def auto_populate_sections(project_id: str):
     """Auto-populate grant sections from chat conversation"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -606,12 +367,12 @@ async def auto_populate_sections(
         
         # Get chat messages
         if config.USE_SUPABASE:
-            chat_messages = supabase_utils.get_chat_messages(project_id, user_id)
+            chat_messages = supabase_utils.get_chat_messages(project_id)
         else:
-            chat_messages = postgres_storage.get_chat_messages(project_id, user_id)
+            chat_messages = postgres_storage.get_chat_messages(project_id)
         
         # Auto-populate sections
-        result = grant_sections.grant_section_manager.auto_populate_from_chat(project_id, user_id, chat_messages)
+        result = grant_sections.grant_section_manager.auto_populate_from_chat(project_id, chat_messages)
         
         return {
             "success": True,
@@ -624,19 +385,14 @@ async def auto_populate_sections(
         return {"success": False, "error": str(e)}
 
 @app.get("/grant/sections/{project_id}/export/markdown")
-async def export_grant_markdown(
-    project_id: str,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
+async def export_grant_markdown(project_id: str):
     """Export grant document as markdown"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -644,7 +400,7 @@ async def export_grant_markdown(
                 detail="Project not found"
             )
         
-        markdown_content = grant_sections.grant_section_manager.export_to_markdown(project_id, user_id)
+        markdown_content = grant_sections.grant_section_manager.export_to_markdown(project_id)
         
         from fastapi.responses import Response
         return Response(
@@ -661,19 +417,14 @@ async def export_grant_markdown(
         )
 
 @app.get("/grant/sections/{project_id}/export/docx")
-async def export_grant_docx(
-    project_id: str,
-    current_user: Dict[str, Any] = Depends(verify_token)
-):
+async def export_grant_docx(project_id: str):
     """Export grant document as DOCX"""
     try:
-        user_id = current_user["id"]
-        
-        # Verify project belongs to user
+        # Verify project exists
         if config.USE_SUPABASE:
-            project = supabase_utils.get_user_project(project_id, user_id)
+            project = supabase_utils.get_project(project_id)
         else:
-            project = postgres_storage.get_user_project(project_id, user_id)
+            project = postgres_storage.get_project(project_id)
         
         if not project:
             raise HTTPException(
@@ -681,7 +432,7 @@ async def export_grant_docx(
                 detail="Project not found"
             )
         
-        docx_content = grant_sections.grant_section_manager.export_to_docx(project_id, user_id)
+        docx_content = grant_sections.grant_section_manager.export_to_docx(project_id)
         
         from fastapi.responses import Response
         return Response(
@@ -697,7 +448,7 @@ async def export_grant_docx(
             detail="Error exporting document"
         )
 
-# Keep existing endpoints for backward compatibility but add user context
+# Keep existing endpoints for backward compatibility
 @app.get("/test")
 async def test_endpoint():
     """Test endpoint to verify API is working"""
