@@ -50,9 +50,8 @@ const NavigationComponent = ({ currentStep, onStepChange, user }) => {
       <div className="navigation-desktop">
         <div className="navigation-header">
           <div className="nav-brand">
-            <span className="nav-icon">📋</span>
             <div className="nav-title">
-              <h1>GWAT</h1>
+              <h1>GET$</h1>
               <p>Grant Writing Assisted Toolkit</p>
             </div>
           </div>
@@ -94,9 +93,8 @@ const NavigationComponent = ({ currentStep, onStepChange, user }) => {
       <div className="navigation-mobile">
         <div className="mobile-header">
           <div className="mobile-brand">
-            <span className="nav-icon">📋</span>
             <div className="nav-title">
-              <h1>GWAT</h1>
+              <h1>GET$</h1>
             </div>
           </div>
           
