@@ -312,40 +312,95 @@ body {
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
   font-family: 'Inter', sans-serif;
   backdrop-filter: var(--glass-blur);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 8px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.btn:hover::before {
+  opacity: 0.1;
 }
 
 .btn-primary {
   background: var(--gradient-primary);
   color: white;
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  border-color: var(--indigo-glow);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
   box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
 }
 
 .btn-secondary {
-  background: var(--gradient-mint);
-  color: var(--ink-black);
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 2px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .btn-secondary:hover {
-  background: var(--neon-mint);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 255, 209, 0.3);
+  background: var(--surface-light);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15), 0 0 0 2px rgba(255, 255, 255, 0.1);
+  border-color: var(--text-secondary);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .btn-large {
   padding: 1rem 2rem;
   font-size: 1rem;
+  box-shadow: 0 6px 20px rgba(108, 99, 255, 0.3);
+}
+
+.btn-large:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(108, 99, 255, 0.4), 0 0 0 3px rgba(108, 99, 255, 0.2);
+}
+
+.btn-small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(108, 99, 255, 0.2);
+}
+
+.btn-small:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3), 0 0 0 1px rgba(108, 99, 255, 0.2);
 }
 
 /* Form Styles */
@@ -661,11 +716,32 @@ body {
   border-radius: 8px;
   padding: 1rem;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.section-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 8px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
 }
 
 .section-card:hover {
   border-color: var(--indigo-glow);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2), 0 0 0 1px rgba(108, 99, 255, 0.1);
+}
+
+.section-card:hover::before {
+  opacity: 0.03;
 }
 
 .section-header {
@@ -834,4 +910,276 @@ body {
     width: 100%;
     max-width: 300px;
   }
+} 
+
+/* Project Card Glow Effect */
+.project-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+}
+
+.project-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.project-card:hover {
+  border-color: var(--indigo-glow);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+}
+
+.project-card:hover::before {
+  opacity: 0.05;
+}
+
+.project-card.new-project {
+  border-style: dashed;
+  border-color: var(--border);
+  background: var(--surface-light);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.project-card.new-project:hover {
+  border-color: var(--indigo-glow);
+  background: var(--surface);
+  box-shadow: 0 12px 35px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+}
+
+/* Section Card Glow Effect */
+.section-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.section-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 8px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.section-card:hover {
+  border-color: var(--indigo-glow);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2), 0 0 0 1px rgba(108, 99, 255, 0.1);
+}
+
+.section-card:hover::before {
+  opacity: 0.03;
+}
+
+/* Navigation Item Glow Effect */
+.nav-item {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--glass-shadow);
+}
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.nav-item:hover {
+  border-color: var(--indigo-glow);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+}
+
+.nav-item:hover::before {
+  opacity: 0.05;
+}
+
+.nav-item.active {
+  border-color: var(--indigo-glow);
+  background: var(--surface);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+}
+
+.nav-item.active::before {
+  opacity: 0.1;
+}
+
+/* Upload Area Glow Effect */
+.upload-label {
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-label::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.upload-label:hover {
+  border-color: var(--indigo-glow);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2), 0 0 0 2px rgba(108, 99, 255, 0.1);
+}
+
+.upload-label:hover::before {
+  opacity: 0.03;
+}
+
+/* Form Input Glow Effect */
+.context-form textarea:focus {
+  outline: none;
+  border-color: var(--indigo-glow);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2), 0 4px 12px rgba(108, 99, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Chat Input Glow Effect */
+.input-wrapper textarea:focus {
+  outline: none;
+  border-color: var(--indigo-glow);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2), 0 4px 12px rgba(108, 99, 255, 0.1);
+}
+
+/* Send Button Glow Effect */
+.send-button {
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.send-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: var(--gradient-primary);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.send-button:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4), 0 0 0 3px rgba(108, 99, 255, 0.2);
+}
+
+.send-button:hover::before {
+  opacity: 0.1;
+}
+
+/* Brainstorm Button Glow Effect */
+.brainstorm-button {
+  background: var(--gradient-mint);
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 255, 209, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.brainstorm-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 50%;
+  background: var(--gradient-mint);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.brainstorm-button:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 255, 209, 0.4), 0 0 0 3px rgba(0, 255, 209, 0.2);
+}
+
+.brainstorm-button:hover::before {
+  opacity: 0.1;
 } 
