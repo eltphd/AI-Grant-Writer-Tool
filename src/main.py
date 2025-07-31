@@ -5,13 +5,20 @@ from datetime import datetime
 import json
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
+import sys
+import traceback
+
+print("🚀 Starting FastAPI application...")
 
 # Optional: Load .env file for local development
 try:
     from dotenv import load_dotenv
     load_dotenv()
+    print("✅ Loaded .env file")
 except ImportError:
     print("python-dotenv not installed. Skipping .env loading.")
+except Exception as e:
+    print(f"⚠️ Error loading .env: {e}")
 
 # Debug environment variables at startup
 import os
@@ -24,11 +31,22 @@ print(f"🔧 PORT: {os.getenv('PORT', 'not set')}")
 
 # Import utility modules
 try:
-    from utils import file_utils  # from src/utils/file_utils.py
-    from utils import openai_utils  # from src/utils/openai_utils.py
-    from utils import storage_utils  # from src/utils/storage_utils.py
-    from utils import postgres_storage  # from src/utils/postgres_storage.py
-    from utils import config  # from src/utils/config.py
+    print("🔧 Attempting to import utils modules...")
+    
+    # Add src directory to Python path
+    import sys
+    import os
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    if parent_dir not in sys.path:
+        sys.path.insert(0, parent_dir)
+        print(f"🔧 Added {parent_dir} to Python path")
+    
+    from src.utils import file_utils  # from src/utils/file_utils.py
+    from src.utils import openai_utils  # from src/utils/openai_utils.py
+    from src.utils import storage_utils  # from src/utils/storage_utils.py
+    from src.utils import postgres_storage  # from src/utils/postgres_storage.py
+    from src.utils import config  # from src/utils/config.py
     
     print("✅ Successfully imported utils modules")
     print(f"✅ file_utils type: {type(file_utils)}")
@@ -52,7 +70,7 @@ try:
         
 except ImportError as e:
     print(f"❌ Error importing utils modules: {e}")
-    import traceback
+    print(f"❌ Full traceback:")
     traceback.print_exc()
     # Create dummy modules to prevent crashes
     class DummyFileUtils:
@@ -91,8 +109,20 @@ except ImportError as e:
     storage_utils_available = False
     postgres_storage_available = False
 
+print("🔧 Initializing FastAPI app...")
+
 # Initialize the app
 app = FastAPI()
+
+print("✅ FastAPI app initialized")
+
+@app.on_event("startup")
+async def startup_event():
+    print("🚀 FastAPI startup event triggered")
+    import os
+    print(f"🔧 Startup - OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
+    print(f"🔧 Startup - PORT: {os.getenv('PORT', 'not set')}")
+    print(f"🔧 Startup - RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT', 'not set')}")
 
 # Custom CORS middleware to ensure headers are always present
 class CustomCORSMiddleware(BaseHTTPMiddleware):
@@ -152,6 +182,30 @@ def ping():
     print("✅ /ping endpoint called")
     return JSONResponse(
         content={"message": "pong", "timestamp": datetime.now().isoformat()},
+        headers={
+            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
+
+# Simple health check that doesn't depend on imports
+@app.get("/health")
+def health():
+    print("✅ /health endpoint called")
+    import os
+    return JSONResponse(
+        content={
+            "status": "ok",
+            "timestamp": datetime.now().isoformat(),
+            "python_version": sys.version,
+            "environment_vars": {
+                "OPENAI_API_KEY_set": bool(os.getenv("OPENAI_API_KEY")),
+                "PORT": os.getenv("PORT", "not set"),
+                "RAILWAY_ENVIRONMENT": os.getenv("RAILWAY_ENVIRONMENT", "not set")
+            }
+        },
         headers={
             "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
