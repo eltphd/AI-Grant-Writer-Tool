@@ -16,8 +16,9 @@ except ImportError:
 # Optional: import your utility module safely
 try:
     from utils import file_utils  # from src/utils/file_utils.py
+    from utils import openai_utils  # from src/utils/openai_utils.py
 except ImportError as e:
-    print(f"[Startup Warning] Could not import utils.file_utils: {e}")
+    print(f"[Startup Warning] Could not import utils modules: {e}")
 
 # Initialize the app
 app = FastAPI()
@@ -121,8 +122,21 @@ def test():
 async def generate(request: Request):
     try:
         data = await request.json()
-        print(f"✅ /generate called with data: {data}")
-        return {"result": f"Echoing: {data.get('question')}"}
+        question = data.get('question', '')
+        project_id = data.get('projectId')
+        
+        print(f"✅ /generate called with question: {question}")
+        
+        # Get project context if available
+        project_context = ""
+        if project_id:
+            # TODO: Implement project context retrieval from database
+            project_context = f"Project ID: {project_id}"
+        
+        # Generate AI response using OpenAI
+        ai_response = openai_utils.generate_grant_response(question, project_context)
+        
+        return {"result": ai_response}
     except Exception as e:
         print(f"❌ Error in /generate: {e}")
         return {"error": str(e)}
@@ -132,8 +146,22 @@ async def generate(request: Request):
 async def send_message(request: Request):
     try:
         data = await request.json()
-        print(f"✅ /chat/send_message called with data: {data}")
-        return {"ai_response": f"Simulated reply: {data.get('message')}"}
+        message = data.get('message', '')
+        project_id = data.get('project_id')
+        message_type = data.get('message_type', 'user')
+        
+        print(f"✅ /chat/send_message called with message: {message}")
+        
+        # Get project context if available
+        project_context = ""
+        if project_id:
+            # TODO: Implement project context retrieval from database
+            project_context = f"Project ID: {project_id}"
+        
+        # Generate AI response using OpenAI
+        ai_response = openai_utils.chat_grant_assistant(message, project_context)
+        
+        return {"ai_response": ai_response}
     except Exception as e:
         print(f"❌ Error in /chat/send_message: {e}")
         return {"error": str(e)}
@@ -143,16 +171,39 @@ async def send_message(request: Request):
 async def brainstorm(request: Request):
     try:
         data = await request.json()
-        print(f"✅ /chat/brainstorm called with data: {data}")
-        return {
-            "ideas": [
-                {
-                    "area": "Strategy",
-                    "suggestions": ["Plan your timeline", "Define outcomes"],
-                    "examples": ["Launch pilot in Q2"],
-                }
-            ]
-        }
+        topic = data.get('topic', '')
+        project_id = data.get('project_id')
+        
+        print(f"✅ /chat/brainstorm called with topic: {topic}")
+        
+        # Get project context if available
+        project_context = ""
+        if project_id:
+            # TODO: Implement project context retrieval from database
+            project_context = f"Project ID: {project_id}"
+        
+        # Generate brainstorming ideas using OpenAI
+        ideas = openai_utils.brainstorm_grant_ideas(topic, project_context)
+        
+        return ideas
     except Exception as e:
         print(f"❌ Error in /chat/brainstorm: {e}")
+        return {"error": str(e)}
+
+# Analyze organization and initiative for grant writing guidance
+@app.post("/analyze")
+async def analyze_organization(request: Request):
+    try:
+        data = await request.json()
+        organization_info = data.get('organization_info', '')
+        initiative_description = data.get('initiative_description', '')
+        
+        print(f"✅ /analyze called with organization info and initiative description")
+        
+        # Generate analysis using OpenAI
+        analysis = openai_utils.analyze_grant_requirements(organization_info, initiative_description)
+        
+        return analysis
+    except Exception as e:
+        print(f"❌ Error in /analyze: {e}")
         return {"error": str(e)}
