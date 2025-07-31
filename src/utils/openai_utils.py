@@ -12,6 +12,12 @@ from datetime import datetime
 # Configure OpenAI client
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Debug: Print API key status (without exposing the key)
+print(f"🔧 OpenAI API key status: {'configured' if openai.api_key else 'not configured'}")
+if openai.api_key:
+    print(f"🔧 API key length: {len(openai.api_key)} characters")
+    print(f"🔧 API key starts with: {openai.api_key[:7]}...")
+
 # Check if OpenAI API key is configured
 if not openai.api_key:
     print("⚠️ Warning: OPENAI_API_KEY not found in environment variables")
@@ -28,6 +34,17 @@ def get_openai_response(prompt: str, system_message: str = None, max_tokens: int
     Returns:
         The AI-generated response
     """
+    # Check if OpenAI API key is configured (recheck at runtime)
+    current_api_key = os.getenv("OPENAI_API_KEY")
+    if not current_api_key:
+        print("🔧 Runtime check: OPENAI_API_KEY not found in environment")
+        return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
+    
+    # Update the API key if it changed
+    if current_api_key != openai.api_key:
+        print("🔧 Updating OpenAI API key")
+        openai.api_key = current_api_key
+    
     # Check if OpenAI API key is configured
     if not openai.api_key:
         return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
