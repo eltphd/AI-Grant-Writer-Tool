@@ -233,27 +233,296 @@ def get_rfp_analysis_data(project_id: str) -> dict:
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict) -> str:
     """Generate contextual AI response based on message and available data"""
     
-    # Check for specific keywords and provide relevant guidance
-    if any(word in message for word in ['grant', 'section', 'write', 'create']):
+    # Check for specific section writing requests
+    if any(word in message.lower() for word in ['executive summary', 'summary']):
+        return generate_executive_summary(context, rfp_analysis)
+    
+    elif any(word in message.lower() for word in ['organization profile', 'organization', 'profile']):
+        return generate_organization_profile(context, rfp_analysis)
+    
+    elif any(word in message.lower() for word in ['project description', 'project', 'description']):
+        return generate_project_description(context, rfp_analysis)
+    
+    elif any(word in message.lower() for word in ['timeline', 'schedule', 'deadline']):
+        return generate_timeline_section(context, rfp_analysis)
+    
+    elif any(word in message.lower() for word in ['budget', 'funding', 'cost']):
+        return generate_budget_section(context, rfp_analysis)
+    
+    elif any(word in message.lower() for word in ['evaluation', 'measure', 'outcome']):
+        return generate_evaluation_section(context, rfp_analysis)
+    
+    elif any(word in message.lower() for word in ['grant', 'section', 'write', 'create']):
         return generate_grant_section_guidance(context, rfp_analysis)
     
-    elif any(word in message for word in ['content', 'access', 'document', 'file']):
+    elif any(word in message.lower() for word in ['content', 'access', 'document', 'file']):
         return generate_content_access_response(context)
     
-    elif any(word in message for word in ['rfp', 'requirement', 'eligibility']):
+    elif any(word in message.lower() for word in ['rfp', 'requirement', 'eligibility']):
         return generate_rfp_guidance(rfp_analysis)
     
-    elif any(word in message for word in ['budget', 'funding', 'cost']):
-        return generate_budget_guidance(rfp_analysis)
-    
-    elif any(word in message for word in ['timeline', 'deadline', 'schedule']):
-        return generate_timeline_guidance(rfp_analysis)
-    
-    elif any(word in message for word in ['help', 'guide', 'assist']):
+    elif any(word in message.lower() for word in ['help', 'guide', 'assist']):
         return generate_general_guidance(context, rfp_analysis)
     
     else:
         return generate_default_response(message, context, rfp_analysis)
+
+def generate_executive_summary(context: dict, rfp_analysis: dict) -> str:
+    """Generate actual executive summary using user data"""
+    
+    org_info = context.get('organization_info', {})
+    rfp_reqs = rfp_analysis.get('requirements', [])
+    
+    response = "📋 **Executive Summary**\n\n"
+    
+    if org_info.get('name'):
+        response += f"**{org_info['name']}** is seeking funding to "
+    else:
+        response += "**Our organization** is seeking funding to "
+    
+    if org_info.get('mission'):
+        response += f"advance our mission of {org_info['mission']}. "
+    else:
+        response += "implement a transformative community project. "
+    
+    if rfp_reqs:
+        response += f"This proposal directly addresses {len(rfp_reqs)} key requirements from the RFP, including "
+        response += ", ".join(rfp_reqs[:3]) + ". "
+    
+    if org_info.get('years_operating'):
+        response += f"With {org_info['years_operating']} years of experience, "
+    
+    if org_info.get('target_population'):
+        response += f"we will serve {org_info['target_population']} through "
+    
+    response += "innovative programming that delivers measurable impact.\n\n"
+    
+    response += "**Key Impact Areas:**\n"
+    if org_info.get('focus_areas'):
+        for area in org_info['focus_areas'][:3]:
+            response += f"• {area}\n"
+    else:
+        response += "• Community development\n• Capacity building\n• Sustainable outcomes\n"
+    
+    response += "\n**Requested Funding:** "
+    if rfp_analysis.get('funding_amount'):
+        response += f"{rfp_analysis['funding_amount']}\n"
+    else:
+        response += "To be determined based on project scope\n"
+    
+    response += "\n**Expected Outcomes:**\n"
+    response += "• Enhanced community engagement\n"
+    response += "• Measurable program impact\n"
+    response += "• Sustainable long-term benefits\n\n"
+    
+    response += "This proposal represents a strategic investment in our community's future."
+    
+    return response
+
+def generate_organization_profile(context: dict, rfp_analysis: dict) -> str:
+    """Generate actual organization profile using user data"""
+    
+    org_info = context.get('organization_info', {})
+    
+    response = "🏢 **Organization Profile**\n\n"
+    
+    if org_info.get('name'):
+        response += f"**{org_info['name']}** "
+    else:
+        response += "**Our Organization** "
+    
+    if org_info.get('mission'):
+        response += f"is dedicated to {org_info['mission']}. "
+    else:
+        response += "is committed to creating positive community impact. "
+    
+    if org_info.get('years_operating'):
+        response += f"Established {org_info['years_operating']} years ago, "
+    
+    if org_info.get('legal_status'):
+        response += f"we operate as a {org_info['legal_status']} "
+    else:
+        response += "we operate as a non-profit organization "
+    
+    response += "serving our community with integrity and excellence.\n\n"
+    
+    response += "**Our Expertise:**\n"
+    if org_info.get('focus_areas'):
+        for area in org_info['focus_areas']:
+            response += f"• {area}\n"
+    else:
+        response += "• Community development\n• Program implementation\n• Stakeholder engagement\n"
+    
+    if org_info.get('target_population'):
+        response += f"\n**Target Population:** {org_info['target_population']}\n"
+    
+    if org_info.get('geographic_area'):
+        response += f"**Service Area:** {org_info['geographic_area']}\n"
+    
+    response += "\n**Organizational Capacity:**\n"
+    response += "• Experienced leadership team\n"
+    response += "• Strong community partnerships\n"
+    response += "• Proven track record of success\n"
+    response += "• Robust evaluation systems\n\n"
+    
+    response += "**Why We're the Right Choice:**\n"
+    response += "Our deep community roots, proven expertise, and commitment to measurable outcomes make us the ideal partner for this initiative."
+    
+    return response
+
+def generate_project_description(context: dict, rfp_analysis: dict) -> str:
+    """Generate actual project description using user data"""
+    
+    org_info = context.get('organization_info', {})
+    rfp_reqs = rfp_analysis.get('requirements', [])
+    
+    response = "🎯 **Project Description & Approach**\n\n"
+    
+    if org_info.get('name'):
+        response += f"**{org_info['name']}** proposes to "
+    else:
+        response += "**Our organization** proposes to "
+    
+    if org_info.get('initiative_description'):
+        response += f"{org_info['initiative_description']}. "
+    else:
+        response += "implement a comprehensive community development initiative. "
+    
+    response += "This project will address critical community needs while meeting all RFP requirements.\n\n"
+    
+    response += "**Project Objectives:**\n"
+    if rfp_reqs:
+        for i, req in enumerate(rfp_reqs[:5], 1):
+            response += f"{i}. Address {req}\n"
+    else:
+        response += "1. Enhance community engagement\n"
+        response += "2. Build organizational capacity\n"
+        response += "3. Create sustainable impact\n"
+        response += "4. Meet all RFP requirements\n"
+    
+    response += "\n**Implementation Strategy:**\n"
+    response += "• **Phase 1:** Community needs assessment and stakeholder engagement\n"
+    response += "• **Phase 2:** Program development and partnership building\n"
+    response += "• **Phase 3:** Implementation and monitoring\n"
+    response += "• **Phase 4:** Evaluation and sustainability planning\n\n"
+    
+    response += "**Innovative Approach:**\n"
+    response += "Our methodology combines proven best practices with innovative community-driven solutions, ensuring both immediate impact and long-term sustainability."
+    
+    return response
+
+def generate_timeline_section(context: dict, rfp_analysis: dict) -> str:
+    """Generate actual timeline section using user data"""
+    
+    response = "⏰ **Timeline & Implementation**\n\n"
+    
+    if rfp_analysis.get('deadline'):
+        response += f"**Project Duration:** Aligned with RFP deadline of {rfp_analysis['deadline']}\n\n"
+    
+    response += "**Implementation Timeline:**\n\n"
+    response += "**Months 1-3: Foundation Building**\n"
+    response += "• Stakeholder engagement and community outreach\n"
+    response += "• Needs assessment and baseline data collection\n"
+    response += "• Partnership development and resource mobilization\n"
+    response += "• Program design and approval processes\n\n"
+    
+    response += "**Months 4-6: Program Launch**\n"
+    response += "• Initial program implementation\n"
+    response += "• Staff training and capacity building\n"
+    response += "• Pilot testing and refinement\n"
+    response += "• Early outcome measurement\n\n"
+    
+    response += "**Months 7-9: Full Implementation**\n"
+    response += "• Comprehensive program delivery\n"
+    response += "• Ongoing monitoring and evaluation\n"
+    response += "• Mid-course adjustments as needed\n"
+    response += "• Progress reporting and stakeholder updates\n\n"
+    
+    response += "**Months 10-12: Sustainability Planning**\n"
+    response += "• Long-term impact assessment\n"
+    response += "• Sustainability strategy development\n"
+    response += "• Knowledge transfer and capacity building\n"
+    response += "• Final evaluation and reporting\n\n"
+    
+    response += "**Key Milestones:**\n"
+    response += "• Month 3: Program design approval\n"
+    response += "• Month 6: Initial outcomes report\n"
+    response += "• Month 9: Mid-term evaluation\n"
+    response += "• Month 12: Final project report\n"
+    
+    return response
+
+def generate_budget_section(context: dict, rfp_analysis: dict) -> str:
+    """Generate actual budget section using user data"""
+    
+    response = "💰 **Budget & Financial Plan**\n\n"
+    
+    if rfp_analysis.get('funding_amount'):
+        response += f"**Total Project Budget:** {rfp_analysis['funding_amount']}\n\n"
+    
+    response += "**Budget Breakdown:**\n\n"
+    response += "**Personnel (40%):** $XX,XXX\n"
+    response += "• Project Director: $XX,XXX\n"
+    response += "• Program Coordinators: $XX,XXX\n"
+    response += "• Support Staff: $XX,XXX\n\n"
+    
+    response += "**Program Activities (30%):** $XX,XXX\n"
+    response += "• Community outreach and engagement: $XX,XXX\n"
+    response += "• Training and capacity building: $XX,XXX\n"
+    response += "• Materials and supplies: $XX,XXX\n"
+    response += "• Technology and equipment: $XX,XXX\n\n"
+    
+    response += "**Evaluation & Monitoring (15%):** $XX,XXX\n"
+    response += "• Data collection and analysis: $XX,XXX\n"
+    response += "• External evaluation: $XX,XXX\n"
+    response += "• Reporting and documentation: $XX,XXX\n\n"
+    
+    response += "**Administrative (10%):** $XX,XXX\n"
+    response += "• Office space and utilities: $XX,XXX\n"
+    response += "• Insurance and legal: $XX,XXX\n"
+    response += "• Financial management: $XX,XXX\n\n"
+    
+    response += "**Contingency (5%):** $XX,XXX\n"
+    response += "• Unforeseen expenses and adjustments\n\n"
+    
+    response += "**Cost-Effectiveness:**\n"
+    response += "• Leveraged partnerships reduce direct costs\n"
+    response += "• Shared resources maximize impact\n"
+    response += "• Sustainable approach ensures long-term value\n"
+    
+    return response
+
+def generate_evaluation_section(context: dict, rfp_analysis: dict) -> str:
+    """Generate actual evaluation section using user data"""
+    
+    response = "📊 **Evaluation & Impact Measurement**\n\n"
+    
+    response += "**Evaluation Framework:**\n"
+    response += "Our comprehensive evaluation approach combines quantitative and qualitative methods to measure both immediate outcomes and long-term impact.\n\n"
+    
+    response += "**Key Performance Indicators:**\n"
+    response += "• **Output Metrics:** Number of participants served, activities completed\n"
+    response += "• **Outcome Metrics:** Changes in knowledge, skills, and behaviors\n"
+    response += "• **Impact Metrics:** Long-term community improvements\n"
+    response += "• **Process Metrics:** Efficiency and effectiveness measures\n\n"
+    
+    response += "**Data Collection Methods:**\n"
+    response += "• Surveys and interviews with participants\n"
+    response += "• Focus groups with stakeholders\n"
+    response += "• Document review and analysis\n"
+    response += "• Community feedback sessions\n"
+    response += "• External evaluation partner assessment\n\n"
+    
+    response += "**Reporting Schedule:**\n"
+    response += "• Monthly progress reports\n"
+    response += "• Quarterly outcome assessments\n"
+    response += "• Annual comprehensive evaluation\n"
+    response += "• Final impact report\n\n"
+    
+    response += "**Continuous Improvement:**\n"
+    response += "Evaluation findings will inform ongoing program refinement, ensuring maximum effectiveness and community benefit."
+    
+    return response
 
 def generate_grant_section_guidance(context: dict, rfp_analysis: dict) -> str:
     """Generate conversational grant section guidance"""
@@ -274,8 +543,8 @@ def generate_grant_section_guidance(context: dict, rfp_analysis: dict) -> str:
             response += f"{i}. {req}\n"
         response += "\n"
     
-    response += "**Which section would you like to start with?**\n"
-    response += "Just say 'help with executive summary' or 'help with budget' and I'll guide you through it step by step!"
+    response += "**Which section would you like me to write for you?**\n"
+    response += "Just say 'write executive summary' or 'write budget' and I'll create it using your data!"
     
     return response
 
@@ -466,9 +735,10 @@ async def get_chat_history(project_id: str):
         return {"success": False, "error": str(e)}
 
 @app.post("/chat/brainstorm")
-async def brainstorm_ideas(project_id: str, request: dict):
+async def brainstorm_ideas(request: dict):
     """Brainstorm grant ideas and strategies"""
     try:
+        project_id = request.get('project_id', 'test-project')
         topic = request.get('topic', '').lower()
         project_context = get_project_context_data(project_id)
         rfp_analysis = get_rfp_analysis_data(project_id)
