@@ -17,9 +17,22 @@ except ImportError:
 try:
     from utils import file_utils  # from src/utils/file_utils.py
     from utils import openai_utils  # from src/utils/openai_utils.py
+    from utils import storage_utils  # from src/utils/storage_utils.py
+    from utils import config  # from src/utils/config.py
+    
     print("✅ Successfully imported utils modules")
     print(f"✅ file_utils type: {type(file_utils)}")
     print(f"✅ openai_utils type: {type(openai_utils)}")
+    print(f"✅ storage_utils type: {type(storage_utils)}")
+    
+    # Check if we should use Supabase storage
+    if config.USE_SUPABASE and config.SUPABASE_URL and config.SUPABASE_KEY:
+        print("✅ Using Supabase for storage")
+        storage_utils_available = True
+    else:
+        print("⚠️ Supabase not configured, using local storage")
+        storage_utils_available = False
+        
 except ImportError as e:
     print(f"❌ Error importing utils modules: {e}")
     import traceback
@@ -58,6 +71,7 @@ except ImportError as e:
     
     file_utils = DummyFileUtils()
     openai_utils = DummyOpenAIUtils()
+    storage_utils_available = False
 
 # Initialize the app
 app = FastAPI()
@@ -185,7 +199,10 @@ async def generate(request: Request):
         # Get project context if available
         project_context = ""
         if project_id:
-            project_context = file_utils.get_context_summary(project_id)
+            if storage_utils_available:
+                project_context = storage_utils.get_context_summary(project_id)
+            else:
+                project_context = file_utils.get_context_summary(project_id)
         
         # Generate AI response using OpenAI
         try:
@@ -213,7 +230,10 @@ async def send_message(request: Request):
         # Get project context if available
         project_context = ""
         if project_id:
-            project_context = file_utils.get_context_summary(project_id)
+            if storage_utils_available:
+                project_context = storage_utils.get_context_summary(project_id)
+            else:
+                project_context = file_utils.get_context_summary(project_id)
         
         # Generate AI response using OpenAI
         try:
@@ -240,7 +260,10 @@ async def brainstorm(request: Request):
         # Get project context if available
         project_context = ""
         if project_id:
-            project_context = file_utils.get_context_summary(project_id)
+            if storage_utils_available:
+                project_context = storage_utils.get_context_summary(project_id)
+            else:
+                project_context = file_utils.get_context_summary(project_id)
         
         # Generate brainstorming ideas using OpenAI
         try:
@@ -285,7 +308,10 @@ async def upload_file(
             }
         
         # Save file and extract context
-        result = file_utils.save_uploaded_file(file_content, file.filename, project_id)
+        if storage_utils_available:
+            result = storage_utils.save_uploaded_file(file_content, file.filename, project_id)
+        else:
+            result = file_utils.save_uploaded_file(file_content, file.filename, project_id)
         
         if result.get("success"):
             return {
@@ -309,7 +335,10 @@ async def get_context(project_id: str):
     try:
         print(f"✅ /context/{project_id} called")
         
-        context = file_utils.get_project_context(project_id)
+        if storage_utils_available:
+            context = storage_utils.get_project_context(project_id)
+        else:
+            context = file_utils.get_project_context(project_id)
         return context
         
     except Exception as e:
@@ -334,7 +363,10 @@ async def update_context(project_id: str, request: Request):
         
         print(f"✅ /context/{project_id} update called")
         
-        success = file_utils.update_project_info(project_id, organization_info, initiative_description)
+        if storage_utils_available:
+            success = storage_utils.update_project_info(project_id, organization_info, initiative_description)
+        else:
+            success = file_utils.update_project_info(project_id, organization_info, initiative_description)
         
         if success:
             return {"success": True, "message": "Project information updated successfully"}
@@ -351,7 +383,10 @@ async def delete_context(project_id: str):
     try:
         print(f"✅ /context/{project_id} delete called")
         
-        success = file_utils.delete_project_context(project_id)
+        if storage_utils_available:
+            success = storage_utils.delete_project_context(project_id)
+        else:
+            success = file_utils.delete_project_context(project_id)
         
         if success:
             return {"success": True, "message": "Project context deleted successfully"}
