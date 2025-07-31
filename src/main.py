@@ -346,9 +346,44 @@ async def send_message(request: Request):
             else:
                 project_context = file_utils.get_context_summary(project_id)
         
+        # Get chat history for RAG context
+        chat_history = ""
+        if project_id:
+            try:
+                if storage_utils_available:
+                    chat_history = storage_utils.get_chat_history(project_id)
+                elif postgres_storage_available:
+                    chat_history = postgres_storage.get_chat_history(project_id)
+                else:
+                    chat_history = file_utils.get_chat_history(project_id)
+            except Exception as e:
+                print(f"⚠️ Could not retrieve chat history: {e}")
+        
+        # Combine context for RAG
+        full_context = f"Project Context: {project_context}\n\nChat History: {chat_history}"
+        
         # Generate AI response using OpenAI
         try:
-            ai_response = openai_utils.chat_grant_assistant(message, project_context)
+            ai_response = openai_utils.chat_grant_assistant(message, full_context)
+            
+            # Store the conversation for future RAG
+            if project_id:
+                conversation_data = {
+                    "user_message": message,
+                    "ai_response": ai_response,
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                try:
+                    if storage_utils_available:
+                        storage_utils.save_chat_message(project_id, conversation_data)
+                    elif postgres_storage_available:
+                        postgres_storage.save_chat_message(project_id, conversation_data)
+                    else:
+                        file_utils.save_chat_message(project_id, conversation_data)
+                except Exception as e:
+                    print(f"⚠️ Could not save chat message: {e}")
+                    
         except Exception as e:
             print(f"❌ OpenAI chat error: {e}")
             ai_response = f"I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later. Error: {str(e)}"
@@ -517,6 +552,34 @@ async def delete_context(project_id: str):
     except Exception as e:
         print(f"❌ Error in /context/{project_id} delete: {e}")
         return {"success": False, "error": str(e)}
+
+# Get chat history for a project
+@app.get("/chat/history/{project_id}")
+async def get_chat_history(project_id: str):
+    try:
+        print(f"✅ /chat/history/{project_id} called")
+        
+        if storage_utils_available:
+            messages = storage_utils.get_chat_messages(project_id)
+        elif postgres_storage_available:
+            messages = postgres_storage.get_chat_messages(project_id)
+        else:
+            messages = file_utils.get_chat_messages(project_id)
+        
+        return {
+            "project_id": project_id,
+            "messages": messages,
+            "message_count": len(messages)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in /chat/history/{project_id}: {e}")
+        return {
+            "project_id": project_id,
+            "messages": [],
+            "message_count": 0,
+            "error": str(e)
+        }
 
 # Analyze organization and initiative for grant writing guidance
 @app.post("/analyze")

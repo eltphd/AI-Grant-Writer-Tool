@@ -250,3 +250,265 @@ def rag_context(question: str, files: list[str]) -> Optional[str]:
         " Consider performing vector search client‑side."
     )
     return None
+
+# ---------------------------------------------------------------------------
+# Chat History Functions for RAG
+# ---------------------------------------------------------------------------
+
+def save_chat_message(project_id: str, conversation_data: dict[str, Any]) -> bool:
+    """Save a chat message for RAG context.
+    
+    Args:
+        project_id: Project ID
+        conversation_data: Dictionary with user_message, ai_response, and timestamp
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    data = {
+        "project_id": project_id,
+        "user_message": conversation_data.get("user_message", ""),
+        "ai_response": conversation_data.get("ai_response", ""),
+        "timestamp": conversation_data.get("timestamp"),
+        "message_type": conversation_data.get("message_type", "chat"),
+        "metadata": conversation_data.get("metadata", {})
+    }
+    
+    res = _request(
+        "POST",
+        "/rest/v1/chat_messages",
+        json=data,
+        headers={"Prefer": "return=representation"},
+    )
+    return bool(res)
+
+def get_chat_history(project_id: str) -> str:
+    """Get chat history for RAG context.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        Formatted chat history string
+    """
+    # Get last 10 messages for context
+    res = _request(
+        "GET",
+        f"/rest/v1/chat_messages?project_id=eq.{project_id}&order=timestamp.desc&limit=10&select=user_message,ai_response"
+    )
+    
+    if not res:
+        return ""
+    
+    # Format messages for context
+    formatted_history = []
+    for msg in reversed(res):  # Reverse to get chronological order
+        user_msg = msg.get("user_message", "")
+        ai_msg = msg.get("ai_response", "")
+        if user_msg and ai_msg:
+            formatted_history.append(f"User: {user_msg}\nAI: {ai_msg}")
+    
+    return "\n\n".join(formatted_history)
+
+def get_chat_messages(project_id: str) -> list[dict[str, Any]]:
+    """Get all chat messages for a project.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        List of chat messages
+    """
+    res = _request(
+        "GET",
+        f"/rest/v1/chat_messages?project_id=eq.{project_id}&order=timestamp.asc&select=*"
+    )
+    
+    if not res:
+        return []
+    
+    return res
+
+def delete_chat_history(project_id: str) -> bool:
+    """Delete chat history for a project.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    res = _request(
+        "DELETE",
+        f"/rest/v1/chat_messages?project_id=eq.{project_id}"
+    )
+    return res is not None
+
+# ---------------------------------------------------------------------------
+# File and Context Management Functions
+# ---------------------------------------------------------------------------
+
+def save_uploaded_file(file_content: bytes, filename: str, project_id: str) -> dict[str, Any]:
+    """Save an uploaded file to Supabase.
+    
+    Args:
+        file_content: The file content as bytes
+        filename: Original filename
+        project_id: Project ID for organization
+        
+    Returns:
+        Dictionary with file info and extracted text
+    """
+    try:
+        # For now, we'll store basic file info
+        # In a full implementation, you'd want to store the file content
+        # in Supabase Storage and reference it here
+        data = {
+            "filename": filename,
+            "project_id": project_id,
+            "file_size": len(file_content),
+            "file_type": filename.split('.')[-1].lower() if '.' in filename else "unknown"
+        }
+        
+        res = _request(
+            "POST",
+            "/rest/v1/files",
+            json=data,
+            headers={"Prefer": "return=representation"},
+        )
+        
+        if res:
+            return {
+                "success": True,
+                "filename": filename,
+                "file_size": len(file_content),
+                "uploaded_at": res.get("created_at")
+            }
+        else:
+            return {"success": False, "error": "Failed to save file"}
+            
+    except Exception as e:
+        print(f"❌ Error saving file: {e}")
+        return {"success": False, "error": str(e)}
+
+def get_project_context(project_id: str) -> dict[str, Any]:
+    """Get all context data for a project from Supabase.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        Dictionary with project context
+    """
+    res = _request(
+        "GET",
+        f"/rest/v1/project_contexts?project_id=eq.{project_id}&select=*"
+    )
+    
+    if res and len(res) > 0:
+        context = res[0]
+        return {
+            "project_id": context.get("project_id"),
+            "organization_info": context.get("organization_info", ""),
+            "initiative_description": context.get("initiative_description", ""),
+            "created_at": context.get("created_at"),
+            "updated_at": context.get("updated_at"),
+            "files": []  # Would need separate query for files
+        }
+    else:
+        return {
+            "project_id": project_id,
+            "organization_info": "",
+            "initiative_description": "",
+            "created_at": None,
+            "updated_at": None,
+            "files": []
+        }
+
+def update_project_info(project_id: str, organization_info: str = "", initiative_description: str = "") -> bool:
+    """Update project information in Supabase.
+    
+    Args:
+        project_id: Project ID
+        organization_info: Organization description
+        initiative_description: Initiative description
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    data = {
+        "organization_info": organization_info,
+        "initiative_description": initiative_description,
+        "updated_at": "now()"
+    }
+    
+    res = _request(
+        "PATCH",
+        f"/rest/v1/project_contexts?project_id=eq.{project_id}",
+        json=data,
+        headers={"Prefer": "return=representation"},
+    )
+    
+    if not res:
+        # Try to create new record if update failed
+        data["project_id"] = project_id
+        res = _request(
+            "POST",
+            "/rest/v1/project_contexts",
+            json=data,
+            headers={"Prefer": "return=representation"},
+        )
+    
+    return bool(res)
+
+def get_context_summary(project_id: str) -> str:
+    """Get a summary of project context for AI prompts.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        Formatted context summary
+    """
+    context = get_project_context(project_id)
+    
+    summary_parts = []
+    
+    # Add organization info
+    if context.get("organization_info"):
+        summary_parts.append(f"Organization Information: {context['organization_info']}")
+    
+    # Add initiative description
+    if context.get("initiative_description"):
+        summary_parts.append(f"Initiative Description: {context['initiative_description']}")
+    
+    return "\n\n".join(summary_parts) if summary_parts else "No context available."
+
+def delete_project_context(project_id: str) -> bool:
+    """Delete all context data for a project from Supabase.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    # Delete project context
+    context_res = _request(
+        "DELETE",
+        f"/rest/v1/project_contexts?project_id=eq.{project_id}"
+    )
+    
+    # Delete files
+    files_res = _request(
+        "DELETE",
+        f"/rest/v1/files?project_id=eq.{project_id}"
+    )
+    
+    # Delete chat messages
+    chat_res = _request(
+        "DELETE",
+        f"/rest/v1/chat_messages?project_id=eq.{project_id}"
+    )
+    
+    return context_res is not None and files_res is not None and chat_res is not None

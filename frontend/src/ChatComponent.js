@@ -9,7 +9,10 @@ function ChatComponent({ projectId }) {
   const [isLoading, setIsLoading] = useState(false);
   const [brainstormTopic, setBrainstormTopic] = useState('');
   const [showBrainstorm, setShowBrainstorm] = useState(false);
+  const [fileUploadLoading, setFileUploadLoading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -41,6 +44,46 @@ function ChatComponent({ projectId }) {
       ]);
     }
   }, []);
+
+  // Load chat history when component mounts
+  useEffect(() => {
+    if (projectId) {
+      loadChatHistory();
+    }
+  }, [projectId]);
+
+  const loadChatHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/chat/history/${projectId}`);
+      const data = await response.json();
+      
+      if (data.messages && data.messages.length > 0) {
+        // Convert stored messages to chat format
+        const historyMessages = data.messages.map((msg, index) => [
+          {
+            id: `user-${index}`,
+            type: 'user',
+            content: msg.user_message,
+            timestamp: msg.timestamp
+          },
+          {
+            id: `ai-${index}`,
+            type: 'ai',
+            content: msg.ai_response,
+            timestamp: msg.timestamp
+          }
+        ]).flat();
+        
+        setMessages(prev => {
+          // Keep welcome message and add history
+          const welcomeMessage = prev.find(m => m.id === 'welcome');
+          return welcomeMessage ? [welcomeMessage, ...historyMessages] : historyMessages;
+        });
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -137,6 +180,66 @@ ${data.suggestions || 'Sorry, I encountered an error. Please try again.'}`,
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    setFileUploadLoading(true);
+    setSelectedFiles(files);
+
+    // Add file upload message to chat
+    const uploadMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: `📎 Uploading ${files.length} file(s): ${files.map(f => f.name).join(', ')}`,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, uploadMessage]);
+
+    let uploadSuccess = 0;
+    let uploadErrors = 0;
+
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('project_id', projectId);
+
+      try {
+        const response = await fetch(`${API_BASE}/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          uploadSuccess++;
+          console.log(`✅ File uploaded: ${file.name}`);
+        } else {
+          uploadErrors++;
+          console.error(`❌ Upload failed for ${file.name}:`, result.error);
+        }
+      } catch (error) {
+        uploadErrors++;
+        console.error(`❌ Error uploading ${file.name}:`, error);
+      }
+    }
+
+    // Add upload result message
+    const resultMessage = {
+      id: Date.now() + 1,
+      type: 'ai',
+      content: uploadErrors === 0 
+        ? `✅ Successfully uploaded ${uploadSuccess} file(s). These files are now available for context in our conversation.`
+        : `⚠️ Upload completed with ${uploadSuccess} success(es) and ${uploadErrors} error(s). Some files may not be available for context.`,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, resultMessage]);
+
+    setFileUploadLoading(false);
+    setSelectedFiles([]);
+    event.target.value = '';
   };
 
   const formatMessage = (content) => {
@@ -248,6 +351,22 @@ ${data.suggestions || 'Sorry, I encountered an error. Please try again.'}`,
         </div>
         
         <div className="input-actions">
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.docx,.doc,.txt,.md"
+            onChange={handleFileUpload}
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+          />
+          <button 
+            className="action-btn"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || fileUploadLoading}
+            title="Upload files for context"
+          >
+            {fileUploadLoading ? '📎 Uploading...' : '📎 Upload Files'}
+          </button>
           <button 
             className="action-btn"
             onClick={() => setShowBrainstorm(!showBrainstorm)}

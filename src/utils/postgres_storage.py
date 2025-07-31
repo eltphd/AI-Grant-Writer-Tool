@@ -68,6 +68,54 @@ def init_database():
             )
         """)
         
+        # Create chat_messages table for RAG functionality
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id SERIAL PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                user_message TEXT NOT NULL,
+                ai_response TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                message_type TEXT DEFAULT 'chat',
+                metadata JSONB DEFAULT '{}'::jsonb
+            )
+        """)
+        
+        # Create embeddings table for future vector search
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS embeddings (
+                id SERIAL PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                content_type TEXT NOT NULL,
+                content_id TEXT NOT NULL,
+                embedding_vector VECTOR(1536),
+                content_text TEXT,
+                metadata JSONB DEFAULT '{}'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create redactions table for sensitive data management
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS redactions (
+                id SERIAL PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                file_id INTEGER REFERENCES files(id),
+                original_text TEXT NOT NULL,
+                redacted_text TEXT NOT NULL,
+                redaction_type TEXT NOT NULL,
+                confidence_score FLOAT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Create indexes for better performance
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_files_project_id ON files(project_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_project_id ON chat_messages(project_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_embeddings_project_id ON embeddings(project_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_redactions_project_id ON redactions(project_id)")
+        
         conn.commit()
         cursor.close()
         conn.close()
@@ -404,4 +452,153 @@ def delete_project_context(project_id: str) -> bool:
         
     except Exception as e:
         print(f"❌ Error deleting context: {e}")
+        return False 
+
+def save_chat_message(project_id: str, conversation_data: Dict[str, Any]) -> bool:
+    """Save a chat message for RAG context.
+    
+    Args:
+        project_id: Project ID
+        conversation_data: Dictionary with user_message, ai_response, and timestamp
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        init_database()
+        conn = get_db_connection()
+        if not conn:
+            return False
+        
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO chat_messages (project_id, user_message, ai_response, timestamp, metadata)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            project_id,
+            conversation_data.get("user_message", ""),
+            conversation_data.get("ai_response", ""),
+            conversation_data.get("timestamp", datetime.now().isoformat()),
+            json.dumps(conversation_data.get("metadata", {}))
+        ))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error saving chat message: {e}")
+        return False
+
+def get_chat_history(project_id: str) -> str:
+    """Get chat history for RAG context.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        Formatted chat history string
+    """
+    try:
+        init_database()
+        conn = get_db_connection()
+        if not conn:
+            return ""
+        
+        cursor = conn.cursor()
+        
+        # Get last 10 messages for context
+        cursor.execute("""
+            SELECT user_message, ai_response 
+            FROM chat_messages 
+            WHERE project_id = %s 
+            ORDER BY timestamp DESC 
+            LIMIT 10
+        """, (project_id,))
+        
+        messages = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # Format messages for context
+        formatted_history = []
+        for user_msg, ai_msg in reversed(messages):  # Reverse to get chronological order
+            if user_msg and ai_msg:
+                formatted_history.append(f"User: {user_msg}\nAI: {ai_msg}")
+        
+        return "\n\n".join(formatted_history)
+        
+    except Exception as e:
+        print(f"❌ Error loading chat history: {e}")
+        return ""
+
+def get_chat_messages(project_id: str) -> List[Dict[str, Any]]:
+    """Get all chat messages for a project.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        List of chat messages
+    """
+    try:
+        init_database()
+        conn = get_db_connection()
+        if not conn:
+            return []
+        
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT user_message, ai_response, timestamp, message_type, metadata
+            FROM chat_messages 
+            WHERE project_id = %s 
+            ORDER BY timestamp ASC
+        """, (project_id,))
+        
+        messages = []
+        for row in cursor.fetchall():
+            messages.append({
+                "user_message": row[0],
+                "ai_response": row[1],
+                "timestamp": row[2].isoformat() if row[2] else None,
+                "message_type": row[3],
+                "metadata": row[4] if row[4] else {}
+            })
+        
+        cursor.close()
+        conn.close()
+        return messages
+        
+    except Exception as e:
+        print(f"❌ Error loading chat messages: {e}")
+        return []
+
+def delete_chat_history(project_id: str) -> bool:
+    """Delete chat history for a project.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        init_database()
+        conn = get_db_connection()
+        if not conn:
+            return False
+        
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM chat_messages WHERE project_id = %s", (project_id,))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error deleting chat history: {e}")
         return False 

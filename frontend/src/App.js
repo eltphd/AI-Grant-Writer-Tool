@@ -199,6 +199,13 @@ function App() {
             <div 
               key={step.id} 
               className={`progress-step ${currentStep >= step.id ? 'active' : ''} ${currentStep === step.id ? 'current' : ''}`}
+              onClick={() => {
+                // Allow navigation to any step if a project is selected
+                if (currentProject || step.id === 1) {
+                  setCurrentStep(step.id);
+                }
+              }}
+              style={{ cursor: (currentProject || step.id === 1) ? 'pointer' : 'default' }}
             >
               <div className="step-number">{step.id}</div>
               <div className="step-info">

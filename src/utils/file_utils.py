@@ -21,6 +21,10 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 CONTEXT_DIR = Path("context")
 CONTEXT_DIR.mkdir(exist_ok=True)
 
+# Create chat history storage directory
+CHAT_DIR = Path("chat_history")
+CHAT_DIR.mkdir(exist_ok=True)
+
 def save_uploaded_file(file_content: bytes, filename: str, project_id: str) -> Dict[str, Any]:
     """Save an uploaded file and extract its text content.
     
@@ -294,4 +298,123 @@ def delete_project_context(project_id: str) -> bool:
         
     except Exception as e:
         print(f"❌ Error deleting context: {e}")
+        return False 
+
+def save_chat_message(project_id: str, conversation_data: Dict[str, Any]) -> bool:
+    """Save a chat message for RAG context.
+    
+    Args:
+        project_id: Project ID
+        conversation_data: Dictionary with user_message, ai_response, and timestamp
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        chat_file = CHAT_DIR / f"{project_id}_chat.json"
+        
+        # Load existing chat history or create new
+        if chat_file.exists():
+            with open(chat_file, "r") as f:
+                chat_history = json.load(f)
+        else:
+            chat_history = {
+                "project_id": project_id,
+                "messages": [],
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
+            }
+        
+        # Add new message
+        chat_history["messages"].append(conversation_data)
+        chat_history["updated_at"] = datetime.now().isoformat()
+        
+        # Keep only last 50 messages to prevent file from getting too large
+        if len(chat_history["messages"]) > 50:
+            chat_history["messages"] = chat_history["messages"][-50:]
+        
+        # Save updated chat history
+        with open(chat_file, "w") as f:
+            json.dump(chat_history, f, indent=2)
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error saving chat message: {e}")
+        return False
+
+def get_chat_history(project_id: str) -> str:
+    """Get chat history for RAG context.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        Formatted chat history string
+    """
+    try:
+        chat_file = CHAT_DIR / f"{project_id}_chat.json"
+        
+        if chat_file.exists():
+            with open(chat_file, "r") as f:
+                chat_history = json.load(f)
+            
+            # Format recent messages for context
+            recent_messages = chat_history.get("messages", [])[-10:]  # Last 10 messages
+            
+            formatted_history = []
+            for msg in recent_messages:
+                user_msg = msg.get("user_message", "")
+                ai_msg = msg.get("ai_response", "")
+                if user_msg and ai_msg:
+                    formatted_history.append(f"User: {user_msg}\nAI: {ai_msg}")
+            
+            return "\n\n".join(formatted_history) if formatted_history else ""
+        else:
+            return ""
+            
+    except Exception as e:
+        print(f"❌ Error loading chat history: {e}")
+        return ""
+
+def get_chat_messages(project_id: str) -> List[Dict[str, Any]]:
+    """Get all chat messages for a project.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        List of chat messages
+    """
+    try:
+        chat_file = CHAT_DIR / f"{project_id}_chat.json"
+        
+        if chat_file.exists():
+            with open(chat_file, "r") as f:
+                chat_history = json.load(f)
+            return chat_history.get("messages", [])
+        else:
+            return []
+            
+    except Exception as e:
+        print(f"❌ Error loading chat messages: {e}")
+        return []
+
+def delete_chat_history(project_id: str) -> bool:
+    """Delete chat history for a project.
+    
+    Args:
+        project_id: Project ID
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        chat_file = CHAT_DIR / f"{project_id}_chat.json"
+        if chat_file.exists():
+            chat_file.unlink()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error deleting chat history: {e}")
         return False 
