@@ -38,19 +38,25 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies needed for psycopg2 and optional Whisper support
+# Install minimal system dependencies needed for psycopg2
+# Use --no-install-recommends and clean up in the same layer to reduce image size
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        build-essential \
-        libpq-dev \
         gcc \
+        libpq-dev \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/*
 
-# Install Python dependencies
+# Install Python dependencies in separate layers for better caching
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip
+
+# Install heavy dependencies first
+RUN pip install --no-cache-dir numpy==1.24.3 scikit-learn==1.3.2
+
+# Install remaining dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend source code
 COPY src ./src
