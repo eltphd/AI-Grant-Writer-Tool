@@ -106,23 +106,118 @@ function App() {
 
     try {
       setLoading(true);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('project_id', currentProject.id);
-
-      const response = await fetch(`${API_BASE}/upload`, {
+      
+      // Read file content
+      const content = await readFileContent(file);
+      
+      // Upload RFP for analysis
+      const response = await fetch(`${API_BASE}/rfp/upload`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          project_id: currentProject.id,
+          filename: file.name,
+          content: content
+        }),
       });
 
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          console.log(`RFP file ${file.name} uploaded successfully`);
+          console.log(`RFP file ${file.name} uploaded and analyzed successfully`);
+          
+          // Store RFP analysis result
+          setCurrentProject(prev => ({
+            ...prev,
+            rfpAnalysis: result.rfp
+          }));
+          
+          // Show success message
+          alert(`RFP uploaded successfully! Analysis complete.`);
         }
       }
     } catch (error) {
       console.error('Error uploading RFP file:', error);
+      alert('Error uploading RFP file. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const readFileContent = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
+
+  const analyzeRFPAlignment = async () => {
+    if (!currentProject || !currentProject.rfpAnalysis) {
+      alert('Please upload an RFP document first.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Create organization profile from context
+      const orgResponse = await fetch(`${API_BASE}/organization/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'My Organization',
+          mission: 'To serve our community through innovative programs',
+          description: organizationInfo,
+          key_accomplishments: ['Program A success', 'Partnership B established'],
+          partnerships: ['Local government', 'Community organizations'],
+          impact_metrics: {
+            'people_served': 1000,
+            'programs_delivered': 5
+          }
+        }),
+      });
+
+      if (orgResponse.ok) {
+        const orgData = await orgResponse.json();
+        
+        // Analyze RFP alignment
+        const analysisResponse = await fetch(`${API_BASE}/rfp/analyze`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_id: currentProject.id,
+            org_id: orgData.organization.id,
+            rfp_id: currentProject.rfpAnalysis.id
+          }),
+        });
+
+        if (analysisResponse.ok) {
+          const analysisData = await analysisResponse.json();
+          if (analysisData.success) {
+            console.log('RFP analysis complete:', analysisData.analysis);
+            
+            // Store analysis results
+            setCurrentProject(prev => ({
+              ...prev,
+              rfpAlignment: analysisData.analysis,
+              projectResponse: analysisData.response
+            }));
+            
+            alert(`Analysis complete! Alignment score: ${analysisData.analysis.org_fit_score}%`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error analyzing RFP alignment:', error);
+      alert('Error analyzing RFP alignment. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -276,6 +371,58 @@ function App() {
                       <p>Grant request with directions and requirements</p>
                     </div>
                   </label>
+                  
+                  {currentProject && currentProject.rfpAnalysis && (
+                    <div className="rfp-analysis-section">
+                      <h4>🎯 RFP Analysis Complete</h4>
+                      <p>Requirements found: {currentProject.rfpAnalysis.requirements?.length || 0}</p>
+                      <p>Eligibility criteria: {currentProject.rfpAnalysis.eligibility_criteria?.length || 0}</p>
+                      {currentProject.rfpAnalysis.funding_amount && (
+                        <p>Funding amount: {currentProject.rfpAnalysis.funding_amount}</p>
+                      )}
+                      {currentProject.rfpAnalysis.deadline && (
+                        <p>Deadline: {currentProject.rfpAnalysis.deadline}</p>
+                      )}
+                      
+                      <button 
+                        className="btn btn-primary"
+                        onClick={analyzeRFPAlignment}
+                        disabled={loading}
+                      >
+                        {loading ? 'Analyzing...' : 'Analyze Organization Alignment'}
+                      </button>
+                    </div>
+                  )}
+                  
+                  {currentProject && currentProject.rfpAlignment && (
+                    <div className="alignment-results">
+                      <h4>📊 Alignment Results</h4>
+                      <p><strong>Organization Fit Score:</strong> {currentProject.rfpAlignment.org_fit_score}%</p>
+                      <p><strong>Overall Score:</strong> {currentProject.rfpAlignment.overall_score}%</p>
+                      
+                      {currentProject.rfpAlignment.strengths && currentProject.rfpAlignment.strengths.length > 0 && (
+                        <div>
+                          <h5>✅ Strengths:</h5>
+                          <ul>
+                            {currentProject.rfpAlignment.strengths.slice(0, 3).map((strength, index) => (
+                              <li key={index}>{strength}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {currentProject.rfpAlignment.recommendations && currentProject.rfpAlignment.recommendations.length > 0 && (
+                        <div>
+                          <h5>💡 Recommendations:</h5>
+                          <ul>
+                            {currentProject.rfpAlignment.recommendations.map((rec, index) => (
+                              <li key={index}>{rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
