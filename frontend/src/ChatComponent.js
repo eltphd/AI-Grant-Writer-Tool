@@ -22,7 +22,11 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  Alert
+  Alert,
+  Avatar,
+  Grid,
+  Fab,
+  Tooltip
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -33,7 +37,9 @@ import {
   Psychology as PsychologyIcon,
   School as SchoolIcon,
   Business as BusinessIcon,
-  EmojiObjects as EmojiObjectsIcon
+  EmojiObjects as EmojiObjectsIcon,
+  SmartToy as SmartToyIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 import ReactMarkdown from 'react-markdown';
 
@@ -60,6 +66,22 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Add welcome message when component mounts
+  useEffect(() => {
+    if (selectedProject && messages.length === 0) {
+      const welcomeMessage = {
+        id: Date.now(),
+        text: `Hello! I'm your AI grant writing assistant. I'm here to help you with grant writing questions, brainstorming ideas, and providing personalized advice based on your project: "${selectedProject.name}". 
+
+What would you like to know about grant writing?`,
+        sender: 'assistant',
+        timestamp: new Date().toISOString(),
+        isWelcome: true
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [selectedProject]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -133,8 +155,8 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
     if (!brainstormTopic.trim()) return;
 
     setBrainstormLoading(true);
+
     try {
-      console.log("🚀 Making brainstorm API call to:", `${API_BASE}/chat/brainstorm`);
       const response = await fetch(`${API_BASE}/chat/brainstorm`, {
         method: 'POST',
         headers: {
@@ -142,24 +164,20 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
         },
         body: JSON.stringify({
           topic: brainstormTopic,
-          project_id: selectedProject?.id,
-          focus_areas: ['mission', 'vision', 'objectives', 'strategies']
+          project_id: selectedProject?.id
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.warn("Backend Error:", errorText);
-        throw new Error("Bad response from server");
+        throw new Error("Failed to generate ideas");
       }
 
       const data = await response.json();
-      console.log("✅ Brainstorm API response received:", data);
-      setBrainstormIdeas(data.ideas);
-      setShowBrainstormDialog(true);
+      setBrainstormIdeas(data);
+      setBrainstormTopic('');
     } catch (error) {
       console.error('Error brainstorming:', error);
-      alert('Error generating brainstorming ideas. Please try again.');
+      alert('Failed to generate brainstorming ideas');
     } finally {
       setBrainstormLoading(false);
     }
@@ -170,198 +188,159 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
     alert('Copied to clipboard!');
   };
 
-  const quickPrompts = [
-    {
-      title: "Mission & Vision",
-      prompts: [
-        "Help me develop a compelling mission statement for my organization",
-        "What should I include in my vision statement?",
-        "How can I make my mission align with the funding agency's priorities?"
-      ]
-    },
-    {
-      title: "Grant Structure",
-      prompts: [
-        "What's the best way to structure my specific aims section?",
-        "How should I organize my methodology section?",
-        "What makes a strong executive summary?"
-      ]
-    },
-    {
-      title: "Writing Quality",
-      prompts: [
-        "How can I make my writing more compelling and persuasive?",
-        "What are common mistakes to avoid in grant writing?",
-        "How can I improve the clarity of my proposal?"
-      ]
-    },
-    {
-      title: "Strategy & Planning",
-      prompts: [
-        "Help me develop a realistic timeline for my project",
-        "What should I include in my evaluation plan?",
-        "How can I demonstrate the feasibility of my approach?"
-      ]
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
-  ];
+  };
+
+  const renderMessage = (message) => {
+    const isUser = message.sender === 'user';
+    const isWelcome = message.isWelcome;
+    const isError = message.isError;
+
+    return (
+      <Box
+        key={message.id}
+        sx={{
+          display: 'flex',
+          justifyContent: isUser ? 'flex-end' : 'flex-start',
+          mb: 2,
+          animation: isWelcome ? 'fadeIn 0.5s ease-in' : 'none',
+          '@keyframes fadeIn': {
+            '0%': { opacity: 0, transform: 'translateY(10px)' },
+            '100%': { opacity: 1, transform: 'translateY(0)' }
+          }
+        }}
+      >
+        <Card
+          sx={{
+            maxWidth: '70%',
+            backgroundColor: isUser ? 'primary.main' : 'background.paper',
+            color: isUser ? 'primary.contrastText' : 'text.primary',
+            border: isError ? '2px solid #f44336' : 'none',
+            boxShadow: isWelcome ? 4 : 1,
+            position: 'relative'
+          }}
+        >
+          <CardContent sx={{ p: 2, pb: '16px !important' }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+              <Avatar
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: isUser ? 'primary.dark' : 'secondary.main'
+                }}
+              >
+                {isUser ? <PersonIcon /> : <SmartToyIcon />}
+              </Avatar>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                  {isUser ? 'You' : 'AI Assistant'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </Typography>
+              </Box>
+              {!isUser && (
+                <IconButton
+                  size="small"
+                  onClick={() => copyToClipboard(message.text)}
+                  sx={{ color: 'text.secondary' }}
+                >
+                  <CopyIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+            
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.6,
+                '& p': { margin: 0 },
+                '& ul, & ol': { margin: '8px 0', paddingLeft: '20px' }
+              }}
+            >
+              <ReactMarkdown>{message.text}</ReactMarkdown>
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  };
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ChatIcon color="primary" />
-            AI Grant Writing Assistant
-          </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<LightbulbIcon />}
-            onClick={() => setShowBrainstormDialog(true)}
-          >
-            Brainstorm Ideas
-          </Button>
-        </Box>
-        {selectedProject && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            Project: {typeof selectedProject === 'object' ? selectedProject.name : selectedProject}
-          </Typography>
-        )}
-      </Paper>
+      <Box sx={{ mb: 2, p: 2, backgroundColor: 'background.paper', borderRadius: 1 }}>
+        <Typography variant="h6" gutterBottom>
+          AI Grant Writing Assistant
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Project: {selectedProject?.name}
+        </Typography>
+      </Box>
 
       {/* Messages Area */}
-      <Paper sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-          {messages.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <ChatIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                Start a conversation
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Ask questions about grant writing, get feedback on your proposals, or brainstorm ideas.
-              </Typography>
-            </Box>
-          ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {messages.map((message) => (
-                <Box
-                  key={message.id}
-                  sx={{
-                    display: 'flex',
-                    justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start',
-                    mb: 2
-                  }}
-                >
-                  <Paper
-                    sx={{
-                      p: 2,
-                      maxWidth: '70%',
-                      backgroundColor: message.sender === 'user' ? 'primary.main' : 'grey.100',
-                      color: message.sender === 'user' ? 'white' : 'text.primary',
-                      position: 'relative'
-                    }}
-                  >
-                    {/* ✅ Fix: Check if message.text is a string before rendering */}
-                    <ReactMarkdown>
-                      {typeof message.text === "string" ? message.text : JSON.stringify(message.text)}
-                    </ReactMarkdown>
-                    {message.sender === 'assistant' && !message.isError && (
-                      <IconButton
-                        size="small"
-                        onClick={() => copyToClipboard(message.text)}
-                        sx={{ position: 'absolute', top: 4, right: 4 }}
-                      >
-                        <CopyIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                    <Typography variant="caption" sx={{ mt: 1, opacity: 0.7 }}>
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </Typography>
-                  </Paper>
-                </Box>
-              ))}
-              {loading && (
-                <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 2 }}>
-                  <Paper sx={{ p: 2, backgroundColor: 'grey.100' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CircularProgress size={16} />
-                      <Typography variant="body2">AI is thinking...</Typography>
-                    </Box>
-                  </Paper>
-                </Box>
-              )}
-              <div ref={messagesEndRef} />
-            </Box>
-          )}
-        </Box>
-
-        {/* Quick Prompts */}
-        {messages.length === 0 && (
-          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Quick Prompts:
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          p: 2,
+          backgroundColor: 'grey.50',
+          borderRadius: 1,
+          mb: 2,
+          minHeight: '400px',
+          maxHeight: '500px'
+        }}
+      >
+        {messages.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <ChatIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary">
+              Start a conversation
             </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {quickPrompts.map((category, idx) => (
-                <Accordion key={idx} sx={{ width: '100%' }}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="body2">{category.title}</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <List dense>
-                      {category.prompts.map((prompt, promptIdx) => (
-                        <ListItem 
-                          key={promptIdx} 
-                          button 
-                          onClick={() => setInputMessage(prompt)}
-                          sx={{ py: 0.5 }}
-                        >
-                          <ListItemIcon sx={{ minWidth: 32 }}>
-                            <PsychologyIcon fontSize="small" color="primary" />
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={prompt}
-                            primaryTypographyProps={{ variant: 'body2' }}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
-            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Ask questions about grant writing or use the brainstorm feature
+            </Typography>
           </Box>
+        ) : (
+          messages.map(renderMessage)
         )}
+        <div ref={messagesEndRef} />
+      </Box>
 
-        {/* Input Area */}
-        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+      {/* Input Area */}
+      <Box sx={{ p: 2, backgroundColor: 'background.paper', borderRadius: 1 }}>
+        <Grid container spacing={2} alignItems="flex-end">
+          <Grid item xs>
             <TextField
               fullWidth
               multiline
               maxRows={4}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
               placeholder="Ask about grant writing, get feedback, or brainstorm ideas..."
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
+              disabled={loading}
+              variant="outlined"
+              size="small"
             />
+          </Grid>
+          <Grid item>
             <Button
               variant="contained"
               onClick={handleSendMessage}
               disabled={!inputMessage.trim() || loading}
-              sx={{ minWidth: 56 }}
+              startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
             >
-              {loading ? <CircularProgress size={20} /> : <SendIcon />}
+              {loading ? 'Sending...' : 'Send'}
             </Button>
-          </Box>
-        </Box>
-      </Paper>
+          </Grid>
+        </Grid>
+      </Box>
 
       {/* Brainstorming Dialog */}
       <Dialog 
@@ -372,7 +351,7 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
       >
         <DialogTitle>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <EmojiObjectsIcon color="primary" />
+            <LightbulbIcon color="primary" />
             Brainstorming Ideas
           </Box>
         </DialogTitle>
@@ -382,76 +361,54 @@ const ChatComponent = ({ selectedProject, onNewChat }) => {
             label="Topic for brainstorming"
             value={brainstormTopic}
             onChange={(e) => setBrainstormTopic(e.target.value)}
-            sx={{ mb: 2 }}
-            placeholder="e.g., Mission statement, Project objectives, Implementation strategy"
+            placeholder="e.g., mission statement, budget planning, evaluation methods..."
+            sx={{ mb: 3, mt: 1 }}
           />
+          
           <Button
             variant="contained"
             onClick={handleBrainstorm}
             disabled={!brainstormTopic.trim() || brainstormLoading}
             startIcon={brainstormLoading ? <CircularProgress size={20} /> : <LightbulbIcon />}
-            sx={{ mb: 2 }}
+            sx={{ mb: 3 }}
           >
             {brainstormLoading ? 'Generating Ideas...' : 'Generate Ideas'}
           </Button>
 
-          {brainstormIdeas.length > 0 && (
+          {brainstormIdeas.suggestions && (
             <Box>
               <Typography variant="h6" gutterBottom>
-                Ideas for: {brainstormTopic}
+                Ideas for: {brainstormIdeas.topic}
               </Typography>
-              {brainstormIdeas.map((idea, idx) => (
-                <Card key={idx} sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {idea.area}
-                    </Typography>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Suggestions:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {idea.suggestions.map((suggestion, sIdx) => (
-                          <Chip 
-                            key={sIdx} 
-                            label={suggestion} 
-                            size="small" 
-                            variant="outlined"
-                            color="primary"
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-
-                    <Box>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Examples:
-                      </Typography>
-                      <List dense>
-                        {idea.examples.map((example, eIdx) => (
-                          <ListItem key={eIdx} sx={{ py: 0 }}>
-                            <ListItemIcon sx={{ minWidth: 24 }}>
-                              <SchoolIcon color="primary" fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText 
-                              primary={example}
-                              primaryTypographyProps={{ variant: 'body2' }}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
+              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                <ReactMarkdown>{brainstormIdeas.suggestions}</ReactMarkdown>
+              </Typography>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowBrainstormDialog(false)}>Close</Button>
+          <Button onClick={() => setShowBrainstormDialog(false)}>
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Floating Action Button for Brainstorming */}
+      <Tooltip title="Brainstorm Ideas" placement="left">
+        <Fab
+          color="secondary"
+          aria-label="brainstorm"
+          onClick={() => setShowBrainstormDialog(true)}
+          sx={{
+            position: 'fixed',
+            bottom: 16,
+            right: 16,
+            zIndex: 1000
+          }}
+        >
+          <LightbulbIcon />
+        </Fab>
+      </Tooltip>
     </Box>
   );
 };

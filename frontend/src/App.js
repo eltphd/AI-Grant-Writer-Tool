@@ -23,7 +23,16 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  Grid
+  Grid,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  ListItemIcon,
+  ListItemSecondaryAction
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -34,7 +43,16 @@ import {
   Save as SaveIcon,
   Cancel as CancelIcon,
   Chat as ChatIcon,
-  Psychology as PsychologyIcon
+  Psychology as PsychologyIcon,
+  Upload as UploadIcon,
+  Description as DescriptionIcon,
+  Business as BusinessIcon,
+  Lightbulb as LightbulbIcon,
+  ExpandMore as ExpandMoreIcon,
+  CheckCircle as CheckCircleIcon,
+  CloudUpload as CloudUploadIcon,
+  Folder as FolderIcon,
+  Info as InfoIcon
 } from '@mui/icons-material';
 import ChatComponent from './ChatComponent';
 
@@ -55,11 +73,6 @@ fetch(`${API_BASE}/test`)
   .then(data => console.log("✅ Backend connectivity test:", data))
   .catch(error => console.error("❌ Backend connectivity test failed:", error));
 
-// Optional: console log for debugging
-if (!process.env.NODE_ENV || process.env.NODE_ENV !== "production") {
-  console.log("Using API base:", API_BASE);
-}
-
 const App = () => {
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -70,6 +83,26 @@ const App = () => {
   const [showProjectDialog, setShowProjectDialog] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [editingProject, setEditingProject] = useState(null);
+  
+  // New state for enhanced UX
+  const [projectContext, setProjectContext] = useState({
+    organizationInfo: '',
+    initiativeDescription: '',
+    uploadedFiles: []
+  });
+  const [showContextDialog, setShowContextDialog] = useState(false);
+  const [contextLoading, setContextLoading] = useState(false);
+  const [fileUploadLoading, setFileUploadLoading] = useState(false);
+
+  // Enhanced steps for better UX
+  const steps = [
+    'Create or Select Project',
+    'Set Up Project Context',
+    'Upload Documents',
+    'Ask Questions & Get AI Responses',
+    'Review & Manage Responses',
+    'Interactive Chat & Brainstorming'
+  ];
 
   // Load projects from localStorage on component mount
   useEffect(() => {
@@ -83,6 +116,30 @@ const App = () => {
   const saveProjects = (updatedProjects) => {
     setProjects(updatedProjects);
     localStorage.setItem('grantProjects', JSON.stringify(updatedProjects));
+  };
+
+  // Load project context when project is selected
+  useEffect(() => {
+    if (selectedProject) {
+      loadProjectContext(selectedProject.id);
+    }
+  }, [selectedProject]);
+
+  const loadProjectContext = async (projectId) => {
+    try {
+      const response = await fetch(`${API_BASE}/context/${projectId}`);
+      const context = await response.json();
+      
+      if (context.organization_info || context.initiative_description || context.files?.length > 0) {
+        setProjectContext({
+          organizationInfo: context.organization_info || '',
+          initiativeDescription: context.initiative_description || '',
+          uploadedFiles: context.files || []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading project context:', error);
+    }
   };
 
   const handleCreateProject = () => {
@@ -103,12 +160,12 @@ const App = () => {
     setSelectedProject(newProject);
     setNewProjectName('');
     setShowProjectDialog(false);
-    setActiveStep(1);
+    setActiveStep(1); // Move to context setup
   };
 
   const handleSelectProject = (project) => {
     setSelectedProject(project);
-    setActiveStep(1);
+    setActiveStep(1); // Move to context setup
   };
 
   const handleDeleteProject = (projectId) => {
@@ -141,9 +198,9 @@ const App = () => {
       setSelectedProject({ ...selectedProject, name: newProjectName });
     }
     
+    setShowProjectDialog(false);
     setEditingProject(null);
     setNewProjectName('');
-    setShowProjectDialog(false);
   };
 
   const handleTestConnection = async () => {
@@ -253,41 +310,104 @@ const App = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert('Copied to clipboard!');
+    alert("Response copied to clipboard!");
   };
 
-  const steps = [
-    'Create or Select Project',
-    'Ask Questions & Get AI Responses',
-    'Review & Manage Responses',
-    'Interactive Chat & Brainstorming'
-  ];
+  const handleFileUpload = async (event) => {
+    const files = event.target.files;
+    if (!files.length || !selectedProject) return;
+
+    setFileUploadLoading(true);
+    
+    for (let file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('project_id', selectedProject.id);
+
+        const response = await fetch(`${API_BASE}/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          // Reload project context to get updated file list
+          await loadProjectContext(selectedProject.id);
+        } else {
+          alert(`Failed to upload ${file.name}: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        alert(`Error uploading ${file.name}`);
+      }
+    }
+    
+    setFileUploadLoading(false);
+    event.target.value = ''; // Reset file input
+  };
+
+  const handleSaveContext = async () => {
+    if (!selectedProject) return;
+    
+    setContextLoading(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/context/${selectedProject.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          organization_info: projectContext.organizationInfo,
+          initiative_description: projectContext.initiativeDescription,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setShowContextDialog(false);
+        alert('Project context saved successfully!');
+      } else {
+        alert('Failed to save context: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error saving context:', error);
+      alert('Error saving context');
+    } finally {
+      setContextLoading(false);
+    }
+  };
 
   const renderStepContent = (step) => {
     switch (step) {
       case 0:
         return (
           <Box sx={{ mt: 3 }}>
-            <Typography variant="h5" gutterBottom>
+            <Typography variant="h4" gutterBottom align="center" color="primary">
               Welcome to AI Grant Writer Tool
             </Typography>
-            <Typography variant="body1" paragraph>
+            <Typography variant="h6" paragraph align="center" color="text.secondary">
               Create a new project or select an existing one to get started with AI-powered grant writing assistance.
             </Typography>
             
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: 4, textAlign: 'center' }}>
               <Button
                 variant="contained"
+                size="large"
                 startIcon={<AddIcon />}
                 onClick={() => setShowProjectDialog(true)}
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, mr: 2 }}
               >
                 Create New Project
               </Button>
               <Button
                 variant="outlined"
+                size="large"
                 onClick={handleTestConnection}
-                sx={{ ml: 2, mb: 2 }}
+                sx={{ mb: 2 }}
               >
                 Test Backend Connection
               </Button>
@@ -295,50 +415,57 @@ const App = () => {
 
             {projects.length > 0 && (
               <Box>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h5" gutterBottom>
                   Existing Projects:
                 </Typography>
-                <List>
+                <Grid container spacing={2}>
                   {projects.map((project) => (
-                    <ListItem
-                      key={project.id}
-                      sx={{
-                        border: 1,
-                        borderColor: 'divider',
-                        borderRadius: 1,
-                        mb: 1,
-                        '&:hover': { backgroundColor: 'action.hover' }
-                      }}
-                    >
-                      <ListItemText
-                        primary={project.name}
-                        secondary={`${project.questions.length} questions • Created ${new Date(project.createdAt).toLocaleDateString()}`}
-                      />
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => handleSelectProject(project)}
-                        >
-                          Select
-                        </Button>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEditProject(project)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDeleteProject(project.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </ListItem>
+                    <Grid item xs={12} md={6} key={project.id}>
+                      <Card sx={{ 
+                        '&:hover': { 
+                          boxShadow: 4,
+                          transform: 'translateY(-2px)',
+                          transition: 'all 0.2s'
+                        }
+                      }}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Box>
+                              <Typography variant="h6" gutterBottom>
+                                {project.name}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {project.questions.length} questions • Created {new Date(project.createdAt).toLocaleDateString()}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => handleSelectProject(project)}
+                              >
+                                Select
+                              </Button>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleEditProject(project)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteProject(project.id)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
                   ))}
-                </List>
+                </Grid>
               </Box>
             )}
           </Box>
@@ -347,112 +474,255 @@ const App = () => {
       case 1:
         return (
           <Box sx={{ mt: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Ask Questions
+            <Typography variant="h4" gutterBottom>
+              Set Up Project Context
             </Typography>
-            <Typography variant="body1" paragraph>
-              Selected Project: {typeof selectedProject === 'object' ? selectedProject.name : selectedProject}
+            <Typography variant="body1" paragraph color="text.secondary">
+              Help the AI understand your organization and initiative for personalized grant writing advice.
             </Typography>
             
-            <Paper sx={{ p: 2, mb: 2 }}>
-              <TextField
-                fullWidth
-                multiline
-                rows={3}
-                label="Ask a question about grant writing"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g., How do I write a compelling executive summary?"
-                sx={{ mb: 2 }}
-              />
-              <Button
-                variant="contained"
-                onClick={handleAskQuestion}
-                disabled={!question.trim() || loading}
-                startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
-              >
-                {loading ? 'Getting Response...' : 'Ask Question'}
-              </Button>
-            </Paper>
-
-            {answer && (
-              <Paper sx={{ p: 2 }}>
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  AI Response:
+                  Project: {selectedProject?.name}
                 </Typography>
-                <Typography variant="body1" paragraph>
-                  {answer}
-                </Typography>
+                
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    label="Organization Information"
+                    value={projectContext.organizationInfo}
+                    onChange={(e) => setProjectContext(prev => ({ ...prev, organizationInfo: e.target.value }))}
+                    placeholder="Describe your organization, mission, history, key achievements, and current focus areas..."
+                    helperText="This helps the AI provide more relevant and personalized grant writing advice."
+                  />
+                </Box>
+                
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    label="Initiative/Project Description"
+                    value={projectContext.initiativeDescription}
+                    onChange={(e) => setProjectContext(prev => ({ ...prev, initiativeDescription: e.target.value }))}
+                    placeholder="Describe the specific initiative or project you're seeking funding for, including goals, timeline, and expected outcomes..."
+                    helperText="This helps the AI understand what you're trying to accomplish and provide targeted advice."
+                  />
+                </Box>
+                
                 <Button
-                  variant="outlined"
-                  startIcon={<CopyIcon />}
-                  onClick={() => copyToClipboard(answer)}
+                  variant="contained"
+                  onClick={handleSaveContext}
+                  disabled={contextLoading}
+                  startIcon={contextLoading ? <CircularProgress size={20} /> : <SaveIcon />}
                 >
-                  Copy Response
+                  {contextLoading ? 'Saving...' : 'Save Context'}
                 </Button>
-              </Paper>
-            )}
+              </CardContent>
+            </Card>
           </Box>
         );
 
       case 2:
         return (
           <Box sx={{ mt: 3 }}>
-            <Typography variant="h5" gutterBottom>
-              Review Responses
+            <Typography variant="h4" gutterBottom>
+              Upload Documents
             </Typography>
-            <Typography variant="body1" paragraph>
-              Project: {typeof selectedProject === 'object' ? selectedProject.name : selectedProject}
+            <Typography variant="body1" paragraph color="text.secondary">
+              Upload relevant documents to provide the AI with additional context for more personalized responses.
             </Typography>
             
-            {selectedProject && selectedProject.questions.length > 0 ? (
-              <List>
-                {selectedProject.questions.map((q, index) => (
-                  <ListItem key={q.id} sx={{ mb: 2, flexDirection: 'column', alignItems: 'stretch' }}>
-                    <Card sx={{ width: '100%' }}>
-                      <CardContent>
-                        <Typography variant="h6" gutterBottom>
-                          Question {index + 1}:
-                        </Typography>
-                        <Typography variant="body1" paragraph>
-                          {q.question}
-                        </Typography>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="h6" gutterBottom>
-                          AI Response:
-                        </Typography>
-                        <Typography variant="body1" paragraph>
-                          {q.answer}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<CopyIcon />}
-                            onClick={() => copyToClipboard(q.answer)}
-                          >
-                            Copy Response
-                          </Button>
-                          <Typography variant="caption" sx={{ alignSelf: 'center' }}>
-                            {new Date(q.timestamp).toLocaleString()}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </ListItem>
-                ))}
-              </List>
-            ) : (
-              <Alert severity="info">
-                No questions have been asked yet. Go back to step 2 to ask your first question.
-              </Alert>
-            )}
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Project: {selectedProject?.name}
+                </Typography>
+                
+                <Box sx={{ mb: 3 }}>
+                  <input
+                    accept=".pdf,.docx,.doc,.txt,.md"
+                    style={{ display: 'none' }}
+                    id="file-upload"
+                    multiple
+                    type="file"
+                    onChange={handleFileUpload}
+                  />
+                  <label htmlFor="file-upload">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<CloudUploadIcon />}
+                      disabled={fileUploadLoading}
+                      sx={{ mb: 2 }}
+                    >
+                      {fileUploadLoading ? 'Uploading...' : 'Upload Documents'}
+                    </Button>
+                  </label>
+                  <Typography variant="body2" color="text.secondary">
+                    Supported formats: PDF, DOCX, DOC, TXT, MD
+                  </Typography>
+                </Box>
+                
+                {projectContext.uploadedFiles.length > 0 && (
+                  <Box>
+                    <Typography variant="h6" gutterBottom>
+                      Uploaded Documents:
+                    </Typography>
+                    <List>
+                      {projectContext.uploadedFiles.map((file, index) => (
+                        <ListItem key={index}>
+                          <ListItemIcon>
+                            <DescriptionIcon />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={file.filename}
+                            secondary={`${file.extracted_text_length} characters • Uploaded ${new Date(file.uploaded_at).toLocaleDateString()}`}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
           </Box>
         );
 
       case 3:
         return (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h4" gutterBottom>
+              Ask Questions & Get AI Responses
+            </Typography>
+            <Typography variant="body1" paragraph color="text.secondary">
+              Ask specific questions about grant writing and receive personalized advice based on your project context.
+            </Typography>
+            
+            <Card sx={{ mb: 3 }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Project: {selectedProject?.name}
+                </Typography>
+                
+                <Box sx={{ mb: 3 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={4}
+                    label="Ask a question about grant writing"
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="e.g., How do I write a compelling executive summary for my organization's mission?"
+                    helperText="The AI will use your project context to provide personalized advice."
+                  />
+                </Box>
+                
+                <Button
+                  variant="contained"
+                  onClick={handleAskQuestion}
+                  disabled={!question.trim() || loading}
+                  startIcon={loading ? <CircularProgress size={20} /> : <SendIcon />}
+                >
+                  {loading ? 'Getting Response...' : 'Ask Question'}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {answer && (
+              <Card sx={{ mt: 3 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    AI Response:
+                  </Typography>
+                  <Typography variant="body1" paragraph sx={{ whiteSpace: 'pre-wrap' }}>
+                    {answer}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    startIcon={<CopyIcon />}
+                    onClick={() => copyToClipboard(answer)}
+                  >
+                    Copy Response
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </Box>
+        );
+
+      case 4:
+        return (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="h4" gutterBottom>
+              Review & Manage Responses
+            </Typography>
+            <Typography variant="body1" paragraph color="text.secondary">
+              Review all your previous questions and AI responses for this project.
+            </Typography>
+            
+            {selectedProject && selectedProject.questions.length > 0 ? (
+              <Grid container spacing={3}>
+                {selectedProject.questions.map((q, index) => (
+                  <Grid item xs={12} key={q.id}>
+                    <Card>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                          <Typography variant="h6" color="primary">
+                            Question {index + 1}
+                          </Typography>
+                          <Chip 
+                            label={new Date(q.timestamp).toLocaleString()} 
+                            size="small" 
+                            variant="outlined"
+                          />
+                        </Box>
+                        
+                        <Accordion>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                              {q.question}
+                            </Typography>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Typography variant="body1" paragraph sx={{ whiteSpace: 'pre-wrap' }}>
+                              {q.answer}
+                            </Typography>
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<CopyIcon />}
+                              onClick={() => copyToClipboard(q.answer)}
+                            >
+                              Copy Response
+                            </Button>
+                          </AccordionDetails>
+                        </Accordion>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Alert severity="info">
+                No questions have been asked yet. Go back to step 4 to ask your first question.
+              </Alert>
+            )}
+          </Box>
+        );
+
+      case 5:
+        return (
           <Box sx={{ mt: 3, height: '600px' }}>
+            <Typography variant="h4" gutterBottom>
+              Interactive Chat & Brainstorming
+            </Typography>
+            <Typography variant="body1" paragraph color="text.secondary">
+              Have a conversation with the AI assistant and brainstorm grant writing ideas.
+            </Typography>
             <ChatComponent 
               selectedProject={selectedProject}
               onNewChat={handleNewChat}
@@ -467,14 +737,22 @@ const App = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h3" component="h1" gutterBottom align="center">
+      <Typography variant="h3" component="h1" gutterBottom align="center" color="primary">
         AI Grant Writer Tool
       </Typography>
       
       <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-        {steps.map((label) => (
+        {steps.map((label, index) => (
           <Step key={label}>
-            <StepLabel>{label}</StepLabel>
+            <StepLabel 
+              StepIconProps={{
+                sx: {
+                  color: activeStep >= index ? 'primary.main' : 'grey.400'
+                }
+              }}
+            >
+              {label}
+            </StepLabel>
           </Step>
         ))}
       </Stepper>
@@ -485,6 +763,7 @@ const App = () => {
         <Button
           disabled={activeStep === 0}
           onClick={() => setActiveStep((prevActiveStep) => prevActiveStep - 1)}
+          variant="outlined"
         >
           Back
         </Button>
@@ -498,7 +777,7 @@ const App = () => {
       </Box>
 
       {/* Project Dialog */}
-      <Dialog open={showProjectDialog} onClose={() => setShowProjectDialog(false)}>
+      <Dialog open={showProjectDialog} onClose={() => setShowProjectDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>
           {editingProject ? 'Edit Project' : 'Create New Project'}
         </DialogTitle>
@@ -512,6 +791,7 @@ const App = () => {
             value={newProjectName}
             onChange={(e) => setNewProjectName(e.target.value)}
             sx={{ mt: 1 }}
+            placeholder="e.g., Community Health Initiative Grant"
           />
         </DialogContent>
         <DialogActions>
