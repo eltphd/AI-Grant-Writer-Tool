@@ -10,7 +10,7 @@
 ###########################
 # Stage 1: Build React UI #
 ###########################
-FROM node:18 AS frontend-build
+FROM node:18-alpine AS frontend-build
 
 # Create app directory for front‑end build
 WORKDIR /app/frontend
@@ -18,7 +18,9 @@ WORKDIR /app/frontend
 # Install front‑end dependencies first to leverage cached layers
 COPY frontend/package.json ./
 COPY frontend/package-lock.json ./
-RUN npm install
+
+# Use npm ci for faster, more reliable installs
+RUN npm ci --only=production --silent
 
 # Copy the rest of the front‑end source and build the production assets
 COPY frontend/ ./
@@ -38,13 +40,17 @@ WORKDIR /app
 
 # Install system dependencies needed for psycopg2 and optional Whisper support
 RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential libpq-dev \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+        gcc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy backend source code
 COPY src ./src
@@ -65,7 +71,7 @@ ENV USE_SUPABASE=false
 ENV FASTAPI_URL=http://localhost:8080/
 ENV SINGLE_CLIENT_MODE=false
 
-# Expose the port used by Uvicorn.  When deploying to Cloud Run, this
+# Expose the port used by Uvicorn.  When deploying to Cloud Run, this
 # internal port is mapped automatically to the service's external URL.
 EXPOSE 8080
 
