@@ -32,7 +32,6 @@ print(f"🔧 PORT: {os.getenv('PORT', 'not set')}")
 # Import utility modules
 try:
     print("🔧 Attempting to import utils modules...")
-    
     # Add src directory to Python path
     import sys
     import os
@@ -42,76 +41,27 @@ try:
         sys.path.insert(0, parent_dir)
         print(f"🔧 Added {parent_dir} to Python path")
     
-    from src.utils import file_utils  # from src/utils/file_utils.py
-    from src.utils import openai_utils  # from src/utils/openai_utils.py
-    from src.utils import storage_utils  # from src/utils/storage_utils.py
-    from src.utils import postgres_storage  # from src/utils/postgres_storage.py
-    from src.utils import config  # from src/utils/config.py
-    from src.utils import privacy_utils  # from src/utils/privacy_utils.py
-    from src.utils import embedding_utils  # from src/utils/embedding_utils.py
+    from src.utils import file_utils
+    from src.utils import openai_utils
+    from src.utils import storage_utils
+    from src.utils import postgres_storage
+    from src.utils import config
+    from src.utils import privacy_utils
+    from src.utils import embedding_utils
+    from src.utils import grant_sections
     
     print("✅ Successfully imported utils modules")
-    print(f"✅ file_utils type: {type(file_utils)}")
-    print(f"✅ openai_utils type: {type(openai_utils)}")
-    print(f"✅ storage_utils type: {type(storage_utils)}")
-    print(f"✅ postgres_storage type: {type(postgres_storage)}")
-    print(f"✅ privacy_utils type: {type(privacy_utils)}")
-    print(f"✅ embedding_utils type: {type(embedding_utils)}")
+    print("✅ file_utils type:", type(file_utils))
+    print("✅ openai_utils type:", type(openai_utils))
+    print("✅ storage_utils type:", type(storage_utils))
+    print("✅ postgres_storage type:", type(postgres_storage))
+    print("✅ grant_sections type:", type(grant_sections))
     
-    # Check storage options
-    if config.USE_SUPABASE and config.SUPABASE_URL and config.SUPABASE_KEY:
-        print("✅ Using Supabase for storage")
-        storage_utils_available = True
-        postgres_storage_available = False
-    elif config.DB_HOSTNAME and config.DB_NAME and config.DB_USER and config.DB_PASSWORD:
-        print("✅ Using PostgreSQL for storage")
-        storage_utils_available = False
-        postgres_storage_available = True
-    else:
-        print("⚠️ No database configured, using local storage")
-        storage_utils_available = False
-        postgres_storage_available = False
-        
 except ImportError as e:
     print(f"❌ Error importing utils modules: {e}")
-    print(f"❌ Full traceback:")
+    import traceback
     traceback.print_exc()
-    # Create dummy modules to prevent crashes
-    class DummyFileUtils:
-        def save_uploaded_file(self, *args, **kwargs):
-            return {"success": False, "error": "File utils not available"}
-        def get_project_context(self, *args, **kwargs):
-            return {"error": "File utils not available"}
-        def update_project_info(self, *args, **kwargs):
-            return False
-        def delete_project_context(self, *args, **kwargs):
-            return False
-        def get_context_summary(self, *args, **kwargs):
-            return "Context not available"
-    
-    class DummyOpenAIUtils:
-        def get_openai_response(self, *args, **kwargs):
-            return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
-        def generate_grant_response(self, *args, **kwargs):
-            return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
-        def chat_grant_assistant(self, *args, **kwargs):
-            return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
-        def brainstorm_grant_ideas(self, *args, **kwargs):
-            return {
-                "topic": args[0] if args else "unknown",
-                "suggestions": "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses.",
-                "error": "OpenAI utils not available"
-            }
-        def analyze_grant_requirements(self, *args, **kwargs):
-            return {
-                "analysis": "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses.",
-                "error": "OpenAI utils not available"
-            }
-    
-    file_utils = DummyFileUtils()
-    openai_utils = DummyOpenAIUtils()
-    storage_utils_available = False
-    postgres_storage_available = False
+    sys.exit(1)
 
 print("🔧 Initializing FastAPI app...")
 
@@ -714,3 +664,160 @@ async def analyze_organization(request: Request):
     except Exception as e:
         print(f"❌ Error in /analyze: {e}")
         return {"error": str(e)}
+
+@app.get("/grant/sections/{project_id}")
+async def get_grant_sections(project_id: str):
+    """Get grant sections for a project."""
+    try:
+        # Get or create grant document
+        document = grant_sections.grant_section_manager.get_grant_document(project_id)
+        if not document:
+            document = grant_sections.grant_section_manager.create_grant_document(project_id)
+        
+        # Return document state
+        doc_state = {section_id: section.content for section_id, section in document.sections.items()}
+        
+        return {
+            "success": True,
+            "project_id": project_id,
+            "doc_state": doc_state,
+            "stats": grant_sections.grant_section_manager.get_document_stats(project_id)
+        }
+    except Exception as e:
+        print(f"❌ Error getting grant sections: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/grant/sections/{project_id}/{section_id}")
+async def update_grant_section(project_id: str, section_id: str, request: dict):
+    """Update a specific grant section."""
+    try:
+        content = request.get("content", "")
+        
+        # Update section
+        result = grant_sections.grant_section_manager.update_section(project_id, section_id, content)
+        
+        return {
+            "success": True,
+            "project_id": project_id,
+            "section_id": section_id,
+            **result
+        }
+    except Exception as e:
+        print(f"❌ Error updating grant section: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/grant/sections/{project_id}/{section_id}/regenerate")
+async def regenerate_grant_section(project_id: str, section_id: str, request: dict):
+    """Regenerate a grant section using AI."""
+    try:
+        context = request.get("context", "")
+        
+        # Get project context for AI generation
+        project_context = ""
+        if config.USE_SUPABASE:
+            context_data = storage_utils.get_project_context(project_id)
+            if context_data and "organization_info" in context_data:
+                project_context = f"Organization: {context_data['organization_info']}\n"
+                if "initiative_description" in context_data:
+                    project_context += f"Initiative: {context_data['initiative_description']}"
+        else:
+            context_data = postgres_storage.get_project_context(project_id)
+            if context_data and "organization_info" in context_data:
+                project_context = f"Organization: {context_data['organization_info']}\n"
+                if "initiative_description" in context_data:
+                    project_context += f"Initiative: {context_data['initiative_description']}"
+        
+        # Generate new content using AI
+        section_info = grant_sections.grant_section_manager.CORE_SECTIONS.get(section_id, {})
+        prompt = f"""
+        Generate content for the '{section_info.get('title', 'Grant Section')}' section.
+        
+        Section Description: {section_info.get('description', '')}
+        Target Length: {section_info.get('target_length', '')}
+        
+        Project Context:
+        {project_context}
+        
+        Additional Context:
+        {context}
+        
+        Please generate comprehensive, professional content for this grant section.
+        """
+        
+        # Get AI response
+        ai_response = openai_utils.chat_grant_assistant(prompt, project_id)
+        
+        # Update section with AI-generated content
+        result = grant_sections.grant_section_manager.update_section(project_id, section_id, ai_response)
+        
+        return {
+            "success": True,
+            "project_id": project_id,
+            "section_id": section_id,
+            "ai_generated": True,
+            **result
+        }
+    except Exception as e:
+        print(f"❌ Error regenerating grant section: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/grant/sections/{project_id}/export/markdown")
+async def export_grant_markdown(project_id: str):
+    """Export grant document as markdown."""
+    try:
+        markdown_content = grant_sections.grant_section_manager.export_to_markdown(project_id)
+        
+        return {
+            "success": True,
+            "project_id": project_id,
+            "content": markdown_content,
+            "format": "markdown"
+        }
+    except Exception as e:
+        print(f"❌ Error exporting grant markdown: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/grant/sections/{project_id}/export/docx")
+async def export_grant_docx(project_id: str):
+    """Export grant document as DOCX."""
+    try:
+        docx_content = grant_sections.grant_section_manager.export_to_docx(project_id)
+        
+        return {
+            "success": True,
+            "project_id": project_id,
+            "content": docx_content.decode('utf-8'),
+            "format": "docx"
+        }
+    except Exception as e:
+        print(f"❌ Error exporting grant DOCX: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/grant/sections/{project_id}/stats")
+async def get_grant_stats(project_id: str):
+    """Get grant document statistics."""
+    try:
+        stats = grant_sections.grant_section_manager.get_document_stats(project_id)
+        
+        return {
+            "success": True,
+            "project_id": project_id,
+            **stats
+        }
+    except Exception as e:
+        print(f"❌ Error getting grant stats: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/grant/templates")
+async def get_grant_templates():
+    """Get grant section templates."""
+    try:
+        templates = grant_sections.grant_section_manager.get_section_templates()
+        
+        return {
+            "success": True,
+            **templates
+        }
+    except Exception as e:
+        print(f"❌ Error getting grant templates: {e}")
+        return {"success": False, "error": str(e)}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import ChatComponent from './ChatComponent';
+import GrantSections from './GrantSections';
 
 const API_BASE = "https://ai-grant-writer-tool-production.up.railway.app";
 
@@ -154,7 +155,8 @@ function App() {
   const steps = [
     { id: 1, title: 'Create or Select Project', description: 'Start a new grant project or continue existing work' },
     { id: 2, title: 'Upload Documents & Set Context', description: 'Add files and describe your organization and initiative' },
-    { id: 3, title: 'Interactive Chat & AI Assistant', description: 'Everything you need in one powerful chat interface' }
+    { id: 3, title: 'Interactive Chat & AI Assistant', description: 'Everything you need in one powerful chat interface' },
+    { id: 4, title: 'Grant Application Sections', description: 'Build your complete grant application with structured sections' }
   ];
 
   return (
@@ -384,6 +386,18 @@ function App() {
                 <ChatComponent projectId={currentProject.id} />
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Step 4: Grant Application Sections */}
+        {currentStep === 4 && currentProject && (
+          <div className="step-container">
+            <div className="step-header">
+              <h2>Grant Application Sections</h2>
+              <p>Build your complete grant application with structured sections</p>
+            </div>
+            
+            <GrantSections projectId={currentProject.id} />
           </div>
         )}
 
