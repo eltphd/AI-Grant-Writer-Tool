@@ -1,9 +1,10 @@
-/* Grant Sections Component Styles with GWAT Brand Colors */
+/* Grant Sections Component Styles with GWAT Glassmorphic Dark Theme */
 .grant-sections-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -21,7 +22,7 @@
 .grant-sections-loading .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid var(--border);
+  border: 3px solid var(--glass-border);
   border-top: 3px solid var(--indigo-glow);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -31,7 +32,7 @@
 /* Header */
 .grant-sections-header {
   padding: 1.5rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--glass-border);
   background: var(--gradient-surface);
 }
 
@@ -60,7 +61,7 @@
 .progress-bar {
   flex: 1;
   height: 8px;
-  background: var(--border);
+  background: var(--glass-border);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -98,12 +99,14 @@
 }
 
 .section-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   margin-bottom: 1rem;
   overflow: hidden;
   transition: all 0.2s ease;
+  box-shadow: var(--glass-shadow);
 }
 
 .section-card:hover {
@@ -116,7 +119,7 @@
 }
 
 .section-card.draft {
-  border-left: 4px solid var(--light-slate);
+  border-left: 4px solid var(--surface-light);
 }
 
 /* Section Header */
@@ -130,7 +133,7 @@
 }
 
 .section-header:hover {
-  background: var(--background);
+  background: var(--surface-light);
 }
 
 .section-info {
@@ -170,7 +173,7 @@
 }
 
 .status-badge.draft {
-  background: var(--light-slate);
+  background: var(--surface-light);
   color: var(--text-primary);
 }
 
@@ -189,7 +192,7 @@
 .progress-indicator {
   width: 60px;
   height: 6px;
-  background: var(--border);
+  background: var(--glass-border);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -204,7 +207,7 @@
   width: 32px;
   height: 32px;
   border: none;
-  background: var(--surface);
+  background: var(--surface-light);
   color: var(--text-primary);
   border-radius: 50%;
   cursor: pointer;
@@ -214,6 +217,7 @@
   font-size: 1.25rem;
   font-weight: 600;
   transition: all 0.2s ease;
+  backdrop-filter: var(--glass-blur);
 }
 
 .expand-btn:hover {
@@ -223,8 +227,8 @@
 
 /* Section Content */
 .section-content {
-  border-top: 1px solid var(--border);
-  background: var(--background);
+  border-top: 1px solid var(--glass-border);
+  background: var(--surface-light);
 }
 
 .section-editor {
@@ -235,15 +239,16 @@
   width: 100%;
   min-height: 200px;
   padding: 1rem;
-  border: 2px solid var(--border);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.875rem;
   line-height: 1.6;
   resize: vertical;
-  background: var(--surface);
+  background: var(--surface-light);
   color: var(--text-primary);
   transition: border-color 0.2s ease;
+  backdrop-filter: var(--glass-blur);
 }
 
 .section-editor textarea:focus {
@@ -264,7 +269,7 @@
   gap: 1rem;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
 }
 
 .editor-actions .btn {
@@ -283,7 +288,7 @@
 .updating-indicator .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--glass-border);
   border-top: 2px solid var(--indigo-glow);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -292,8 +297,8 @@
 /* Document Stats */
 .document-stats {
   padding: 1.5rem;
-  border-top: 1px solid var(--border);
-  background: var(--background);
+  border-top: 1px solid var(--glass-border);
+  background: var(--surface-light);
 }
 
 .document-stats h3 {
@@ -314,9 +319,11 @@
   flex-direction: column;
   align-items: center;
   padding: 1rem;
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   border-radius: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 .stat-label {

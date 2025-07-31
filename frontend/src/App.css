@@ -1,27 +1,36 @@
-/* GWAT Brand Color Palette */
+/* GWAT Glassmorphic Dark Theme */
 :root {
   --ink-black: #1C1C1E;
   --indigo-glow: #6C63FF;
   --light-slate: #F2F2F7;
   --neon-mint: #00FFD1;
   
-  /* Semantic colors */
+  /* Dark theme semantic colors */
   --primary: var(--indigo-glow);
   --primary-hover: #5A52E8;
   --secondary: var(--neon-mint);
-  --background: var(--light-slate);
-  --surface: #FFFFFF;
-  --text-primary: var(--ink-black);
-  --text-secondary: #6B6A68;
-  --border: #E8E4D8;
-  --success: #28A745;
-  --warning: #FFC107;
-  --error: #DC3545;
+  --background: #0A0A0C;
+  --surface: rgba(28, 28, 30, 0.8);
+  --surface-light: rgba(28, 28, 30, 0.6);
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(255, 255, 255, 0.05);
+  --success: #00E676;
+  --warning: #FFD600;
+  --error: #FF5252;
+  
+  /* Glassmorphic effects */
+  --glass-bg: rgba(28, 28, 30, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --glass-blur: blur(20px);
   
   /* Gradients */
   --gradient-primary: linear-gradient(135deg, var(--indigo-glow) 0%, #8B7FFF 100%);
   --gradient-mint: linear-gradient(135deg, var(--neon-mint) 0%, #00E6B8 100%);
-  --gradient-surface: linear-gradient(135deg, var(--surface) 0%, var(--light-slate) 100%);
+  --gradient-surface: linear-gradient(135deg, var(--surface) 0%, var(--surface-light) 100%);
+  --gradient-dark: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
 }
 
 /* Reset and Base Styles */
@@ -33,10 +42,12 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: var(--background);
+  background: var(--gradient-dark);
   color: var(--text-primary);
   line-height: 1.6;
   font-weight: 400;
+  min-height: 100vh;
+  backdrop-filter: var(--glass-blur);
 }
 
 .app {
@@ -47,10 +58,11 @@ body {
 
 /* Header */
 .app-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
   padding: 1rem 0;
-  box-shadow: 0 2px 8px rgba(28, 28, 30, 0.05);
+  box-shadow: var(--glass-shadow);
 }
 
 .header-content {
@@ -101,8 +113,9 @@ body {
 
 /* Progress Steps */
 .progress-container {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
   padding: 1rem 0;
 }
 
@@ -121,12 +134,13 @@ body {
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  background: var(--background);
-  border: 2px solid var(--border);
+  background: var(--surface-light);
+  border: 1px solid var(--glass-border);
   cursor: pointer;
   transition: all 0.2s ease;
   min-width: 200px;
   flex-shrink: 0;
+  backdrop-filter: var(--glass-blur);
 }
 
 .progress-step.active {
@@ -144,7 +158,7 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--light-slate);
+  background: var(--surface-light);
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -188,16 +202,18 @@ body {
 }
 
 .step-container {
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(28, 28, 30, 0.08);
+  box-shadow: var(--glass-shadow);
   overflow: hidden;
   min-height: calc(100vh - 200px);
+  border: 1px solid var(--glass-border);
 }
 
 .step-header {
   padding: 2rem 1.5rem 1.5rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--glass-border);
   background: var(--gradient-surface);
 }
 
@@ -222,8 +238,9 @@ body {
 }
 
 .project-card {
-  background: var(--surface);
-  border: 2px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   padding: 1.5rem;
   cursor: pointer;
@@ -232,18 +249,19 @@ body {
   display: flex;
   align-items: center;
   gap: 1rem;
+  box-shadow: var(--glass-shadow);
 }
 
 .project-card:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.15);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2);
 }
 
 .project-card.new-project {
   border-style: dashed;
-  border-color: var(--light-slate);
-  background: var(--background);
+  border-color: var(--border);
+  background: var(--surface-light);
 }
 
 .project-card.new-project:hover {
@@ -300,6 +318,7 @@ body {
   gap: 0.5rem;
   text-decoration: none;
   font-family: 'Inter', sans-serif;
+  backdrop-filter: var(--glass-blur);
 }
 
 .btn-primary {
@@ -345,13 +364,15 @@ body {
 .form-group textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 2px solid var(--border);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.875rem;
   resize: vertical;
   transition: border-color 0.2s ease;
-  background: var(--surface);
+  background: var(--surface-light);
+  color: var(--text-primary);
+  backdrop-filter: var(--glass-blur);
 }
 
 .form-group textarea:focus {
@@ -369,12 +390,13 @@ body {
 /* Upload Area */
 .upload-area {
   position: relative;
-  border: 2px dashed var(--border);
+  border: 2px dashed var(--glass-border);
   border-radius: 12px;
   padding: 2rem;
   text-align: center;
   transition: all 0.2s ease;
-  background: var(--background);
+  background: var(--surface-light);
+  backdrop-filter: var(--glass-blur);
 }
 
 .upload-area:hover {
@@ -432,7 +454,7 @@ body {
 .spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--glass-border);
   border-top: 2px solid var(--indigo-glow);
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -443,114 +465,62 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Mobile-First Chat and Upload Screens */
-.chat-and-docs-section {
+/* Chat and Export Layout */
+.chat-and-export-section {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 200px);
 }
 
-.document-reference-panel {
-  background: var(--surface);
+.export-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
-.document-reference-panel h3 {
+.export-panel h3 {
   margin-bottom: 1rem;
   color: var(--text-primary);
   font-size: 1.125rem;
   font-weight: 600;
 }
 
-.context-summary {
-  margin-bottom: 1.5rem;
-}
-
-.context-item {
-  background: var(--background);
-  padding: 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  border: 1px solid var(--border);
-}
-
-.context-item h4 {
-  margin: 0 0 0.5rem 0;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.context-item p {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  line-height: 1.4;
-}
-
-.document-list h4 {
-  margin-bottom: 0.75rem;
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.file-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.file-item {
+.export-actions {
   display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  background: var(--background);
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
-  border: 1px solid var(--border);
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.file-icon {
-  margin-right: 0.75rem;
-  font-size: 1rem;
+.export-actions .btn {
+  width: 100%;
+  justify-content: center;
 }
 
-.file-name {
-  flex: 1;
-  font-size: 0.8rem;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.file-size {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-}
-
-.no-files {
-  color: var(--text-secondary);
-  font-style: italic;
-  font-size: 0.8rem;
-  text-align: center;
-  padding: 1rem;
-}
-
-.panel-actions {
-  margin-top: 1.5rem;
+.export-info {
+  margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
+}
+
+.export-info p {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-style: italic;
+  text-align: center;
 }
 
 .chat-main {
   flex: 1;
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   border-radius: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
   overflow: hidden;
+  box-shadow: var(--glass-shadow);
 }
 
 /* Context and Upload Section */
@@ -562,10 +532,12 @@ body {
 }
 
 .context-form, .upload-section {
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
   padding: 1.5rem;
   border-radius: 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
 .context-form h3, .upload-section h3 {
@@ -579,7 +551,7 @@ body {
   text-align: center;
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--glass-border);
 }
 
 .continue-note {
@@ -590,8 +562,9 @@ body {
 
 /* Footer */
 .app-footer {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
   padding: 1rem 0;
   text-align: center;
   color: var(--text-secondary);
@@ -600,12 +573,12 @@ body {
 
 /* Responsive Design */
 @media (min-width: 768px) {
-  .chat-and-docs-section {
+  .chat-and-export-section {
     flex-direction: row;
     gap: 1.5rem;
   }
   
-  .document-reference-panel {
+  .export-panel {
     width: 300px;
     margin-bottom: 0;
   }

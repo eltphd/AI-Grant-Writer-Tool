@@ -52,7 +52,7 @@ function App() {
 
   const selectProject = (project) => {
     setCurrentProject(project);
-    setCurrentStep(2);
+    setCurrentStep(3); // Go straight to chat for existing projects
     loadProjectContext(project.id);
   };
 
@@ -335,49 +335,33 @@ function App() {
               <p>Everything you need in one powerful chat interface</p>
             </div>
             
-            <div className="chat-and-docs-section">
-              {/* Document Reference Panel */}
-              <div className="document-reference-panel">
-                <h3>📚 Project Documents & Context</h3>
-                <div className="context-summary">
-                  {organizationInfo && (
-                    <div className="context-item">
-                      <h4>🏢 Organization</h4>
-                      <p>{organizationInfo}</p>
-                    </div>
-                  )}
-                  {initiativeDescription && (
-                    <div className="context-item">
-                      <h4>🎯 Initiative</h4>
-                      <p>{initiativeDescription}</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="document-list">
-                  <h4>📁 Uploaded Files</h4>
-                  {projectContext.files && projectContext.files.length > 0 ? (
-                    <ul className="file-list">
-                      {projectContext.files.map((file, index) => (
-                        <li key={index} className="file-item">
-                          <span className="file-icon">📄</span>
-                          <span className="file-name">{file.filename}</span>
-                          <span className="file-size">({Math.round(file.file_size / 1024)}KB)</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="no-files">No files uploaded yet</p>
-                  )}
-                </div>
-                
-                <div className="panel-actions">
+            <div className="chat-and-export-section">
+              {/* Export Panel */}
+              <div className="export-panel">
+                <h3>📋 Export Options</h3>
+                <div className="export-actions">
                   <button 
                     className="btn btn-secondary"
-                    onClick={() => setCurrentStep(2)}
+                    onClick={() => setCurrentStep(4)}
                   >
-                    📝 Edit Context & Files
+                    📄 Grant Sections
                   </button>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => window.open(`${API_BASE}/grant/sections/${currentProject.id}/export/markdown`, '_blank')}
+                  >
+                    📝 Export Markdown
+                  </button>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => window.open(`${API_BASE}/grant/sections/${currentProject.id}/export/docx`, '_blank')}
+                  >
+                    📄 Export DOCX
+                  </button>
+                </div>
+                
+                <div className="export-info">
+                  <p>Quick access to your grant application sections and export options.</p>
                 </div>
               </div>
               

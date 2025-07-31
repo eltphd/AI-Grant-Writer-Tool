@@ -1,15 +1,16 @@
-/* Chat Component Styles with GWAT Brand Colors */
+/* Chat Component Styles with GWAT Glassmorphic Dark Theme */
 .chat-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: var(--surface);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
 }
 
 /* Chat Header */
 .chat-header {
   padding: 1.5rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--glass-border);
   background: var(--gradient-surface);
 }
 
@@ -103,8 +104,9 @@
   justify-content: center;
   font-size: 1.125rem;
   flex-shrink: 0;
-  background: var(--surface);
-  border: 2px solid var(--border);
+  background: var(--surface-light);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur);
 }
 
 .message.user .message-avatar {
@@ -138,10 +140,11 @@
 }
 
 .message.ai .message-text {
-  background: var(--surface);
+  background: var(--glass-bg);
   color: var(--text-primary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
   border-bottom-left-radius: 4px;
+  backdrop-filter: var(--glass-blur);
 }
 
 .message-timestamp {
@@ -192,8 +195,9 @@
 /* Input Area */
 .input-container {
   padding: 1rem;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
+  border-top: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
 }
 
 .input-wrapper {
@@ -206,15 +210,16 @@
 .input-wrapper textarea {
   flex: 1;
   padding: 0.75rem;
-  border: 2px solid var(--border);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   font-family: inherit;
   font-size: 0.875rem;
   resize: none;
   max-height: 120px;
-  background: var(--surface);
+  background: var(--surface-light);
   color: var(--text-primary);
   transition: border-color 0.2s ease;
+  backdrop-filter: var(--glass-blur);
 }
 
 .input-wrapper textarea:focus {
@@ -251,7 +256,7 @@
 }
 
 .send-btn:disabled {
-  background: var(--border);
+  background: var(--glass-border);
   color: var(--text-secondary);
   cursor: not-allowed;
 }
@@ -265,9 +270,9 @@
 
 .action-btn {
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--surface-light);
   color: var(--text-primary);
   font-size: 0.8rem;
   font-weight: 500;
@@ -276,10 +281,11 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+  backdrop-filter: var(--glass-blur);
 }
 
 .action-btn:hover:not(:disabled) {
-  background: var(--background);
+  background: var(--surface);
   border-color: var(--indigo-glow);
 }
 
@@ -290,8 +296,9 @@
 
 /* Brainstorming Section */
 .brainstorm-section {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
   padding: 1rem;
 }
 
@@ -321,7 +328,7 @@
 }
 
 .close-btn:hover {
-  background: var(--background);
+  background: var(--surface-light);
   color: var(--text-primary);
 }
 
@@ -334,14 +341,15 @@
 .brainstorm-input textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 2px solid var(--border);
+  border: 1px solid var(--glass-border);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.875rem;
   resize: vertical;
-  background: var(--surface);
+  background: var(--surface-light);
   color: var(--text-primary);
   transition: border-color 0.2s ease;
+  backdrop-filter: var(--glass-blur);
 }
 
 .brainstorm-input textarea:focus {
