@@ -13,6 +13,15 @@ try:
 except ImportError:
     print("python-dotenv not installed. Skipping .env loading.")
 
+# Debug environment variables at startup
+import os
+print("🔧 Environment variables at startup:")
+print(f"🔧 OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'not set'}")
+print(f"🔧 USE_SUPABASE: {os.getenv('USE_SUPABASE', 'not set')}")
+print(f"🔧 SUPABASE_URL: {'set' if os.getenv('SUPABASE_URL') else 'not set'}")
+print(f"🔧 DB_HOSTNAME: {os.getenv('DB_HOSTNAME', 'not set')}")
+print(f"🔧 PORT: {os.getenv('PORT', 'not set')}")
+
 # Import utility modules
 try:
     from utils import file_utils  # from src/utils/file_utils.py
@@ -172,11 +181,22 @@ def test():
     
     # Test OpenAI connection
     openai_status = "unknown"
+    api_key_status = "not found"
+    
+    # Check environment variable directly
+    import os
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        api_key_status = f"found (length: {len(api_key)}, starts with: {api_key[:7]}...)"
+    else:
+        api_key_status = "not found in environment"
+    
     try:
-        if openai_utils.get_openai_response("Hello", "You are a helpful assistant.", max_tokens=10):
+        response = openai_utils.get_openai_response("Hello", "You are a helpful assistant.", max_tokens=10)
+        if response and not response.startswith("⚠️"):
             openai_status = "working"
         else:
-            openai_status = "not configured"
+            openai_status = f"not working: {response}"
     except Exception as e:
         openai_status = f"error: {str(e)}"
     
@@ -185,7 +205,14 @@ def test():
             "status": "ok", 
             "message": "Backend is working!", 
             "timestamp": datetime.now().isoformat(),
-            "openai_status": openai_status
+            "openai_status": openai_status,
+            "api_key_status": api_key_status,
+            "environment_vars": {
+                "OPENAI_API_KEY_set": bool(api_key),
+                "USE_SUPABASE": os.getenv("USE_SUPABASE", "not set"),
+                "SUPABASE_URL_set": bool(os.getenv("SUPABASE_URL")),
+                "DB_HOSTNAME": os.getenv("DB_HOSTNAME", "not set")
+            }
         },
         headers={
             "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
