@@ -18,8 +18,12 @@ try:
     from utils import file_utils  # from src/utils/file_utils.py
     from utils import openai_utils  # from src/utils/openai_utils.py
     print("✅ Successfully imported utils modules")
+    print(f"✅ file_utils type: {type(file_utils)}")
+    print(f"✅ openai_utils type: {type(openai_utils)}")
 except ImportError as e:
     print(f"❌ Error importing utils modules: {e}")
+    import traceback
+    traceback.print_exc()
     # Create dummy modules to prevent crashes
     class DummyFileUtils:
         def save_uploaded_file(self, *args, **kwargs):
@@ -34,14 +38,23 @@ except ImportError as e:
             return "Context not available"
     
     class DummyOpenAIUtils:
+        def get_openai_response(self, *args, **kwargs):
+            return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
         def generate_grant_response(self, *args, **kwargs):
-            return "OpenAI utils not available"
+            return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
         def chat_grant_assistant(self, *args, **kwargs):
-            return "OpenAI utils not available"
+            return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
         def brainstorm_grant_ideas(self, *args, **kwargs):
-            return {"error": "OpenAI utils not available"}
+            return {
+                "topic": args[0] if args else "unknown",
+                "suggestions": "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses.",
+                "error": "OpenAI utils not available"
+            }
         def analyze_grant_requirements(self, *args, **kwargs):
-            return {"error": "OpenAI utils not available"}
+            return {
+                "analysis": "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses.",
+                "error": "OpenAI utils not available"
+            }
     
     file_utils = DummyFileUtils()
     openai_utils = DummyOpenAIUtils()
