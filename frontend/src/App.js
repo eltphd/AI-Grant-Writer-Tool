@@ -17,16 +17,21 @@ function App() {
 
   // Load projects on app load (no auth required)
   useEffect(() => {
+    console.log('App loaded, loading projects...');
     loadProjects();
   }, []);
 
   const loadProjects = async () => {
     try {
+      console.log('Loading projects from:', `${API_BASE}/projects`);
       const response = await fetch(`${API_BASE}/projects`);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Projects loaded:', data);
         setProjects(data.projects || []);
+      } else {
+        console.error('Failed to load projects:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error loading projects:', error);
@@ -147,6 +152,9 @@ function App() {
       />
 
       <main className="app-main">
+        {console.log('Rendering step:', currentStep)}
+        {console.log('Projects count:', projects.length)}
+        
         {/* Step 1: Project Selection */}
         {currentStep === 1 && (
           <div className="step-container">
