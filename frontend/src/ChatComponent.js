@@ -38,7 +38,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 
 // Set backend URL from Vercel or fallback to production Railway
-const API_BASE = process.env.REACT_APP_API_URL || "https://ai-grant-writer-tool-production.up.railway.app";
+const API_BASE = "https://ai-grant-writer-tool-production.up.railway.app";
 
 // Debug logging for API URLs
 console.log("🔧 ChatComponent API_BASE:", API_BASE);
