@@ -14,6 +14,14 @@ function App() {
   const [organizationInfo, setOrganizationInfo] = useState('');
   const [initiativeDescription, setInitiativeDescription] = useState('');
   const [projectContext, setProjectContext] = useState({ files: [] });
+  const [sections, setSections] = useState({
+    executive_summary: '',
+    organization_profile: '',
+    project_approach: '',
+    timeline: '',
+    budget: '',
+    evaluation: ''
+  });
 
   // Load projects on app load (no auth required)
   useEffect(() => {
@@ -246,6 +254,13 @@ function App() {
     }
   };
 
+  const handleEditSection = (sectionKey) => {
+    setCurrentStep(2); // Go back to the creation step
+    // In a real app, you'd pass the sectionKey to a modal or a dedicated editing component
+    // For now, we'll just show a placeholder message
+    alert(`Editing section: ${sectionKey}`);
+  };
+
   const handleStepChange = (stepId) => {
     setCurrentStep(stepId);
   };
@@ -278,6 +293,7 @@ function App() {
                   <div className="project-info">
                     <h3>{project.name}</h3>
                     <p>{project.description}</p>
+                    <small>Created: {new Date(project.created_at).toLocaleDateString()}</small>
                   </div>
                 </div>
               ))}
@@ -293,70 +309,42 @@ function App() {
           </div>
         )}
 
-        {/* Step 2: Upload & Context */}
+        {/* Step 2: Grant Creation (Merged Upload & Sections) */}
         {currentStep === 2 && (
           <div className="step-container">
             <div className="step-header">
-              <h2>Upload Documents & Set Context</h2>
-              <p>Add relevant documents and provide context for your grant project</p>
+              <h2>Create Your Grant Proposal</h2>
+              <p>Upload documents, set context, and write your grant sections all in one place</p>
             </div>
             
-            <div className="context-and-upload-section">
-              <div className="context-form">
-                <h3>📝 Project Context</h3>
-                <div className="form-group">
-                  <label htmlFor="organization">Organization Information</label>
+            <div className="grant-creation-layout">
+              {/* Left Side - Context & Upload */}
+              <div className="context-upload-panel">
+                <h3>📄 Documents & Context</h3>
+                
+                <div className="context-form">
+                  <h4>🏢 Organization Information</h4>
                   <textarea
-                    id="organization"
                     value={organizationInfo}
                     onChange={(e) => setOrganizationInfo(e.target.value)}
-                    placeholder="Describe your organization, mission, and key accomplishments..."
+                    placeholder="Tell me about your organization, mission, and key accomplishments..."
                     rows={4}
                   />
                 </div>
                 
-                <div className="form-group">
-                  <label htmlFor="initiative">Initiative Description</label>
+                <div className="context-form">
+                  <h4>🎯 Initiative Description</h4>
                   <textarea
-                    id="initiative"
                     value={initiativeDescription}
                     onChange={(e) => setInitiativeDescription(e.target.value)}
-                    placeholder="Describe the initiative or project you're seeking funding for..."
+                    placeholder="Describe the project or initiative you're seeking funding for..."
                     rows={4}
                   />
                 </div>
                 
-                <button 
-                  className="btn btn-primary"
-                  onClick={updateProjectContext}
-                >
-                  Save Context
-                </button>
-              </div>
-              
-              <div className="upload-section">
-                <h3>📄 Upload Documents</h3>
-                <div className="upload-area">
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.docx,.doc,.txt,.md"
-                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                    className="file-input"
-                    id="file-upload"
-                  />
-                  <label htmlFor="file-upload" className="upload-label">
-                    <div className="upload-icon">📤</div>
-                    <div className="upload-text">
-                      <h4>Drop files here or click to upload</h4>
-                      <p>Supported formats: PDF, DOCX, DOC, TXT, MD</p>
-                    </div>
-                  </label>
-                </div>
-                
-                <div className="upload-specific">
+                <div className="upload-section">
                   <h4>📋 RFP Upload (Recommended)</h4>
-                  <p>Upload the Request for Proposal (RFP) document to help AI align your response with grant requirements.</p>
+                  <p>Upload the Request for Proposal document to help me align your response with grant requirements.</p>
                   <input
                     type="file"
                     accept=".pdf,.docx,.doc,.txt,.md"
@@ -399,30 +387,68 @@ function App() {
                       <h4>📊 Alignment Results</h4>
                       <p><strong>Organization Fit Score:</strong> {currentProject.rfpAlignment.org_fit_score}%</p>
                       <p><strong>Overall Score:</strong> {currentProject.rfpAlignment.overall_score}%</p>
-                      
-                      {currentProject.rfpAlignment.strengths && currentProject.rfpAlignment.strengths.length > 0 && (
-                        <div>
-                          <h5>✅ Strengths:</h5>
-                          <ul>
-                            {currentProject.rfpAlignment.strengths.slice(0, 3).map((strength, index) => (
-                              <li key={index}>{strength}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      
-                      {currentProject.rfpAlignment.recommendations && currentProject.rfpAlignment.recommendations.length > 0 && (
-                        <div>
-                          <h5>💡 Recommendations:</h5>
-                          <ul>
-                            {currentProject.rfpAlignment.recommendations.map((rec, index) => (
-                              <li key={index}>{rec}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   )}
+                </div>
+                
+                <div className="upload-section">
+                  <h4>📄 Additional Documents</h4>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.doc,.txt,.md"
+                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
+                    className="file-input"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload" className="upload-label">
+                    <div className="upload-icon">📤</div>
+                    <div className="upload-text">
+                      <h4>Drop files here or click to upload</h4>
+                      <p>Supported formats: PDF, DOCX, DOC, TXT, MD</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              
+              {/* Right Side - Grant Sections */}
+              <div className="grant-sections-panel">
+                <h3>📋 Grant Sections</h3>
+                <p>Write your grant proposal sections. I'll help you with guidance and suggestions!</p>
+                
+                <div className="sections-grid">
+                  {Object.entries({
+                    executive_summary: "Executive Summary",
+                    organization_profile: "Organization Profile", 
+                    project_approach: "Project Description & Approach",
+                    timeline: "Timeline & Implementation",
+                    budget: "Budget & Financial Plan",
+                    evaluation: "Evaluation & Impact Measurement"
+                  }).map(([sectionKey, sectionTitle]) => (
+                    <div key={sectionKey} className="section-card">
+                      <div className="section-header">
+                        <h4>{sectionTitle}</h4>
+                        <button 
+                          className="btn btn-primary btn-small"
+                          onClick={() => handleEditSection(sectionKey)}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                      
+                      <div className="section-content">
+                        {sections[sectionKey] || `No content yet. Click 'Edit' to start writing your ${sectionTitle.toLowerCase()}.`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="section-help">
+                  <h4>💡 Need Help Writing?</h4>
+                  <p>Go to the Chat section and ask me to help you write any specific section. I can provide guidance, examples, and suggestions tailored to your project!</p>
+                  <button className="btn btn-secondary" onClick={() => setCurrentStep(3)}>
+                    Go to Chat
+                  </button>
                 </div>
               </div>
             </div>
@@ -443,16 +469,29 @@ function App() {
           </div>
         )}
 
-        {/* Step 4: Grant Sections */}
+        {/* Step 4: Export & Review */}
         {currentStep === 4 && (
           <div className="step-container">
             <div className="step-header">
-              <h2>Grant Sections</h2>
-              <p>View and edit structured grant sections</p>
+              <h2>Review & Export</h2>
+              <p>Review your complete grant proposal and export it</p>
             </div>
             
-            <div className="grant-sections-main">
-              <GrantSections />
+            <div className="export-panel">
+              <h3>📄 Your Grant Proposal</h3>
+              <p>Review your completed grant proposal before exporting.</p>
+              
+              <div className="export-actions">
+                <button className="btn btn-primary">
+                  📝 Export as Markdown
+                </button>
+                <button className="btn btn-primary">
+                  📄 Export as DOCX
+                </button>
+                <button className="btn btn-secondary">
+                  📋 Review Sections
+                </button>
+              </div>
             </div>
           </div>
         )}

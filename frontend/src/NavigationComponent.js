@@ -7,13 +7,13 @@ const NavigationComponent = ({ currentStep, onStepChange, user }) => {
       id: 1,
       title: 'Projects',
       icon: '📁',
-      description: 'Manage your grant projects'
+      description: 'View your grant projects'
     },
     {
       id: 2,
-      title: 'Upload & Context',
-      icon: '📄',
-      description: 'Add documents and set context'
+      title: 'Create Grant',
+      icon: '✍️',
+      description: 'Upload documents and write sections'
     },
     {
       id: 3,
@@ -23,9 +23,9 @@ const NavigationComponent = ({ currentStep, onStepChange, user }) => {
     },
     {
       id: 4,
-      title: 'Sections',
-      icon: '📋',
-      description: 'Structured grant sections'
+      title: 'Export',
+      icon: '📄',
+      description: 'Review and export proposal'
     }
   ];
 
