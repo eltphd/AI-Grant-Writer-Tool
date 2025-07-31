@@ -577,28 +577,143 @@ def get_chat_messages(project_id: str) -> List[Dict[str, Any]]:
         return []
 
 def delete_chat_history(project_id: str) -> bool:
-    """Delete chat history for a project.
+    """Delete all chat messages for a project."""
+    conn = get_db_connection()
+    if not conn:
+        return False
     
-    Args:
-        project_id: Project ID
-        
-    Returns:
-        True if successful, False otherwise
-    """
     try:
-        init_database()
-        conn = get_db_connection()
-        if not conn:
-            return False
-        
         cursor = conn.cursor()
         cursor.execute("DELETE FROM chat_messages WHERE project_id = %s", (project_id,))
-        
         conn.commit()
-        cursor.close()
-        conn.close()
         return True
-        
     except Exception as e:
         print(f"❌ Error deleting chat history: {e}")
-        return False 
+        return False
+    finally:
+        conn.close()
+
+# Project management functions
+def get_all_projects() -> List[Dict[str, Any]]:
+    """Get all projects."""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT DISTINCT project_id, 
+                   MAX(created_at) as last_activity,
+                   COUNT(*) as file_count
+            FROM files 
+            GROUP BY project_id
+            ORDER BY last_activity DESC
+        """)
+        
+        projects = []
+        for row in cursor.fetchall():
+            project_id, last_activity, file_count = row
+            projects.append({
+                "id": project_id,
+                "name": f"Project {project_id[:8]}",
+                "description": f"Project with {file_count} files",
+                "created_at": last_activity,
+                "updated_at": last_activity,
+                "file_count": file_count
+            })
+        
+        return projects
+    except Exception as e:
+        print(f"❌ Error getting all projects: {e}")
+        return []
+    finally:
+        conn.close()
+
+def create_project(project_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Create a new project."""
+    # For now, we'll create a project by saving a placeholder file
+    # This ensures the project exists in the database
+    try:
+        # Create a placeholder file to establish the project
+        placeholder_content = b"Project created"
+        file_info = {
+            "filename": "project_created.txt",
+            "file_size": len(placeholder_content),
+            "content_type": "text/plain",
+            "project_id": project_data["id"]
+        }
+        
+        result = save_uploaded_file(placeholder_content, file_info["filename"], project_data["id"])
+        
+        if result["success"]:
+            return {
+                "id": project_data["id"],
+                "name": project_data.get("name", f"Project {project_data['id'][:8]}"),
+                "description": project_data.get("description", "New project"),
+                "created_at": project_data.get("created_at", datetime.utcnow()),
+                "updated_at": project_data.get("updated_at", datetime.utcnow())
+            }
+        else:
+            return None
+    except Exception as e:
+        print(f"❌ Error creating project: {e}")
+        return None
+
+def get_project(project_id: str) -> Optional[Dict[str, Any]]:
+    """Get a specific project."""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT project_id, 
+                   MAX(created_at) as last_activity,
+                   COUNT(*) as file_count
+            FROM files 
+            WHERE project_id = %s
+            GROUP BY project_id
+        """, (project_id,))
+        
+        row = cursor.fetchone()
+        if row:
+            project_id, last_activity, file_count = row
+            return {
+                "id": project_id,
+                "name": f"Project {project_id[:8]}",
+                "description": f"Project with {file_count} files",
+                "created_at": last_activity,
+                "updated_at": last_activity,
+                "file_count": file_count
+            }
+        return None
+    except Exception as e:
+        print(f"❌ Error getting project: {e}")
+        return None
+    finally:
+        conn.close()
+
+def delete_project(project_id: str) -> bool:
+    """Delete a project and all its data."""
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        # Delete all data associated with the project
+        cursor.execute("DELETE FROM files WHERE project_id = %s", (project_id,))
+        cursor.execute("DELETE FROM project_contexts WHERE project_id = %s", (project_id,))
+        cursor.execute("DELETE FROM chat_messages WHERE project_id = %s", (project_id,))
+        cursor.execute("DELETE FROM embeddings WHERE project_id = %s", (project_id,))
+        cursor.execute("DELETE FROM redactions WHERE project_id = %s", (project_id,))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Error deleting project: {e}")
+        return False
+    finally:
+        conn.close() 

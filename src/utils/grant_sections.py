@@ -29,7 +29,6 @@ class GrantSection:
 class GrantDocument:
     """Represents a complete grant document."""
     project_id: str
-    user_id: str
     sections: Dict[str, GrantSection]
     total_words: int
     completion_percentage: float
@@ -88,7 +87,7 @@ class GrantSectionManager:
     def __init__(self):
         self.documents: Dict[str, GrantDocument] = {}
 
-    def create_grant_document(self, project_id: str, user_id: str) -> GrantDocument:
+    def create_grant_document(self, project_id: str) -> GrantDocument:
         """Create a new grant document with all six sections."""
         sections = {}
         
@@ -106,7 +105,6 @@ class GrantSectionManager:
         
         document = GrantDocument(
             project_id=project_id,
-            user_id=user_id,
             sections=sections,
             total_words=0,
             completion_percentage=0.0,
@@ -114,19 +112,18 @@ class GrantSectionManager:
             chat_summary=""
         )
         
-        self.documents[f"{project_id}_{user_id}"] = document
+        self.documents[project_id] = document
         return document
 
-    def get_grant_document(self, project_id: str, user_id: str) -> Optional[GrantDocument]:
+    def get_grant_document(self, project_id: str) -> Optional[GrantDocument]:
         """Get an existing grant document."""
-        key = f"{project_id}_{user_id}"
-        return self.documents.get(key)
+        return self.documents.get(project_id)
 
-    def update_section_from_chat(self, project_id: str, user_id: str, section_id: str, content: str) -> Dict[str, Any]:
+    def update_section_from_chat(self, project_id: str, section_id: str, content: str) -> Dict[str, Any]:
         """Update a section with content from chat conversation."""
-        document = self.get_grant_document(project_id, user_id)
+        document = self.get_grant_document(project_id)
         if not document:
-            document = self.create_grant_document(project_id, user_id)
+            document = self.create_grant_document(project_id)
         
         if section_id in document.sections:
             section = document.sections[section_id]
@@ -147,9 +144,9 @@ class GrantSectionManager:
         
         return {"success": False, "error": "Section not found"}
 
-    def update_chat_summary(self, project_id: str, user_id: str, summary: str) -> bool:
+    def update_chat_summary(self, project_id: str, summary: str) -> bool:
         """Update the chat summary for the document."""
-        document = self.get_grant_document(project_id, user_id)
+        document = self.get_grant_document(project_id)
         if document:
             document.chat_summary = summary
             document.last_updated = datetime.utcnow().isoformat()
@@ -178,9 +175,9 @@ class GrantSectionManager:
         document.completion_percentage = (complete_sections / len(document.sections)) * 100
         document.last_updated = datetime.utcnow().isoformat()
 
-    def get_document_stats(self, project_id: str, user_id: str) -> Dict[str, Any]:
+    def get_document_stats(self, project_id: str) -> Dict[str, Any]:
         """Get document statistics."""
-        document = self.get_grant_document(project_id, user_id)
+        document = self.get_grant_document(project_id)
         if not document:
             return {
                 "total_words": 0,
@@ -198,9 +195,9 @@ class GrantSectionManager:
             "last_updated": document.last_updated
         }
 
-    def export_to_markdown(self, project_id: str, user_id: str) -> str:
+    def export_to_markdown(self, project_id: str) -> str:
         """Export grant document as markdown."""
-        document = self.get_grant_document(project_id, user_id)
+        document = self.get_grant_document(project_id)
         if not document:
             return "# Grant Application\n\nNo content available."
         
@@ -215,9 +212,9 @@ class GrantSectionManager:
         
         return markdown_content
 
-    def export_to_docx(self, project_id: str, user_id: str) -> bytes:
+    def export_to_docx(self, project_id: str) -> bytes:
         """Export grant document as DOCX."""
-        document = self.get_grant_document(project_id, user_id)
+        document = self.get_grant_document(project_id)
         if not document:
             # Return empty document
             doc = Document()
@@ -245,11 +242,11 @@ class GrantSectionManager:
         """Get grant section templates."""
         return self.CORE_SECTIONS
 
-    def auto_populate_from_chat(self, project_id: str, user_id: str, chat_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def auto_populate_from_chat(self, project_id: str, chat_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Auto-populate sections based on chat conversation."""
-        document = self.get_grant_document(project_id, user_id)
+        document = self.get_grant_document(project_id)
         if not document:
-            document = self.create_grant_document(project_id, user_id)
+            document = self.create_grant_document(project_id)
         
         # Analyze chat messages to extract relevant information
         chat_content = " ".join([msg.get("message", "") for msg in chat_messages])
@@ -271,12 +268,12 @@ class GrantSectionManager:
                 # Check if chat content contains relevant keywords
                 relevant_content = self._extract_relevant_content(chat_content, keywords)
                 if relevant_content:
-                    self.update_section_from_chat(project_id, user_id, section_id, relevant_content)
+                    self.update_section_from_chat(project_id, section_id, relevant_content)
                     populated_sections += 1
         
         # Update chat summary
         summary = self._generate_chat_summary(chat_messages)
-        self.update_chat_summary(project_id, user_id, summary)
+        self.update_chat_summary(project_id, summary)
         
         return {
             "success": True,

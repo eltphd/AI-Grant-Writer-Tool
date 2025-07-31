@@ -512,3 +512,119 @@ def delete_project_context(project_id: str) -> bool:
     )
     
     return context_res is not None and files_res is not None and chat_res is not None
+
+# Project management functions
+def get_all_projects() -> list[dict[str, Any]]:
+    """Get all projects from Supabase."""
+    try:
+        # Get all files grouped by project_id
+        res = _request(
+            "GET",
+            "/rest/v1/files?select=project_id,created_at&order=created_at.desc"
+        )
+        
+        if not res:
+            return []
+        
+        # Group by project_id and get the latest activity
+        projects = {}
+        for file_data in res:
+            project_id = file_data.get("project_id")
+            if project_id:
+                if project_id not in projects:
+                    projects[project_id] = {
+                        "id": project_id,
+                        "name": f"Project {project_id[:8]}",
+                        "description": "Project with uploaded files",
+                        "created_at": file_data.get("created_at"),
+                        "updated_at": file_data.get("created_at"),
+                        "file_count": 1
+                    }
+                else:
+                    projects[project_id]["file_count"] += 1
+        
+        return list(projects.values())
+    except Exception as e:
+        print(f"❌ Error getting all projects: {e}")
+        return []
+
+def create_project(project_data: dict[str, Any]) -> dict[str, Any]:
+    """Create a new project in Supabase."""
+    try:
+        # Create a placeholder file to establish the project
+        placeholder_content = b"Project created"
+        file_info = {
+            "filename": "project_created.txt",
+            "file_size": len(placeholder_content),
+            "content_type": "text/plain",
+            "project_id": project_data["id"]
+        }
+        
+        result = save_uploaded_file(placeholder_content, file_info["filename"], project_data["id"])
+        
+        if result["success"]:
+            return {
+                "id": project_data["id"],
+                "name": project_data.get("name", f"Project {project_data['id'][:8]}"),
+                "description": project_data.get("description", "New project"),
+                "created_at": project_data.get("created_at"),
+                "updated_at": project_data.get("updated_at")
+            }
+        else:
+            return None
+    except Exception as e:
+        print(f"❌ Error creating project: {e}")
+        return None
+
+def get_project(project_id: str) -> Optional[dict[str, Any]]:
+    """Get a specific project from Supabase."""
+    try:
+        # Get files for this project
+        res = _request(
+            "GET",
+            f"/rest/v1/files?project_id=eq.{project_id}&select=*&order=created_at.desc"
+        )
+        
+        if res and len(res) > 0:
+            latest_file = res[0]
+            file_count = len(res)
+            
+            return {
+                "id": project_id,
+                "name": f"Project {project_id[:8]}",
+                "description": f"Project with {file_count} files",
+                "created_at": latest_file.get("created_at"),
+                "updated_at": latest_file.get("created_at"),
+                "file_count": file_count
+            }
+        return None
+    except Exception as e:
+        print(f"❌ Error getting project: {e}")
+        return None
+
+def delete_project(project_id: str) -> bool:
+    """Delete a project and all its data from Supabase."""
+    try:
+        # Delete all data associated with the project
+        context_res = _request(
+            "DELETE",
+            f"/rest/v1/project_contexts?project_id=eq.{project_id}"
+        )
+        
+        files_res = _request(
+            "DELETE",
+            f"/rest/v1/files?project_id=eq.{project_id}"
+        )
+        
+        chat_res = _request(
+            "DELETE",
+            f"/rest/v1/chat_messages?project_id=eq.{project_id}"
+        )
+        
+        # Note: embeddings and redactions tables might not exist in Supabase
+        # so we'll skip those for now
+        
+        return context_res is not None and files_res is not None and chat_res is not None
+    except Exception as e:
+        print(f"❌ Error deleting project: {e}")
+        return False
