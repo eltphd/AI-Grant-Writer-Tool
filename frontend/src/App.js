@@ -7,8 +7,6 @@ const API_BASE = "https://ai-grant-writer-tool-production.up.railway.app";
 function App() {
   const [projects, setProjects] = useState([]);
   const [currentProject, setCurrentProject] = useState(null);
-  const [question, setQuestion] = useState('');
-  const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [projectContext, setProjectContext] = useState({});
@@ -120,6 +118,8 @@ function App() {
         const result = await response.json();
         if (result.success) {
           console.log(`✅ File uploaded: ${file.name}`);
+          // Reload project context to show new files
+          loadProjectContext(currentProject.id);
         } else {
           console.error(`❌ Upload failed for ${file.name}:`, result.error);
         }
@@ -131,33 +131,14 @@ function App() {
     setFileUploadLoading(false);
     setSelectedFiles([]);
     event.target.value = '';
-    setCurrentStep(4);
+    
+    // Automatically proceed to chat after successful upload
+    setTimeout(() => {
+      setCurrentStep(3);
+    }, 1000);
   };
 
-  const handleSubmit = async () => {
-    if (!question.trim() || !currentProject) return;
-    
-    setLoading(true);
-    try {
-      const response = await fetch(`${API_BASE}/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: question,
-          projectId: currentProject.id
-        })
-      });
-      
-      const data = await response.json();
-      setResponse(data.result || data.error || 'No response received');
-      setCurrentStep(5);
-    } catch (error) {
-      console.error('Error:', error);
-      setResponse('Error connecting to the server');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const deleteProject = (projectId) => {
     if (window.confirm('Are you sure you want to delete this project?')) {
@@ -172,11 +153,8 @@ function App() {
 
   const steps = [
     { id: 1, title: 'Create or Select Project', description: 'Start a new grant project or continue existing work' },
-    { id: 2, title: 'Set Up Project Context', description: 'Describe your organization and initiative' },
-    { id: 3, title: 'Upload Documents', description: 'Add relevant files for AI context' },
-    { id: 4, title: 'Ask Questions & Get AI Responses', description: 'Generate grant content with AI assistance' },
-    { id: 5, title: 'Review & Manage Responses', description: 'View and manage your AI-generated content' },
-    { id: 6, title: 'Interactive Chat & Brainstorming', description: 'Engage in dynamic conversations and idea generation' }
+    { id: 2, title: 'Upload Documents & Set Context', description: 'Add files and describe your organization and initiative' },
+    { id: 3, title: 'Interactive Chat & AI Assistant', description: 'Everything you need in one powerful chat interface' }
   ];
 
   return (
@@ -258,198 +236,158 @@ function App() {
           </div>
         )}
 
-        {/* Step 2: Context Setup */}
+        {/* Step 2: Document Upload & Context Setup */}
         {currentStep === 2 && currentProject && (
           <div className="step-container">
             <div className="step-header">
-              <h2>Set Up Project Context</h2>
-              <p>Describe your organization and the initiative you're seeking funding for</p>
+              <h2>Upload Documents & Set Context</h2>
+              <p>Add files and describe your organization and initiative for better AI assistance</p>
             </div>
             
-            <div className="context-form">
-              <div className="form-group">
-                <label>Organization Information</label>
-                <textarea
-                  value={organizationInfo}
-                  onChange={(e) => setOrganizationInfo(e.target.value)}
-                  placeholder="Describe your organization, its mission, history, and key achievements..."
-                  rows={4}
-                />
+            <div className="context-and-upload-section">
+              {/* Context Form */}
+              <div className="context-form">
+                <h3>📝 Project Information</h3>
+                <div className="form-group">
+                  <label>Organization Information</label>
+                  <textarea
+                    value={organizationInfo}
+                    onChange={(e) => setOrganizationInfo(e.target.value)}
+                    placeholder="Describe your organization, its mission, history, and key achievements..."
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>Initiative Description</label>
+                  <textarea
+                    value={initiativeDescription}
+                    onChange={(e) => setInitiativeDescription(e.target.value)}
+                    placeholder="Describe the specific initiative or project you're seeking funding for..."
+                    rows={4}
+                  />
+                </div>
+                
+                <div className="form-actions">
+                  <button 
+                    className="btn btn-primary"
+                    onClick={handleSaveContext}
+                    disabled={contextLoading}
+                  >
+                    {contextLoading ? 'Saving...' : 'Save Context'}
+                  </button>
+                </div>
               </div>
               
-              <div className="form-group">
-                <label>Initiative Description</label>
-                <textarea
-                  value={initiativeDescription}
-                  onChange={(e) => setInitiativeDescription(e.target.value)}
-                  placeholder="Describe the specific initiative or project you're seeking funding for..."
-                  rows={4}
-                />
+              {/* File Upload */}
+              <div className="upload-section">
+                <h3>📁 Upload Documents</h3>
+                <div className="upload-area">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".pdf,.docx,.doc,.txt,.md"
+                    onChange={handleFileUpload}
+                    id="file-upload"
+                    className="file-input"
+                  />
+                  <label htmlFor="file-upload" className="upload-label">
+                    <div className="upload-icon">📁</div>
+                    <div className="upload-text">
+                      <h4>Drop files here or click to browse</h4>
+                      <p>Supports PDF, DOCX, TXT, and MD files (max 10MB each)</p>
+                      <p className="upload-note">Files are automatically processed for privacy protection</p>
+                    </div>
+                  </label>
+                </div>
+                
+                {fileUploadLoading && (
+                  <div className="loading-indicator">
+                    <div className="spinner"></div>
+                    <p>Uploading and processing files...</p>
+                  </div>
+                )}
               </div>
               
-              <div className="form-actions">
+              {/* Continue to Chat */}
+              <div className="continue-section">
                 <button 
-                  className="btn btn-primary"
-                  onClick={handleSaveContext}
-                  disabled={contextLoading}
-                >
-                  {contextLoading ? 'Saving...' : 'Save Context'}
-                </button>
-                <button 
-                  className="btn btn-secondary"
+                  className="btn btn-primary btn-large"
                   onClick={() => setCurrentStep(3)}
                 >
-                  Skip to Upload
+                  🚀 Start Chat & AI Assistant
                 </button>
+                <p className="continue-note">
+                  You can always come back to add more documents or update context
+                </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Step 3: File Upload */}
+        {/* Step 3: Main Chat Interface */}
         {currentStep === 3 && currentProject && (
           <div className="step-container">
             <div className="step-header">
-              <h2>Upload Documents</h2>
-              <p>Add relevant files to provide context for AI responses</p>
+              <h2>Interactive Chat & AI Assistant</h2>
+              <p>Everything you need in one powerful chat interface</p>
             </div>
             
-            <div className="upload-section">
-              <div className="upload-area">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.docx,.doc,.txt,.md"
-                  onChange={handleFileUpload}
-                  id="file-upload"
-                  className="file-input"
-                />
-                <label htmlFor="file-upload" className="upload-label">
-                  <div className="upload-icon">📁</div>
-                  <div className="upload-text">
-                    <h3>Drop files here or click to browse</h3>
-                    <p>Supports PDF, DOCX, TXT, and MD files (max 10MB each)</p>
-                  </div>
-                </label>
+            <div className="chat-and-docs-section">
+              {/* Document Reference Panel */}
+              <div className="document-reference-panel">
+                <h3>📚 Project Documents & Context</h3>
+                <div className="context-summary">
+                  {organizationInfo && (
+                    <div className="context-item">
+                      <h4>🏢 Organization</h4>
+                      <p>{organizationInfo}</p>
+                    </div>
+                  )}
+                  {initiativeDescription && (
+                    <div className="context-item">
+                      <h4>🎯 Initiative</h4>
+                      <p>{initiativeDescription}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="document-list">
+                  <h4>📁 Uploaded Files</h4>
+                  {projectContext.files && projectContext.files.length > 0 ? (
+                    <ul className="file-list">
+                      {projectContext.files.map((file, index) => (
+                        <li key={index} className="file-item">
+                          <span className="file-icon">📄</span>
+                          <span className="file-name">{file.filename}</span>
+                          <span className="file-size">({Math.round(file.file_size / 1024)}KB)</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="no-files">No files uploaded yet</p>
+                  )}
+                </div>
+                
+                <div className="panel-actions">
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setCurrentStep(2)}
+                  >
+                    📝 Edit Context & Files
+                  </button>
+                </div>
               </div>
               
-              {fileUploadLoading && (
-                <div className="loading-indicator">
-                  <div className="spinner"></div>
-                  <p>Uploading files...</p>
-                </div>
-              )}
-              
-              <div className="upload-actions">
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => setCurrentStep(4)}
-                >
-                  Continue to Questions
-                </button>
+              {/* Chat Component */}
+              <div className="chat-main">
+                <ChatComponent projectId={currentProject.id} />
               </div>
             </div>
           </div>
         )}
 
-        {/* Step 4: Q&A */}
-        {currentStep === 4 && currentProject && (
-          <div className="step-container">
-            <div className="step-header">
-              <h2>Ask Questions & Get AI Responses</h2>
-              <p>Ask specific questions about your grant and receive AI-generated responses</p>
-            </div>
-            
-            <div className="qa-section">
-              <div className="question-input">
-                <textarea
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Ask a specific question about your grant, e.g., 'Write an executive summary for our youth program grant'"
-                  rows={4}
-                />
-                <button 
-                  className="btn btn-primary"
-                  onClick={handleSubmit}
-                  disabled={loading || !question.trim()}
-                >
-                  {loading ? 'Generating...' : 'Get AI Response'}
-                </button>
-              </div>
-              
-              {response && (
-                <div className="response-section">
-                  <h3>AI Response:</h3>
-                  <div className="response-content">
-                    {response}
-                  </div>
-                </div>
-              )}
-              
-              <div className="qa-actions">
-                <button 
-                  className="btn btn-secondary"
-                  onClick={() => setCurrentStep(6)}
-                >
-                  Go to Chat
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Step 5: Review Responses */}
-        {currentStep === 5 && currentProject && (
-          <div className="step-container">
-            <div className="step-header">
-              <h2>Review & Manage Responses</h2>
-              <p>View and manage your AI-generated content</p>
-            </div>
-            
-            <div className="review-section">
-              {response && (
-                <div className="response-card">
-                  <h3>Latest Response</h3>
-                  <div className="response-content">
-                    {response}
-                  </div>
-                  <div className="response-actions">
-                    <button className="btn btn-secondary">Copy</button>
-                    <button className="btn btn-secondary">Edit</button>
-                    <button className="btn btn-secondary">Save</button>
-                  </div>
-                </div>
-              )}
-              
-              <div className="review-actions">
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => setCurrentStep(4)}
-                >
-                  Ask Another Question
-                </button>
-                <button 
-                  className="btn btn-secondary"
-                  onClick={() => setCurrentStep(6)}
-                >
-                  Go to Chat
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 6: Chat Component */}
-        {currentStep === 6 && currentProject && (
-          <div className="step-container">
-            <div className="step-header">
-              <h2>Interactive Chat & Brainstorming</h2>
-              <p>Engage in dynamic conversations and generate ideas</p>
-            </div>
-            
-            <ChatComponent projectId={currentProject.id} />
-          </div>
-        )}
       </main>
 
       {/* Footer */}
