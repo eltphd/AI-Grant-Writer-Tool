@@ -56,6 +56,7 @@
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  padding: 0 1.5rem;
 }
 
 .progress-bar {
@@ -84,6 +85,8 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
+  padding: 0 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .export-actions .btn {
@@ -91,11 +94,40 @@
   font-size: 0.875rem;
 }
 
+/* Chat Summary Section */
+.chat-summary-section {
+  background: var(--surface-light);
+  margin: 0 1.5rem 1.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+}
+
+.chat-summary-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.chat-summary-section p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.chat-summary-section small {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
 /* Sections List */
 .sections-list {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0 1.5rem;
 }
 
 .section-card {
@@ -118,7 +150,15 @@
   border-left: 4px solid var(--success);
 }
 
+.section-card.developing {
+  border-left: 4px solid var(--warning);
+}
+
 .section-card.draft {
+  border-left: 4px solid var(--indigo-glow);
+}
+
+.section-card.empty {
   border-left: 4px solid var(--surface-light);
 }
 
@@ -128,11 +168,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.section-header:hover {
   background: var(--surface-light);
 }
 
@@ -167,19 +202,24 @@
   text-transform: uppercase;
 }
 
-.status-badge.complete {
+.status-badge.success {
   background: var(--success);
   color: white;
 }
 
-.status-badge.draft {
-  background: var(--surface-light);
+.status-badge.warning {
+  background: var(--warning);
   color: var(--text-primary);
 }
 
-.status-badge.reviewed {
-  background: var(--gradient-primary);
+.status-badge.info {
+  background: var(--indigo-glow);
   color: white;
+}
+
+.status-badge.secondary {
+  background: var(--surface-light);
+  color: var(--text-secondary);
 }
 
 /* Section Actions */
@@ -203,95 +243,41 @@
   transition: width 0.3s ease;
 }
 
-.expand-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: var(--surface-light);
-  color: var(--text-primary);
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  backdrop-filter: var(--glass-blur);
-}
-
-.expand-btn:hover {
-  background: var(--indigo-glow);
-  color: white;
-}
-
 /* Section Content */
 .section-content {
   border-top: 1px solid var(--glass-border);
   background: var(--surface-light);
 }
 
-.section-editor {
+.section-preview {
   padding: 1rem;
 }
 
-.section-editor textarea {
-  width: 100%;
-  min-height: 200px;
-  padding: 1rem;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  font-family: inherit;
+.content-preview {
+  color: var(--text-primary);
   font-size: 0.875rem;
   line-height: 1.6;
-  resize: vertical;
-  background: var(--surface-light);
-  color: var(--text-primary);
-  transition: border-color 0.2s ease;
+  background: var(--glass-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
   backdrop-filter: var(--glass-blur);
 }
 
-.section-editor textarea:focus {
-  outline: none;
-  border-color: var(--indigo-glow);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
-}
-
-.section-editor textarea:disabled {
-  background: var(--background);
+.empty-section {
+  text-align: center;
+  padding: 2rem;
   color: var(--text-secondary);
 }
 
-/* Editor Actions */
-.editor-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--glass-border);
-}
-
-.editor-actions .btn {
-  padding: 0.5rem 1rem;
+.empty-section p {
   font-size: 0.875rem;
+  margin-bottom: 0.5rem;
 }
 
-.updating-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-}
-
-.updating-indicator .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--glass-border);
-  border-top: 2px solid var(--indigo-glow);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.empty-section small {
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
 /* Document Stats */
@@ -339,6 +325,43 @@
   color: var(--text-primary);
 }
 
+/* Call to Action Section */
+.cta-section {
+  padding: 1.5rem;
+  border-top: 1px solid var(--glass-border);
+  background: var(--gradient-surface);
+  text-align: center;
+}
+
+.cta-section h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.cta-section p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.cta-actions .btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .grant-sections-header {
@@ -347,6 +370,22 @@
   
   .grant-sections-header h2 {
     font-size: 1.25rem;
+  }
+  
+  .progress-overview {
+    padding: 0 1rem;
+  }
+  
+  .export-actions {
+    padding: 0 1rem;
+  }
+  
+  .chat-summary-section {
+    margin: 0 1rem 1rem;
+  }
+  
+  .sections-list {
+    padding: 0 1rem;
   }
   
   .section-header {
@@ -365,23 +404,21 @@
     font-size: 0.75rem;
   }
   
-  .section-editor {
+  .section-preview {
     padding: 0.75rem;
   }
   
-  .section-editor textarea {
-    min-height: 150px;
-    padding: 0.75rem;
+  .content-preview {
     font-size: 0.8rem;
+    padding: 0.75rem;
   }
   
-  .editor-actions {
-    flex-direction: column;
-    align-items: stretch;
+  .empty-section {
+    padding: 1.5rem;
   }
   
-  .editor-actions .btn {
-    width: 100%;
+  .document-stats {
+    padding: 1rem;
   }
   
   .stats-grid {
@@ -395,11 +432,23 @@
   .export-actions .btn {
     width: 100%;
   }
+  
+  .cta-section {
+    padding: 1rem;
+  }
+  
+  .cta-actions {
+    flex-direction: column;
+  }
+  
+  .cta-actions .btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
   .sections-list {
-    padding: 0.5rem;
+    padding: 0 0.5rem;
   }
   
   .section-card {
@@ -410,11 +459,15 @@
     padding: 0.5rem;
   }
   
-  .section-editor {
+  .section-preview {
     padding: 0.5rem;
   }
   
   .document-stats {
-    padding: 1rem;
+    padding: 0.75rem;
+  }
+  
+  .cta-section {
+    padding: 0.75rem;
   }
 } 

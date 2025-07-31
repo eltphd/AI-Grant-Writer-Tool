@@ -539,21 +539,56 @@ async def get_grant_sections(
                 detail="Project not found"
             )
         
-        result = grant_sections.grant_section_manager.get_grant_document(project_id, user_id)
-        return result
+        # Get or create grant document
+        document = grant_sections.grant_section_manager.get_grant_document(project_id, user_id)
+        if not document:
+            document = grant_sections.grant_section_manager.create_grant_document(project_id, user_id)
+        
+        # Get chat messages for auto-population
+        if config.USE_SUPABASE:
+            chat_messages = supabase_utils.get_chat_messages(project_id, user_id)
+        else:
+            chat_messages = postgres_storage.get_chat_messages(project_id, user_id)
+        
+        # Auto-populate sections from chat if document is empty
+        if document.total_words == 0 and chat_messages:
+            grant_sections.grant_section_manager.auto_populate_from_chat(project_id, user_id, chat_messages)
+            document = grant_sections.grant_section_manager.get_grant_document(project_id, user_id)
+        
+        # Prepare response
+        sections = {}
+        for section_id, section in document.sections.items():
+            sections[section_id] = {
+                "id": section.id,
+                "title": section.title,
+                "content": section.content,
+                "target_length": section.target_length,
+                "description": section.description,
+                "word_count": section.word_count,
+                "status": section.status,
+                "last_updated": section.last_updated
+            }
+        
+        stats = grant_sections.grant_section_manager.get_document_stats(project_id, user_id)
+        
+        return {
+            "success": True,
+            "sections": sections,
+            "stats": stats,
+            "chat_summary": document.chat_summary,
+            "last_updated": document.last_updated
+        }
         
     except Exception as e:
         print(f"❌ Error getting grant sections: {e}")
         return {"success": False, "error": str(e)}
 
-@app.post("/grant/sections/{project_id}/{section_id}")
-async def update_grant_section(
+@app.post("/grant/sections/{project_id}/auto-populate")
+async def auto_populate_sections(
     project_id: str,
-    section_id: str,
-    content: dict,
     current_user: Dict[str, Any] = Depends(verify_token)
 ):
-    """Update a grant section for a specific user's project"""
+    """Auto-populate grant sections from chat conversation"""
     try:
         user_id = current_user["id"]
         
@@ -569,14 +604,98 @@ async def update_grant_section(
                 detail="Project not found"
             )
         
-        result = grant_sections.grant_section_manager.update_section(
-            project_id, section_id, content.get("content", ""), user_id
-        )
-        return result
+        # Get chat messages
+        if config.USE_SUPABASE:
+            chat_messages = supabase_utils.get_chat_messages(project_id, user_id)
+        else:
+            chat_messages = postgres_storage.get_chat_messages(project_id, user_id)
+        
+        # Auto-populate sections
+        result = grant_sections.grant_section_manager.auto_populate_from_chat(project_id, user_id, chat_messages)
+        
+        return {
+            "success": True,
+            "populated_sections": result["populated_sections"],
+            "total_sections": result["total_sections"]
+        }
         
     except Exception as e:
-        print(f"❌ Error updating grant section: {e}")
+        print(f"❌ Error auto-populating sections: {e}")
         return {"success": False, "error": str(e)}
+
+@app.get("/grant/sections/{project_id}/export/markdown")
+async def export_grant_markdown(
+    project_id: str,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Export grant document as markdown"""
+    try:
+        user_id = current_user["id"]
+        
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        markdown_content = grant_sections.grant_section_manager.export_to_markdown(project_id, user_id)
+        
+        from fastapi.responses import Response
+        return Response(
+            content=markdown_content,
+            media_type="text/markdown",
+            headers={"Content-Disposition": f"attachment; filename=grant-application-{project_id}.md"}
+        )
+        
+    except Exception as e:
+        print(f"❌ Error exporting markdown: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error exporting document"
+        )
+
+@app.get("/grant/sections/{project_id}/export/docx")
+async def export_grant_docx(
+    project_id: str,
+    current_user: Dict[str, Any] = Depends(verify_token)
+):
+    """Export grant document as DOCX"""
+    try:
+        user_id = current_user["id"]
+        
+        # Verify project belongs to user
+        if config.USE_SUPABASE:
+            project = supabase_utils.get_user_project(project_id, user_id)
+        else:
+            project = postgres_storage.get_user_project(project_id, user_id)
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found"
+            )
+        
+        docx_content = grant_sections.grant_section_manager.export_to_docx(project_id, user_id)
+        
+        from fastapi.responses import Response
+        return Response(
+            content=docx_content,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename=grant-application-{project_id}.docx"}
+        )
+        
+    except Exception as e:
+        print(f"❌ Error exporting DOCX: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error exporting document"
+        )
 
 # Keep existing endpoints for backward compatibility but add user context
 @app.get("/test")

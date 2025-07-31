@@ -1,35 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import './GrantSections.css';
 
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://ai-grant-writer-tool-production.up.railway.app';
+
 const GrantSections = ({ projectId }) => {
   const [sections, setSections] = useState({});
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
-  const [expandedSections, setExpandedSections] = useState(new Set());
-  const [updatingSection, setUpdatingSection] = useState(null);
   const [exporting, setExporting] = useState(false);
-
-  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  const [chatSummary, setChatSummary] = useState('');
+  const [lastUpdated, setLastUpdated] = useState('');
 
   useEffect(() => {
-    if (projectId) {
-      loadGrantSections();
-    }
+    loadGrantSections();
   }, [projectId]);
 
   const loadGrantSections = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/grant/sections/${projectId}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setSections(data.doc_state || {});
-        setStats(data.stats || {});
-        
-        // Expand first section by default
-        if (Object.keys(data.doc_state || {}).length > 0) {
-          setExpandedSections(new Set([Object.keys(data.doc_state)[0]]));
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE}/grant/sections/${projectId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setSections(data.sections || {});
+          setStats(data.stats || {});
+          setChatSummary(data.chat_summary || '');
+          setLastUpdated(data.last_updated || '');
         }
       }
     } catch (error) {
@@ -39,69 +41,18 @@ const GrantSections = ({ projectId }) => {
     }
   };
 
-  const updateSection = async (sectionId, content) => {
-    try {
-      setUpdatingSection(sectionId);
-      const response = await fetch(`${API_BASE}/grant/sections/${projectId}/${sectionId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setSections(data.doc_state);
-        setStats(data.stats || stats);
-      }
-    } catch (error) {
-      console.error('Error updating section:', error);
-    } finally {
-      setUpdatingSection(null);
-    }
-  };
-
-  const regenerateSection = async (sectionId) => {
-    try {
-      setUpdatingSection(sectionId);
-      const response = await fetch(`${API_BASE}/grant/sections/${projectId}/${sectionId}/regenerate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: "Please regenerate this section with comprehensive content." })
-      });
-      
-      const data = await response.json();
-      if (data.success) {
-        setSections(data.doc_state);
-        setStats(data.stats || stats);
-      }
-    } catch (error) {
-      console.error('Error regenerating section:', error);
-    } finally {
-      setUpdatingSection(null);
-    }
-  };
-
-  const toggleSection = (sectionId) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(sectionId)) {
-      newExpanded.delete(sectionId);
-    } else {
-      newExpanded.add(sectionId);
-    }
-    setExpandedSections(newExpanded);
-  };
-
   const exportDocument = async (format) => {
     try {
       setExporting(true);
-      const response = await fetch(`${API_BASE}/grant/sections/${projectId}/export/${format}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        // Create and download file
-        const blob = new Blob([data.content], { 
-          type: format === 'markdown' ? 'text/markdown' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-        });
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE}/grant/sections/${projectId}/export/${format}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -118,25 +69,49 @@ const GrantSections = ({ projectId }) => {
     }
   };
 
-  const getSectionStatus = (sectionId) => {
-    const sectionStats = stats.sections?.[sectionId];
-    if (!sectionStats) return 'draft';
-    return sectionStats.status;
+  const getSectionStatus = (content) => {
+    if (!content || content.trim() === '') return 'empty';
+    if (content.length < 100) return 'draft';
+    if (content.length < 500) return 'developing';
+    return 'complete';
   };
 
-  const getSectionProgress = (sectionId) => {
-    const sectionStats = stats.sections?.[sectionId];
-    if (!sectionStats) return 0;
-    
-    const targetWords = parseInt(sectionStats.target_length.match(/\d+/)[0]);
-    return Math.min((sectionStats.word_count / targetWords) * 100, 100);
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'complete': return 'success';
+      case 'developing': return 'warning';
+      case 'draft': return 'info';
+      default: return 'secondary';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'complete': return 'Complete';
+      case 'developing': return 'In Progress';
+      case 'draft': return 'Draft';
+      default: return 'Empty';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   if (loading) {
     return (
-      <div className="grant-sections-loading">
-        <div className="spinner"></div>
-        <p>Loading grant sections...</p>
+      <div className="grant-sections-container">
+        <div className="grant-sections-loading">
+          <div className="spinner"></div>
+          <p>Loading your grant application sections...</p>
+        </div>
       </div>
     );
   }
@@ -145,67 +120,70 @@ const GrantSections = ({ projectId }) => {
     <div className="grant-sections-container">
       {/* Header */}
       <div className="grant-sections-header">
-        <h2>📋 Grant Application Sections</h2>
-        <p>Build your complete, funder-aligned proposal with structured sections</p>
-        
-        {/* Progress Overview */}
-        <div className="progress-overview">
-          <div className="progress-bar">
-            <div 
-              className="progress-fill" 
-              style={{ width: `${stats.completion_percentage || 0}%` }}
-            ></div>
-          </div>
-          <span className="progress-text">
-            {Math.round(stats.completion_percentage || 0)}% Complete
-          </span>
+        <h2>📋 Your Grant Application</h2>
+        <p>AI-generated sections based on your chat conversations</p>
+      </div>
+
+      {/* Progress Overview */}
+      <div className="progress-overview">
+        <div className="progress-bar">
+          <div 
+            className="progress-fill" 
+            style={{ width: `${stats.completion_percentage || 0}%` }}
+          ></div>
         </div>
-        
-        {/* Export Buttons */}
-        <div className="export-actions">
-          <button 
-            className="btn btn-secondary"
-            onClick={() => exportDocument('markdown')}
-            disabled={exporting}
-          >
-            📄 Export Markdown
-          </button>
-          <button 
-            className="btn btn-primary"
-            onClick={() => exportDocument('docx')}
-            disabled={exporting}
-          >
-            📝 Export DOCX
-          </button>
+        <div className="progress-text">
+          {stats.completion_percentage || 0}% Complete
         </div>
       </div>
 
+      {/* Export Actions */}
+      <div className="export-actions">
+        <button 
+          className="btn btn-primary"
+          onClick={() => exportDocument('markdown')}
+          disabled={exporting}
+        >
+          {exporting ? 'Exporting...' : '📝 Export Markdown'}
+        </button>
+        <button 
+          className="btn btn-primary"
+          onClick={() => exportDocument('docx')}
+          disabled={exporting}
+        >
+          {exporting ? 'Exporting...' : '📄 Export DOCX'}
+        </button>
+      </div>
+
+      {/* Chat Summary */}
+      {chatSummary && (
+        <div className="chat-summary-section">
+          <h3>💬 Conversation Summary</h3>
+          <p>{chatSummary}</p>
+          <small>Last updated: {formatDate(lastUpdated)}</small>
+        </div>
+      )}
+
       {/* Sections List */}
       <div className="sections-list">
-        {Object.entries(sections).map(([sectionId, content]) => {
-          const isExpanded = expandedSections.has(sectionId);
-          const status = getSectionStatus(sectionId);
-          const progress = getSectionProgress(sectionId);
-          const sectionStats = stats.sections?.[sectionId];
+        {Object.entries(sections).map(([sectionId, section]) => {
+          const status = getSectionStatus(section.content);
+          const statusColor = getStatusColor(status);
           
           return (
             <div key={sectionId} className={`section-card ${status}`}>
-              {/* Section Header */}
-              <div 
-                className="section-header"
-                onClick={() => toggleSection(sectionId)}
-              >
+              <div className="section-header">
                 <div className="section-info">
-                  <h3>{sectionStats?.title || sectionId}</h3>
+                  <h3>{section.title}</h3>
                   <div className="section-meta">
                     <span className="word-count">
-                      {sectionStats?.word_count || 0} words
+                      {section.content ? section.content.split(' ').length : 0} words
                     </span>
                     <span className="target-length">
-                      Target: {sectionStats?.target_length}
+                      Target: {section.target_length}
                     </span>
-                    <span className={`status-badge ${status}`}>
-                      {status}
+                    <span className={`status-badge ${statusColor}`}>
+                      {getStatusText(status)}
                     </span>
                   </div>
                 </div>
@@ -214,68 +192,79 @@ const GrantSections = ({ projectId }) => {
                   <div className="progress-indicator">
                     <div 
                       className="progress-fill" 
-                      style={{ width: `${progress}%` }}
+                      style={{ 
+                        width: `${Math.min(100, (section.content ? section.content.split(' ').length : 0) / (parseInt(section.target_length) || 1) * 100)}%` 
+                      }}
                     ></div>
                   </div>
-                  <button className="expand-btn">
-                    {isExpanded ? '−' : '+'}
-                  </button>
                 </div>
               </div>
 
-              {/* Section Content */}
-              {isExpanded && (
-                <div className="section-content">
-                  <div className="section-editor">
-                    <textarea
-                      value={content}
-                      onChange={(e) => updateSection(sectionId, e.target.value)}
-                      placeholder="Start writing your grant section content..."
-                      disabled={updatingSection === sectionId}
-                    />
-                    
-                    <div className="editor-actions">
-                      <button 
-                        className="btn btn-secondary"
-                        onClick={() => regenerateSection(sectionId)}
-                        disabled={updatingSection === sectionId}
-                      >
-                        🔄 Regenerate with AI
-                      </button>
-                      
-                      {updatingSection === sectionId && (
-                        <span className="updating-indicator">
-                          <div className="spinner"></div>
-                          Updating...
-                        </span>
-                      )}
+              <div className="section-content">
+                <div className="section-preview">
+                  {section.content ? (
+                    <div className="content-preview">
+                      {section.content.length > 300 
+                        ? `${section.content.substring(0, 300)}...` 
+                        : section.content
+                      }
                     </div>
-                  </div>
+                  ) : (
+                    <div className="empty-section">
+                      <p>This section will be populated as you chat with the AI assistant.</p>
+                      <small>Continue your conversation to build this section</small>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Document Stats */}
+      {/* Document Statistics */}
       <div className="document-stats">
         <h3>📊 Document Statistics</h3>
         <div className="stats-grid">
           <div className="stat-item">
-            <span className="stat-label">Total Words</span>
-            <span className="stat-value">{stats.total_word_count || 0}</span>
+            <div className="stat-label">Total Words</div>
+            <div className="stat-value">{stats.total_words || 0}</div>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Completion</span>
-            <span className="stat-value">{Math.round(stats.completion_percentage || 0)}%</span>
+            <div className="stat-label">Sections Complete</div>
+            <div className="stat-value">{stats.complete_sections || 0}/6</div>
           </div>
           <div className="stat-item">
-            <span className="stat-label">Last Updated</span>
-            <span className="stat-value">
-              {stats.last_updated ? new Date(stats.last_updated).toLocaleDateString() : 'Never'}
-            </span>
+            <div className="stat-label">Completion</div>
+            <div className="stat-value">{stats.completion_percentage || 0}%</div>
           </div>
+          <div className="stat-item">
+            <div className="stat-label">Last Updated</div>
+            <div className="stat-value">{formatDate(lastUpdated)}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Call to Action */}
+      <div className="cta-section">
+        <h3>🚀 Continue Building Your Grant</h3>
+        <p>
+          Your grant application sections are automatically populated based on your conversations with the AI assistant. 
+          Return to the chat to continue building your proposal.
+        </p>
+        <div className="cta-actions">
+          <button 
+            className="btn btn-primary"
+            onClick={() => window.history.back()}
+          >
+            ← Back to Chat
+          </button>
+          <button 
+            className="btn btn-secondary"
+            onClick={() => window.open(`${API_BASE}/grant/sections/${projectId}/export/markdown`, '_blank')}
+          >
+            📄 Download Application
+          </button>
         </div>
       </div>
     </div>

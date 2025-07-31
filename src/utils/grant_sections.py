@@ -7,78 +7,34 @@ data storage, template generation, and RAG-enabled retrieval.
 import json
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Any
 import markdown
-from pathlib import Path
+from docx import Document
+from docx.shared import Inches
 
 @dataclass
 class GrantSection:
-    """Represents a grant application section."""
+    """Represents a single grant section."""
     id: str
     title: str
     content: str
     target_length: str
-    word_count: int = 0
-    last_updated: str = ""
-    status: str = "draft"  # draft, complete, reviewed
-    
-    def update_content(self, new_content: str):
-        """Update section content and metadata."""
-        self.content = new_content
-        self.word_count = len(new_content.split())
-        self.last_updated = datetime.now().isoformat()
-        if self.word_count > 0:
-            self.status = "complete" if self.word_count >= 50 else "draft"
+    description: str
+    word_count: int
+    status: str
+    last_updated: Optional[str] = None
 
 @dataclass
 class GrantDocument:
-    """Represents a complete grant application document."""
+    """Represents a complete grant document."""
     project_id: str
+    user_id: str
     sections: Dict[str, GrantSection]
-    created_at: str
+    total_words: int
+    completion_percentage: float
     last_updated: str
-    total_word_count: int = 0
-    
-    def update_section(self, section_id: str, content: str):
-        """Update a specific section."""
-        if section_id in self.sections:
-            self.sections[section_id].update_content(content)
-            self._update_metadata()
-    
-    def _update_metadata(self):
-        """Update document metadata."""
-        self.last_updated = datetime.now().isoformat()
-        self.total_word_count = sum(section.word_count for section in self.sections.values())
-    
-    def get_section(self, section_id: str) -> Optional[GrantSection]:
-        """Get a specific section."""
-        return self.sections.get(section_id)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for storage."""
-        return {
-            "project_id": self.project_id,
-            "sections": {k: asdict(v) for k, v in self.sections.items()},
-            "created_at": self.created_at,
-            "last_updated": self.last_updated,
-            "total_word_count": self.total_word_count
-        }
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'GrantDocument':
-        """Create from dictionary."""
-        sections = {}
-        for section_id, section_data in data.get("sections", {}).items():
-            sections[section_id] = GrantSection(**section_data)
-        
-        return cls(
-            project_id=data["project_id"],
-            sections=sections,
-            created_at=data["created_at"],
-            last_updated=data["last_updated"],
-            total_word_count=data.get("total_word_count", 0)
-        )
+    chat_summary: str
 
 class GrantSectionManager:
     """Manages grant sections and templates."""
@@ -128,125 +84,235 @@ class GrantSectionManager:
             "placeholder": "Provide your detailed budget breakdown, cost justifications, and sustainability plan for post-grant funding..."
         }
     }
-    
+
     def __init__(self):
         self.documents: Dict[str, GrantDocument] = {}
-    
-    def create_grant_document(self, project_id: str) -> GrantDocument:
+
+    def create_grant_document(self, project_id: str, user_id: str) -> GrantDocument:
         """Create a new grant document with all six sections."""
         sections = {}
+        
         for section_id, section_info in self.CORE_SECTIONS.items():
             sections[section_id] = GrantSection(
                 id=section_id,
                 title=section_info["title"],
-                content=section_info["placeholder"],
-                target_length=section_info["target_length"]
+                content="",
+                target_length=section_info["target_length"],
+                description=section_info["description"],
+                word_count=0,
+                status="empty",
+                last_updated=None
             )
         
         document = GrantDocument(
             project_id=project_id,
+            user_id=user_id,
             sections=sections,
-            created_at=datetime.now().isoformat(),
-            last_updated=datetime.now().isoformat()
+            total_words=0,
+            completion_percentage=0.0,
+            last_updated=datetime.utcnow().isoformat(),
+            chat_summary=""
         )
         
-        self.documents[project_id] = document
+        self.documents[f"{project_id}_{user_id}"] = document
         return document
-    
-    def get_grant_document(self, project_id: str) -> Optional[GrantDocument]:
+
+    def get_grant_document(self, project_id: str, user_id: str) -> Optional[GrantDocument]:
         """Get an existing grant document."""
-        return self.documents.get(project_id)
-    
-    def update_section(self, project_id: str, section_id: str, content: str) -> Dict[str, Any]:
-        """Update a section and return the updated document state."""
-        document = self.get_grant_document(project_id)
+        key = f"{project_id}_{user_id}"
+        return self.documents.get(key)
+
+    def update_section_from_chat(self, project_id: str, user_id: str, section_id: str, content: str) -> Dict[str, Any]:
+        """Update a section with content from chat conversation."""
+        document = self.get_grant_document(project_id, user_id)
         if not document:
-            document = self.create_grant_document(project_id)
+            document = self.create_grant_document(project_id, user_id)
         
-        document.update_section(section_id, content)
-        
-        return {
-            "doc_state": {section_id: section.content for section_id, section in document.sections.items()},
-            "delta_note": f"Updated {document.sections[section_id].title}",
-            "section_updated": section_id,
-            "word_count": document.sections[section_id].word_count,
-            "status": document.sections[section_id].status
-        }
-    
-    def regenerate_section(self, project_id: str, section_id: str, context: str) -> Dict[str, Any]:
-        """Regenerate a section based on context."""
-        # This would integrate with OpenAI to regenerate content
-        # For now, return the current state
-        document = self.get_grant_document(project_id)
-        if document:
+        if section_id in document.sections:
+            section = document.sections[section_id]
+            section.content = content
+            section.word_count = len(content.split())
+            section.last_updated = datetime.utcnow().isoformat()
+            section.status = self._get_section_status(content)
+            
+            # Update document stats
+            self._update_document_stats(document)
+            
             return {
-                "doc_state": {section_id: section.content for section_id, section in document.sections.items()},
-                "delta_note": f"Regenerated {document.sections[section_id].title}",
-                "section_updated": section_id
-            }
-        return {}
-    
-    def export_to_markdown(self, project_id: str) -> str:
-        """Export grant document to markdown format."""
-        document = self.get_grant_document(project_id)
-        if not document:
-            return ""
-        
-        markdown_content = f"# Grant Application\n\n"
-        markdown_content += f"**Project ID:** {project_id}\n"
-        markdown_content += f"**Last Updated:** {document.last_updated}\n"
-        markdown_content += f"**Total Word Count:** {document.total_word_count}\n\n"
-        
-        for section_id, section in document.sections.items():
-            markdown_content += f"## {section.title}\n\n"
-            markdown_content += f"*Target Length: {section.target_length}*\n\n"
-            markdown_content += f"{section.content}\n\n"
-            markdown_content += f"---\n\n"
-        
-        return markdown_content
-    
-    def export_to_docx(self, project_id: str) -> bytes:
-        """Export grant document to DOCX format."""
-        # This would use python-docx to create a Word document
-        # For now, return markdown as placeholder
-        markdown_content = self.export_to_markdown(project_id)
-        return markdown_content.encode('utf-8')
-    
-    def get_section_templates(self) -> Dict[str, Any]:
-        """Get section templates for UI initialization."""
-        return {
-            "sections": self.CORE_SECTIONS,
-            "total_sections": len(self.CORE_SECTIONS)
-        }
-    
-    def get_document_stats(self, project_id: str) -> Dict[str, Any]:
-        """Get document statistics."""
-        document = self.get_grant_document(project_id)
-        if not document:
-            return {}
-        
-        section_stats = {}
-        for section_id, section in document.sections.items():
-            section_stats[section_id] = {
-                "title": section.title,
+                "success": True,
+                "section_id": section_id,
                 "word_count": section.word_count,
-                "target_length": section.target_length,
-                "status": section.status,
-                "last_updated": section.last_updated
+                "status": section.status
             }
         
+        return {"success": False, "error": "Section not found"}
+
+    def update_chat_summary(self, project_id: str, user_id: str, summary: str) -> bool:
+        """Update the chat summary for the document."""
+        document = self.get_grant_document(project_id, user_id)
+        if document:
+            document.chat_summary = summary
+            document.last_updated = datetime.utcnow().isoformat()
+            return True
+        return False
+
+    def _get_section_status(self, content: str) -> str:
+        """Determine the status of a section based on content."""
+        if not content or content.strip() == "":
+            return "empty"
+        
+        word_count = len(content.split())
+        if word_count < 50:
+            return "draft"
+        elif word_count < 200:
+            return "developing"
+        else:
+            return "complete"
+
+    def _update_document_stats(self, document: GrantDocument):
+        """Update document statistics."""
+        total_words = sum(section.word_count for section in document.sections.values())
+        complete_sections = sum(1 for section in document.sections.values() if section.status == "complete")
+        
+        document.total_words = total_words
+        document.completion_percentage = (complete_sections / len(document.sections)) * 100
+        document.last_updated = datetime.utcnow().isoformat()
+
+    def get_document_stats(self, project_id: str, user_id: str) -> Dict[str, Any]:
+        """Get document statistics."""
+        document = self.get_grant_document(project_id, user_id)
+        if not document:
+            return {
+                "total_words": 0,
+                "complete_sections": 0,
+                "completion_percentage": 0.0,
+                "last_updated": None
+            }
+        
+        complete_sections = sum(1 for section in document.sections.values() if section.status == "complete")
+        
         return {
-            "project_id": project_id,
-            "total_word_count": document.total_word_count,
-            "sections": section_stats,
-            "completion_percentage": self._calculate_completion(document),
+            "total_words": document.total_words,
+            "complete_sections": complete_sections,
+            "completion_percentage": document.completion_percentage,
             "last_updated": document.last_updated
         }
-    
-    def _calculate_completion(self, document: GrantDocument) -> float:
-        """Calculate document completion percentage."""
-        completed_sections = sum(1 for section in document.sections.values() if section.status == "complete")
-        return (completed_sections / len(document.sections)) * 100
+
+    def export_to_markdown(self, project_id: str, user_id: str) -> str:
+        """Export grant document as markdown."""
+        document = self.get_grant_document(project_id, user_id)
+        if not document:
+            return "# Grant Application\n\nNo content available."
+        
+        markdown_content = "# Grant Application\n\n"
+        
+        if document.chat_summary:
+            markdown_content += f"## Conversation Summary\n\n{document.chat_summary}\n\n"
+        
+        for section_id, section in document.sections.items():
+            if section.content:
+                markdown_content += f"## {section.title}\n\n{section.content}\n\n"
+        
+        return markdown_content
+
+    def export_to_docx(self, project_id: str, user_id: str) -> bytes:
+        """Export grant document as DOCX."""
+        document = self.get_grant_document(project_id, user_id)
+        if not document:
+            # Return empty document
+            doc = Document()
+            doc.add_heading('Grant Application', 0)
+            doc.add_paragraph('No content available.')
+            return doc.save()
+        
+        doc = Document()
+        doc.add_heading('Grant Application', 0)
+        
+        if document.chat_summary:
+            doc.add_heading('Conversation Summary', level=1)
+            doc.add_paragraph(document.chat_summary)
+            doc.add_paragraph()
+        
+        for section_id, section in document.sections.items():
+            if section.content:
+                doc.add_heading(section.title, level=1)
+                doc.add_paragraph(section.content)
+                doc.add_paragraph()
+        
+        return doc.save()
+
+    def get_section_templates(self) -> Dict[str, Any]:
+        """Get grant section templates."""
+        return self.CORE_SECTIONS
+
+    def auto_populate_from_chat(self, project_id: str, user_id: str, chat_messages: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Auto-populate sections based on chat conversation."""
+        document = self.get_grant_document(project_id, user_id)
+        if not document:
+            document = self.create_grant_document(project_id, user_id)
+        
+        # Analyze chat messages to extract relevant information
+        chat_content = " ".join([msg.get("message", "") for msg in chat_messages])
+        
+        # Simple keyword-based section mapping
+        section_mappings = {
+            "exec_summary": ["organization", "project", "funding", "impact", "summary"],
+            "org_background": ["mission", "history", "leadership", "accomplishments", "capacity"],
+            "need_statement": ["problem", "need", "data", "statistics", "community", "urgency"],
+            "project_design": ["objectives", "activities", "timeline", "staffing", "partnerships"],
+            "evaluation_plan": ["evaluation", "outcomes", "kpis", "data collection", "reporting"],
+            "budget_sustainability": ["budget", "cost", "funding", "sustainability", "financial"]
+        }
+        
+        populated_sections = 0
+        
+        for section_id, keywords in section_mappings.items():
+            if section_id in document.sections:
+                # Check if chat content contains relevant keywords
+                relevant_content = self._extract_relevant_content(chat_content, keywords)
+                if relevant_content:
+                    self.update_section_from_chat(project_id, user_id, section_id, relevant_content)
+                    populated_sections += 1
+        
+        # Update chat summary
+        summary = self._generate_chat_summary(chat_messages)
+        self.update_chat_summary(project_id, user_id, summary)
+        
+        return {
+            "success": True,
+            "populated_sections": populated_sections,
+            "total_sections": len(document.sections)
+        }
+
+    def _extract_relevant_content(self, chat_content: str, keywords: List[str]) -> str:
+        """Extract content relevant to specific keywords."""
+        # Simple implementation - in production, use more sophisticated NLP
+        relevant_sentences = []
+        sentences = chat_content.split('.')
+        
+        for sentence in sentences:
+            sentence_lower = sentence.lower()
+            if any(keyword in sentence_lower for keyword in keywords):
+                relevant_sentences.append(sentence.strip())
+        
+        return ". ".join(relevant_sentences) if relevant_sentences else ""
+
+    def _generate_chat_summary(self, chat_messages: List[Dict[str, Any]]) -> str:
+        """Generate a summary of the chat conversation."""
+        if not chat_messages:
+            return ""
+        
+        # Extract key topics from chat
+        topics = []
+        for msg in chat_messages:
+            message = msg.get("message", "").lower()
+            if any(topic in message for topic in ["organization", "project", "funding", "budget", "evaluation"]):
+                topics.append(msg.get("message", "")[:100] + "...")
+        
+        if topics:
+            return f"Key discussion topics: {' '.join(topics[:3])}"
+        else:
+            return "Conversation in progress..."
 
 # Global instance
 grant_section_manager = GrantSectionManager() 
