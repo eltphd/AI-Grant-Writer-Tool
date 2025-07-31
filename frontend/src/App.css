@@ -1,22 +1,27 @@
-/* Modern Color Palette */
+/* GWAT Brand Color Palette */
 :root {
-  --milk: #F9F7F0;
-  --light-stone: #D8D2C2;
-  --desert-clay: #B17457;
-  --graphite: #4A4947;
+  --ink-black: #1C1C1E;
+  --indigo-glow: #6C63FF;
+  --light-slate: #F2F2F7;
+  --neon-mint: #00FFD1;
   
   /* Semantic colors */
-  --primary: var(--desert-clay);
-  --primary-hover: #9A6347;
-  --secondary: var(--light-stone);
-  --background: var(--milk);
+  --primary: var(--indigo-glow);
+  --primary-hover: #5A52E8;
+  --secondary: var(--neon-mint);
+  --background: var(--light-slate);
   --surface: #FFFFFF;
-  --text-primary: var(--graphite);
+  --text-primary: var(--ink-black);
   --text-secondary: #6B6A68;
   --border: #E8E4D8;
   --success: #28A745;
   --warning: #FFC107;
   --error: #DC3545;
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--indigo-glow) 0%, #8B7FFF 100%);
+  --gradient-mint: linear-gradient(135deg, var(--neon-mint) 0%, #00E6B8 100%);
+  --gradient-surface: linear-gradient(135deg, var(--surface) 0%, var(--light-slate) 100%);
 }
 
 /* Reset and Base Styles */
@@ -27,10 +32,11 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background-color: var(--background);
   color: var(--text-primary);
   line-height: 1.6;
+  font-weight: 400;
 }
 
 .app {
@@ -44,7 +50,7 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 1rem 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(28, 28, 30, 0.05);
 }
 
 .header-content {
@@ -63,16 +69,34 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.1em;
+}
+
+.app-title::after {
+  content: '';
+  width: 2px;
+  height: 1.5rem;
+  background: var(--neon-mint);
+  box-shadow: 0 0 8px var(--neon-mint);
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 8px var(--neon-mint); }
+  to { box-shadow: 0 0 16px var(--neon-mint), 0 0 24px var(--neon-mint); }
 }
 
 .title-icon {
   font-size: 1.5rem;
+  color: var(--indigo-glow);
 }
 
 .app-subtitle {
   color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 400;
+  font-style: italic;
 }
 
 /* Progress Steps */
@@ -106,13 +130,13 @@ body {
 }
 
 .progress-step.active {
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
   background: var(--surface);
 }
 
 .progress-step.current {
-  border-color: var(--primary);
-  background: var(--primary);
+  border-color: var(--indigo-glow);
+  background: var(--gradient-primary);
   color: white;
 }
 
@@ -120,7 +144,7 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--light-stone);
+  background: var(--light-slate);
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -131,7 +155,7 @@ body {
 
 .progress-step.current .step-number {
   background: white;
-  color: var(--primary);
+  color: var(--indigo-glow);
 }
 
 .step-info {
@@ -166,7 +190,7 @@ body {
 .step-container {
   background: var(--surface);
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(28, 28, 30, 0.08);
   overflow: hidden;
   min-height: calc(100vh - 200px);
 }
@@ -174,7 +198,7 @@ body {
 .step-header {
   padding: 2rem 1.5rem 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(135deg, var(--surface) 0%, var(--background) 100%);
+  background: var(--gradient-surface);
 }
 
 .step-header h2 {
@@ -211,25 +235,25 @@ body {
 }
 
 .project-card:hover {
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(177, 116, 87, 0.15);
+  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.15);
 }
 
 .project-card.new-project {
   border-style: dashed;
-  border-color: var(--light-stone);
+  border-color: var(--light-slate);
   background: var(--background);
 }
 
 .project-card.new-project:hover {
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
   background: var(--surface);
 }
 
 .project-icon {
   font-size: 2rem;
-  color: var(--primary);
+  color: var(--indigo-glow);
 }
 
 .project-info {
@@ -275,26 +299,29 @@ body {
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
+  font-family: 'Inter', sans-serif;
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: var(--gradient-primary);
   color: white;
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
 }
 
 .btn-secondary {
-  background: var(--secondary);
-  color: var(--text-primary);
+  background: var(--gradient-mint);
+  color: var(--ink-black);
 }
 
 .btn-secondary:hover {
-  background: var(--light-stone);
+  background: var(--neon-mint);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 255, 209, 0.3);
 }
 
 .btn-large {
@@ -329,7 +356,8 @@ body {
 
 .form-group textarea:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
 }
 
 .form-actions {
@@ -350,7 +378,7 @@ body {
 }
 
 .upload-area:hover {
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
   background: var(--surface);
 }
 
@@ -369,7 +397,7 @@ body {
 
 .upload-icon {
   font-size: 3rem;
-  color: var(--primary);
+  color: var(--indigo-glow);
   margin-bottom: 1rem;
 }
 
@@ -405,7 +433,7 @@ body {
   width: 20px;
   height: 20px;
   border: 2px solid var(--border);
-  border-top: 2px solid var(--primary);
+  border-top: 2px solid var(--indigo-glow);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

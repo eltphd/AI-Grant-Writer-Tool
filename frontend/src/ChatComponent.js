@@ -30,7 +30,7 @@ function ChatComponent({ projectId }) {
         {
           id: 'welcome',
           type: 'ai',
-          content: `👋 Welcome to AI Grant Writer! I'm here to help you with grant writing, brainstorming, and answering questions about your project.
+          content: `👋 Welcome to GWAT — Your Grant Writing Assisted Toolkit
 
 💡 **What I can help with:**
 • Writing grant sections (executive summary, objectives, methodology)
@@ -275,12 +275,12 @@ ${data.suggestions || 'Sorry, I encountered an error. Please try again.'}`,
     <div className="chat-container">
       {/* Chat Header */}
       <div className="chat-header">
-        <h3>💬 Interactive Chat & Brainstorming</h3>
-        <p>Ask questions, get advice, and brainstorm grant ideas</p>
-        {privacyStatus.entities > 0 && (
+        <h3>👋 Welcome to GWAT — Your Grant Writing Assisted Toolkit</h3>
+        <p>Ready to co-write a funder-aligned proposal? Let's begin.</p>
+        {privacyStatus && (
           <div className="privacy-indicator">
             <span className={`privacy-badge ${privacyStatus.level}`}>
-              🔒 Privacy Protected ({privacyStatus.entities} entities redacted)
+              {privacyStatus.level === 'high' ? '🔒 Privacy Protected' : '✅ Privacy Safe'}
             </span>
           </div>
         )}

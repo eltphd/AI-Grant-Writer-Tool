@@ -1,4 +1,4 @@
-/* Chat Component Styles with Modern Color Palette */
+/* Chat Component Styles with GWAT Brand Colors */
 .chat-container {
   display: flex;
   flex-direction: column;
@@ -10,7 +10,7 @@
 .chat-header {
   padding: 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(135deg, var(--surface) 0%, var(--background) 100%);
+  background: var(--gradient-surface);
 }
 
 .chat-header h3 {
@@ -27,6 +27,7 @@
   color: var(--text-secondary);
   font-size: 0.875rem;
   margin-bottom: 0.75rem;
+  font-style: italic;
 }
 
 /* Privacy indicator styles */
@@ -107,14 +108,14 @@
 }
 
 .message.user .message-avatar {
-  background: var(--primary);
+  background: var(--gradient-primary);
   color: white;
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
 }
 
 .message.ai .message-avatar {
-  background: var(--secondary);
-  color: var(--text-primary);
+  background: var(--gradient-mint);
+  color: var(--ink-black);
 }
 
 .message-content {
@@ -131,7 +132,7 @@
 }
 
 .message.user .message-text {
-  background: var(--primary);
+  background: var(--gradient-primary);
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -218,7 +219,8 @@
 
 .input-wrapper textarea:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
+  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
 }
 
 .input-wrapper textarea:disabled {
@@ -231,7 +233,7 @@
   height: 44px;
   border: none;
   border-radius: 50%;
-  background: var(--primary);
+  background: var(--gradient-primary);
   color: white;
   cursor: pointer;
   display: flex;
@@ -245,6 +247,7 @@
 .send-btn:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
 }
 
 .send-btn:disabled {
@@ -277,7 +280,7 @@
 
 .action-btn:hover:not(:disabled) {
   background: var(--background);
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
 }
 
 .action-btn:disabled {
@@ -343,7 +346,7 @@
 
 .brainstorm-input textarea:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--indigo-glow);
 }
 
 .brainstorm-input .btn {
@@ -359,14 +362,14 @@
   height: 56px;
   border: none;
   border-radius: 50%;
-  background: var(--primary);
+  background: var(--gradient-primary);
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  box-shadow: 0 4px 12px rgba(177, 116, 87, 0.3);
+  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
   transition: all 0.2s ease;
   z-index: 1000;
 }
@@ -374,7 +377,7 @@
 .fab:hover {
   background: var(--primary-hover);
   transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(177, 116, 87, 0.4);
+  box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
 }
 
 /* Responsive Design */

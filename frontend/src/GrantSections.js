@@ -146,7 +146,7 @@ const GrantSections = ({ projectId }) => {
       {/* Header */}
       <div className="grant-sections-header">
         <h2>📋 Grant Application Sections</h2>
-        <p>Complete all six core sections to build your grant application</p>
+        <p>Build your complete, funder-aligned proposal with structured sections</p>
         
         {/* Progress Overview */}
         <div className="progress-overview">

@@ -165,10 +165,10 @@ function App() {
       <header className="app-header">
         <div className="header-content">
           <h1 className="app-title">
-            <span className="title-icon">🎯</span>
-            AI Grant Writer
+            <span className="title-icon">📋</span>
+            GWAT
           </h1>
-          <p className="app-subtitle">Professional grant writing with AI assistance</p>
+          <p className="app-subtitle">Grant Writing Assisted Toolkit</p>
         </div>
       </header>
 
