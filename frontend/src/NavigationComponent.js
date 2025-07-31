@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './NavigationComponent.css';
 
 const NavigationComponent = ({ currentStep, onStepChange, user }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   const navigationItems = [
     {
       id: 1,
@@ -31,6 +33,7 @@ const NavigationComponent = ({ currentStep, onStepChange, user }) => {
 
   const handleStepClick = (stepId) => {
     onStepChange(stepId);
+    setIsMobileMenuOpen(false); // Close mobile menu after selection
   };
 
   const handleLogout = () => {
@@ -39,48 +42,113 @@ const NavigationComponent = ({ currentStep, onStepChange, user }) => {
     window.location.reload();
   };
 
+  const currentItem = navigationItems.find(item => item.id === currentStep);
+
   return (
     <div className="navigation-container">
-      <div className="navigation-header">
-        <div className="nav-brand">
-          <span className="nav-icon">📋</span>
-          <div className="nav-title">
-            <h1>GWAT</h1>
-            <p>Grant Writing Assisted Toolkit</p>
-          </div>
-        </div>
-        
-        {user && (
-          <div className="user-menu">
-            <div className="user-info">
-              <span className="user-avatar">👤</span>
-              <span className="user-name">{user.name}</span>
+      {/* Desktop Navigation */}
+      <div className="navigation-desktop">
+        <div className="navigation-header">
+          <div className="nav-brand">
+            <span className="nav-icon">📋</span>
+            <div className="nav-title">
+              <h1>GWAT</h1>
+              <p>Grant Writing Assisted Toolkit</p>
             </div>
-            <button className="logout-btn" onClick={handleLogout}>
-              🚪
-            </button>
           </div>
-        )}
+          
+          {user && (
+            <div className="user-menu">
+              <div className="user-info">
+                <span className="user-avatar">👤</span>
+                <span className="user-name">{user.name}</span>
+              </div>
+              <button className="logout-btn" onClick={handleLogout}>
+                🚪
+              </button>
+            </div>
+          )}
+        </div>
+
+        <nav className="navigation-menu">
+          {navigationItems.map((item) => (
+            <button
+              key={item.id}
+              className={`nav-item ${currentStep === item.id ? 'active' : ''}`}
+              onClick={() => handleStepClick(item.id)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              <div className="nav-content">
+                <span className="nav-title">{item.title}</span>
+                <span className="nav-description">{item.description}</span>
+              </div>
+              {currentStep === item.id && (
+                <span className="nav-indicator"></span>
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
 
-      <nav className="navigation-menu">
-        {navigationItems.map((item) => (
-          <button
-            key={item.id}
-            className={`nav-item ${currentStep === item.id ? 'active' : ''}`}
-            onClick={() => handleStepClick(item.id)}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <div className="nav-content">
-              <span className="nav-title">{item.title}</span>
-              <span className="nav-description">{item.description}</span>
+      {/* Mobile Navigation */}
+      <div className="navigation-mobile">
+        <div className="mobile-header">
+          <div className="mobile-brand">
+            <span className="nav-icon">📋</span>
+            <div className="nav-title">
+              <h1>GWAT</h1>
             </div>
-            {currentStep === item.id && (
-              <span className="nav-indicator"></span>
-            )}
+          </div>
+          
+          <button 
+            className={`mobile-menu-btn ${isMobileMenuOpen ? 'active' : ''}`}
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <span></span>
+            <span></span>
+            <span></span>
           </button>
-        ))}
-      </nav>
+        </div>
+
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div className="mobile-menu-overlay" onClick={() => setIsMobileMenuOpen(false)}>
+            <div className="mobile-menu" onClick={(e) => e.stopPropagation()}>
+              <div className="mobile-menu-header">
+                <h3>Menu</h3>
+                <button 
+                  className="mobile-close-btn"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <nav className="mobile-nav">
+                {navigationItems.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`mobile-nav-item ${currentStep === item.id ? 'active' : ''}`}
+                    onClick={() => handleStepClick(item.id)}
+                  >
+                    <span className="nav-icon">{item.icon}</span>
+                    <div className="nav-content">
+                      <span className="nav-title">{item.title}</span>
+                      <span className="nav-description">{item.description}</span>
+                    </div>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Current Step Indicator */}
+        <div className="mobile-current-step">
+          <span className="current-step-icon">{currentItem?.icon}</span>
+          <span className="current-step-title">{currentItem?.title}</span>
+        </div>
+      </div>
     </div>
   );
 };
