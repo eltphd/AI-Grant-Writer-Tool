@@ -101,6 +101,33 @@ function App() {
     }
   };
 
+  const handleRFPUpload = async (file) => {
+    if (!currentProject) return;
+
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('project_id', currentProject.id);
+
+      const response = await fetch(`${API_BASE}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          console.log(`RFP file ${file.name} uploaded successfully`);
+        }
+      }
+    } catch (error) {
+      console.error('Error uploading RFP file:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateProjectContext = async () => {
     if (!currentProject) return;
 
@@ -228,6 +255,25 @@ function App() {
                     <div className="upload-text">
                       <h4>Drop files here or click to upload</h4>
                       <p>Supported formats: PDF, DOCX, DOC, TXT, MD</p>
+                    </div>
+                  </label>
+                </div>
+                
+                <div className="upload-specific">
+                  <h4>📋 RFP Upload (Recommended)</h4>
+                  <p>Upload the Request for Proposal (RFP) document to help AI align your response with grant requirements.</p>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc,.txt,.md"
+                    onChange={(e) => handleRFPUpload(e.target.files[0])}
+                    className="file-input"
+                    id="rfp-upload"
+                  />
+                  <label htmlFor="rfp-upload" className="upload-label rfp-upload">
+                    <div className="upload-icon">📋</div>
+                    <div className="upload-text">
+                      <h4>Upload RFP Document</h4>
+                      <p>Grant request with directions and requirements</p>
                     </div>
                   </label>
                 </div>

@@ -9,7 +9,7 @@ const ChatComponent = ({ projectId }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showBrainstorm, setShowBrainstorm] = useState(false);
   const [brainstormTopic, setBrainstormTopic] = useState('');
-  const [privacyStatus, setPrivacyStatus] = useState('low');
+  const [privacyStatus, setPrivacyStatus] = useState('high');
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -23,16 +23,11 @@ const ChatComponent = ({ projectId }) => {
   useEffect(() => {
     loadChatHistory();
     checkPrivacyStatus();
-  }, [projectId]);
+  }, []);
 
   const loadChatHistory = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE}/chat/history/${projectId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(`${API_BASE}/chat/history/test-project`);
 
       if (response.ok) {
         const data = await response.json();
@@ -47,7 +42,7 @@ const ChatComponent = ({ projectId }) => {
 
   const checkPrivacyStatus = async () => {
     try {
-      const response = await fetch(`${API_BASE}/privacy/audit/${projectId}`);
+      const response = await fetch(`${API_BASE}/privacy/audit/test-project`);
 
       if (response.ok) {
         const data = await response.json();

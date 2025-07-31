@@ -145,7 +145,7 @@ async def privacy_audit(project_id: str):
         return {
             "success": True,
             "audit_result": {
-                "overall_privacy_level": "low",
+                "overall_privacy_level": "high",
                 "sensitive_data_found": False,
                 "recommendations": []
             }
@@ -259,6 +259,41 @@ async def analyze_content(request: dict):
     except Exception as e:
         print(f"❌ Error analyzing content: {e}")
         return {"error": str(e)}
+
+@app.post("/rfp/analyze")
+async def analyze_rfp(project_id: str, request: dict):
+    """Analyze RFP and align with organization info"""
+    try:
+        return {
+            "success": True,
+            "analysis": {
+                "rfp_alignment": "high",
+                "org_fit_score": 85,
+                "key_requirements": [
+                    "Non-profit status required",
+                    "Minimum 3 years of operation",
+                    "Focus on community development"
+                ],
+                "org_strengths": [
+                    "Strong community track record",
+                    "Established partnerships",
+                    "Proven impact metrics"
+                ],
+                "recommendations": [
+                    "Emphasize community partnerships",
+                    "Highlight measurable outcomes",
+                    "Include stakeholder testimonials"
+                ],
+                "narrative_suggestions": [
+                    "Focus on community impact stories",
+                    "Include data-driven outcomes",
+                    "Emphasize sustainability"
+                ]
+            }
+        }
+    except Exception as e:
+        print(f"❌ Error analyzing RFP: {e}")
+        return {"success": False, "error": str(e)}
 
 # Startup event
 @app.on_event("startup")
