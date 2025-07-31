@@ -34,3 +34,4 @@ multiprocess
 # File processing dependencies
 PyPDF2
 python-docx
+psycopg2-binary

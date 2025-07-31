@@ -18,20 +18,28 @@ try:
     from utils import file_utils  # from src/utils/file_utils.py
     from utils import openai_utils  # from src/utils/openai_utils.py
     from utils import storage_utils  # from src/utils/storage_utils.py
+    from utils import postgres_storage  # from src/utils/postgres_storage.py
     from utils import config  # from src/utils/config.py
     
     print("✅ Successfully imported utils modules")
     print(f"✅ file_utils type: {type(file_utils)}")
     print(f"✅ openai_utils type: {type(openai_utils)}")
     print(f"✅ storage_utils type: {type(storage_utils)}")
+    print(f"✅ postgres_storage type: {type(postgres_storage)}")
     
-    # Check if we should use Supabase storage
+    # Check storage options
     if config.USE_SUPABASE and config.SUPABASE_URL and config.SUPABASE_KEY:
         print("✅ Using Supabase for storage")
         storage_utils_available = True
-    else:
-        print("⚠️ Supabase not configured, using local storage")
+        postgres_storage_available = False
+    elif config.DB_HOSTNAME and config.DB_NAME and config.DB_USER and config.DB_PASSWORD:
+        print("✅ Using PostgreSQL for storage")
         storage_utils_available = False
+        postgres_storage_available = True
+    else:
+        print("⚠️ No database configured, using local storage")
+        storage_utils_available = False
+        postgres_storage_available = False
         
 except ImportError as e:
     print(f"❌ Error importing utils modules: {e}")
@@ -72,6 +80,7 @@ except ImportError as e:
     file_utils = DummyFileUtils()
     openai_utils = DummyOpenAIUtils()
     storage_utils_available = False
+    postgres_storage_available = False
 
 # Initialize the app
 app = FastAPI()
@@ -201,6 +210,8 @@ async def generate(request: Request):
         if project_id:
             if storage_utils_available:
                 project_context = storage_utils.get_context_summary(project_id)
+            elif postgres_storage_available:
+                project_context = postgres_storage.get_context_summary(project_id)
             else:
                 project_context = file_utils.get_context_summary(project_id)
         
@@ -232,6 +243,8 @@ async def send_message(request: Request):
         if project_id:
             if storage_utils_available:
                 project_context = storage_utils.get_context_summary(project_id)
+            elif postgres_storage_available:
+                project_context = postgres_storage.get_context_summary(project_id)
             else:
                 project_context = file_utils.get_context_summary(project_id)
         
@@ -262,6 +275,8 @@ async def brainstorm(request: Request):
         if project_id:
             if storage_utils_available:
                 project_context = storage_utils.get_context_summary(project_id)
+            elif postgres_storage_available:
+                project_context = postgres_storage.get_context_summary(project_id)
             else:
                 project_context = file_utils.get_context_summary(project_id)
         
@@ -310,6 +325,8 @@ async def upload_file(
         # Save file and extract context
         if storage_utils_available:
             result = storage_utils.save_uploaded_file(file_content, file.filename, project_id)
+        elif postgres_storage_available:
+            result = postgres_storage.save_uploaded_file(file_content, file.filename, project_id)
         else:
             result = file_utils.save_uploaded_file(file_content, file.filename, project_id)
         
@@ -337,6 +354,8 @@ async def get_context(project_id: str):
         
         if storage_utils_available:
             context = storage_utils.get_project_context(project_id)
+        elif postgres_storage_available:
+            context = postgres_storage.get_project_context(project_id)
         else:
             context = file_utils.get_project_context(project_id)
         return context
@@ -365,6 +384,8 @@ async def update_context(project_id: str, request: Request):
         
         if storage_utils_available:
             success = storage_utils.update_project_info(project_id, organization_info, initiative_description)
+        elif postgres_storage_available:
+            success = postgres_storage.update_project_info(project_id, organization_info, initiative_description)
         else:
             success = file_utils.update_project_info(project_id, organization_info, initiative_description)
         
@@ -385,6 +406,8 @@ async def delete_context(project_id: str):
         
         if storage_utils_available:
             success = storage_utils.delete_project_context(project_id)
+        elif postgres_storage_available:
+            success = postgres_storage.delete_project_context(project_id)
         else:
             success = file_utils.delete_project_context(project_id)
         
