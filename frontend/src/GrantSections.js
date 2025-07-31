@@ -31,7 +31,7 @@ const GrantSections = () => {
 
   const handleEdit = (sectionKey, content) => {
     setEditingSection(sectionKey);
-    setEditContent(content);
+    setEditContent(content || '');
   };
 
   const handleSave = (sectionKey) => {
@@ -149,6 +149,7 @@ const GrantSections = () => {
                       onChange={(e) => setEditContent(e.target.value)}
                       placeholder={`Write your ${sectionInfo.title.toLowerCase()} here...`}
                       rows={8}
+                      autoFocus
                     />
                     <div className="edit-actions">
                       <button 
@@ -180,7 +181,7 @@ const GrantSections = () => {
                 )}
               </div>
 
-              {sectionInfo.tips.length > 0 && (
+              {sectionInfo.tips.length > 0 && editingSection !== sectionKey && (
                 <div className="section-tips">
                   <h4>💡 Writing Tips:</h4>
                   <ul>

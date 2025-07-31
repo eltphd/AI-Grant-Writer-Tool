@@ -98,7 +98,7 @@ const ChatComponent = ({ projectId }) => {
         // Handle error
         const errorMessage = {
           id: Date.now() + 1,
-          message: "I'm sorry, I'm having trouble connecting right now. Please try again.",
+          message: "Sorry, I couldn't process your message right now. Please try again!",
           timestamp: new Date().toISOString(),
           type: 'ai'
         };
@@ -108,7 +108,7 @@ const ChatComponent = ({ projectId }) => {
       console.error('Error sending message:', error);
       const errorMessage = {
         id: Date.now() + 1,
-        message: "I'm sorry, there was an error. Please try again.",
+        message: "Sorry, I couldn't send your message right now. Please try again!",
         timestamp: new Date().toISOString(),
         type: 'ai'
       };
@@ -120,9 +120,10 @@ const ChatComponent = ({ projectId }) => {
 
   const handleBrainstorm = async (e) => {
     e.preventDefault();
-    if (!brainstormTopic.trim()) return;
+    if (!brainstormTopic.trim() || isLoading) return;
 
     setIsLoading(true);
+
     try {
       const response = await fetch(`${API_BASE}/chat/brainstorm`, {
         method: 'POST',
@@ -140,13 +141,13 @@ const ChatComponent = ({ projectId }) => {
         if (data.success && data.ideas) {
           const brainstormMessage = {
             id: Date.now(),
-            message: `💡 **Brainstorming ideas for: ${brainstormTopic}**\n\n${data.ideas.join('\n')}`,
+            message: `💡 **Brainstorming Ideas for: "${brainstormTopic}"**\n\n${data.ideas.join('\n\n')}`,
             timestamp: new Date().toISOString(),
             type: 'ai'
           };
           setMessages(prev => [...prev, brainstormMessage]);
-          setShowBrainstorm(false);
           setBrainstormTopic('');
+          setShowBrainstorm(false);
         } else {
           console.error('Brainstorm response error:', data);
         }
@@ -175,19 +176,7 @@ const ChatComponent = ({ projectId }) => {
 
   return (
     <div className="chat-container">
-      {/* Chat Header */}
-      <div className="chat-header">
-        <h3>👋 Welcome to GWAT — Your Grant Writing Assisted Toolkit</h3>
-        <p>Ready to co-write a funder-aligned proposal? Let's begin.</p>
-        
-        <div className="privacy-indicator">
-          <span className={`privacy-badge ${privacyStatus}`}>
-            Privacy: {privacyStatus.toUpperCase()}
-          </span>
-        </div>
-      </div>
-
-      {/* Messages Container */}
+      {/* Messages Container - Moved higher up */}
       <div className="messages-container">
         <div className="messages-list">
           {messages.map((message) => (
@@ -295,15 +284,6 @@ const ChatComponent = ({ projectId }) => {
           </form>
         </div>
       )}
-
-      {/* Floating Action Button */}
-      <button 
-        className="fab"
-        onClick={() => setShowBrainstorm(!showBrainstorm)}
-        title="Brainstorming Assistant"
-      >
-        💡
-      </button>
     </div>
   );
 };
