@@ -256,88 +256,88 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
         return generate_default_response(message, context, rfp_analysis)
 
 def generate_grant_section_guidance(context: dict, rfp_analysis: dict) -> str:
-    """Generate guidance for grant section writing"""
+    """Generate conversational grant section guidance"""
     
-    response = "📋 **Grant Section Writing Guidance**\n\n"
+    response = "📋 **Great! Let's write your grant sections together!**\n\n"
+    
+    response += "**Here's what we need to write:**\n\n"
+    response += "1️⃣ **Executive Summary** - The big picture overview\n"
+    response += "2️⃣ **Organization Profile** - Tell your story\n"
+    response += "3️⃣ **Project Description** - What you want to do\n"
+    response += "4️⃣ **Timeline** - When you'll do it\n"
+    response += "5️⃣ **Budget** - How much it will cost\n"
+    response += "6️⃣ **Evaluation** - How you'll measure success\n\n"
     
     if rfp_analysis.get('requirements'):
-        response += "**Based on your RFP requirements, focus on these sections:**\n"
-        for req in rfp_analysis['requirements'][:3]:
-            response += f"• {req}\n"
+        response += "**Based on your RFP, focus on these key points:**\n"
+        for i, req in enumerate(rfp_analysis['requirements'][:3], 1):
+            response += f"{i}. {req}\n"
         response += "\n"
     
-    response += "**Recommended sections to include:**\n"
-    response += "1. **Executive Summary** - Highlight key outcomes and impact\n"
-    response += "2. **Organization Profile** - Show your track record and credibility\n"
-    response += "3. **Project Approach** - Detail your methodology and innovation\n"
-    response += "4. **Timeline** - Provide clear milestones and deliverables\n"
-    response += "5. **Budget** - Align with RFP funding requirements\n"
-    response += "6. **Evaluation** - Show how you'll measure success\n\n"
-    
-    if context.get('organization_info'):
-        response += "**Your organization context:** " + context['organization_info'][:100] + "...\n\n"
-    
-    response += "Would you like me to help you write any specific section?"
+    response += "**Which section would you like to start with?**\n"
+    response += "Just say 'help with executive summary' or 'help with budget' and I'll guide you through it step by step!"
     
     return response
 
 def generate_content_access_response(context: dict) -> str:
-    """Generate response about content access"""
+    """Generate conversational content access response"""
     
-    response = "📄 **Content Access Status**\n\n"
+    response = "📄 **Let me check what information I have for you...**\n\n"
     
     if context.get('uploaded_files'):
-        response += "**Uploaded Documents:**\n"
+        response += "✅ **Documents I can see:**\n"
         for file in context['uploaded_files']:
             response += f"• {file}\n"
         response += "\n"
     else:
-        response += "No documents uploaded yet.\n\n"
+        response += "❌ **No documents uploaded yet**\n\n"
     
     if context.get('organization_info'):
-        response += "**Organization Context:** Available\n"
+        response += "✅ **Organization info:** I have your organization details\n"
     else:
-        response += "**Organization Context:** Not provided\n"
+        response += "❌ **Organization info:** Not provided yet\n"
     
-    response += "\n**To improve guidance, please:**\n"
-    response += "1. Upload your RFP document\n"
-    response += "2. Provide organization information\n"
-    response += "3. Add any supporting documents\n\n"
+    response += "\n**To give you better help, please:**\n"
+    response += "1. Upload your RFP document (the grant request)\n"
+    response += "2. Tell me about your organization\n"
+    response += "3. Add any other important documents\n\n"
     
-    response += "I can then provide more specific, tailored advice!"
+    response += "**Once you do that, I can give you much more specific advice!** 😊"
     
     return response
 
 def generate_rfp_guidance(rfp_analysis: dict) -> str:
-    """Generate RFP-specific guidance"""
+    """Generate conversational RFP guidance"""
     
-    response = "📋 **RFP Analysis & Requirements**\n\n"
+    response = "📋 **Here's what I found in your RFP:**\n\n"
     
     if rfp_analysis.get('requirements'):
         response += "**Key Requirements:**\n"
-        for req in rfp_analysis['requirements']:
-            response += f"• {req}\n"
+        for i, req in enumerate(rfp_analysis['requirements'], 1):
+            response += f"{i}. {req}\n"
         response += "\n"
     
     if rfp_analysis.get('eligibility_criteria'):
         response += "**Eligibility Criteria:**\n"
-        for criteria in rfp_analysis['eligibility_criteria']:
-            response += f"• {criteria}\n"
+        for i, criteria in enumerate(rfp_analysis['eligibility_criteria'], 1):
+            response += f"{i}. {criteria}\n"
         response += "\n"
     
     if rfp_analysis.get('funding_amount'):
-        response += f"**Funding Amount:** {rfp_analysis['funding_amount']}\n"
+        response += f"💰 **Funding Available:** {rfp_analysis['funding_amount']}\n"
     
     if rfp_analysis.get('deadline'):
-        response += f"**Deadline:** {rfp_analysis['deadline']}\n\n"
+        response += f"⏰ **Deadline:** {rfp_analysis['deadline']}\n\n"
     
     if rfp_analysis.get('alignment_score'):
-        response += f"**Your Alignment Score:** {rfp_analysis['alignment_score']}%\n\n"
+        response += f"🎯 **Your Alignment Score:** {rfp_analysis['alignment_score']}%\n\n"
     
-    response += "**Recommendations:**\n"
-    response += "• Emphasize requirements you meet well\n"
+    response += "**My recommendations:**\n"
+    response += "• Focus on the requirements you meet well\n"
     response += "• Address any gaps with specific plans\n"
-    response += "• Align your narrative with RFP priorities\n"
+    response += "• Make sure your proposal matches their priorities\n\n"
+    
+    response += "**Would you like me to help you write sections that address these requirements?**"
     
     return response
 
@@ -396,51 +396,53 @@ def generate_timeline_guidance(rfp_analysis: dict) -> str:
     return response
 
 def generate_general_guidance(context: dict, rfp_analysis: dict) -> str:
-    """Generate general guidance"""
+    """Generate conversational general guidance"""
     
-    response = "🎯 **GWAT Grant Writing Assistant**\n\n"
+    response = "🎯 **Hi! I'm your GWAT Assistant**\n\n"
     
-    response += "**I can help you with:**\n"
-    response += "• 📋 Writing grant sections\n"
-    response += "• 📄 Analyzing RFP requirements\n"
-    response += "• 💰 Budget planning\n"
-    response += "• ⏰ Timeline development\n"
-    response += "• 📊 Evaluation strategies\n"
-    response += "• 🎯 Alignment optimization\n\n"
+    response += "**I'm here to help you write a winning grant proposal!**\n\n"
     
     if context.get('organization_info'):
-        response += "**Your Organization:** " + context['organization_info'][:50] + "...\n\n"
+        response += "✅ I can see your organization information\n"
+    else:
+        response += "❌ I don't see your organization info yet\n"
     
-    if rfp_analysis.get('alignment_score'):
-        response += f"**Current Alignment:** {rfp_analysis['alignment_score']}%\n\n"
+    if rfp_analysis.get('requirements'):
+        response += f"✅ I have your RFP analysis ({len(rfp_analysis['requirements'])} requirements)\n"
+    else:
+        response += "❌ I don't see your RFP document yet\n"
     
-    response += "**Try asking:**\n"
-    response += "• 'Help me write the executive summary'\n"
-    response += "• 'What are the key RFP requirements?'\n"
-    response += "• 'How should I structure the budget?'\n"
-    response += "• 'What's my alignment score?'\n"
+    response += "\n**What would you like to do?**\n\n"
+    response += "1️⃣ **'Help me write sections'** - I'll walk you through each part of your grant\n"
+    response += "2️⃣ **'Show my RFP analysis'** - I'll tell you what I found in your RFP\n"
+    response += "3️⃣ **'Help with budget'** - I'll help you plan your funding request\n"
+    response += "4️⃣ **'Brainstorm ideas'** - I'll give you creative writing ideas\n"
+    response += "5️⃣ **'Check my alignment'** - I'll see how well you match the RFP\n\n"
+    
+    response += "**Just tell me what you need in simple terms!** 😊"
     
     return response
 
 def generate_default_response(message: str, context: dict, rfp_analysis: dict) -> str:
-    """Generate default response for unrecognized messages"""
+    """Generate conversational default response"""
     
-    response = f"Thank you for your message: '{message}'\n\n"
+    response = f"Hi! I see you said '{message}'. "
     
     if context.get('organization_info'):
-        response += "I can see your organization context. "
+        response += "I can see you've provided some organization information. "
     
     if rfp_analysis.get('requirements'):
-        response += f"I have analyzed your RFP with {len(rfp_analysis['requirements'])} requirements. "
+        response += f"I also have your RFP analysis with {len(rfp_analysis['requirements'])} requirements. "
     
-    response += "\n**How can I help?**\n"
-    response += "• Write grant sections\n"
-    response += "• Analyze RFP requirements\n"
-    response += "• Provide budget guidance\n"
-    response += "• Help with timeline planning\n"
-    response += "• Check alignment with requirements\n\n"
+    response += "\n\n**Here's how I can help you today:**\n\n"
+    response += "🎯 **Quick Actions:**\n"
+    response += "• Say 'help me write sections' - I'll guide you through each grant section\n"
+    response += "• Say 'show my RFP analysis' - I'll show what I found in your RFP\n"
+    response += "• Say 'help with budget' - I'll help you plan your budget\n"
+    response += "• Say 'brainstorm ideas' - I'll give you creative grant writing ideas\n\n"
     
-    response += "Just ask me anything specific about your grant proposal!"
+    response += "📋 **What would you like to work on first?**\n"
+    response += "Just tell me in simple terms what you need help with!"
     
     return response
 

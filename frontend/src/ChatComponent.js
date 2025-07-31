@@ -130,25 +130,37 @@ const ChatComponent = ({ projectId }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          project_id: projectId,
+          project_id: projectId || 'test-project',
           topic: brainstormTopic
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const brainstormMessage = {
-          id: Date.now(),
-          message: `Brainstorming ideas for: ${brainstormTopic}\n\n${data.suggestions}`,
-          timestamp: new Date().toISOString(),
-          type: 'ai'
-        };
-        setMessages(prev => [...prev, brainstormMessage]);
-        setShowBrainstorm(false);
-        setBrainstormTopic('');
+        if (data.success && data.ideas) {
+          const brainstormMessage = {
+            id: Date.now(),
+            message: `💡 **Brainstorming ideas for: ${brainstormTopic}**\n\n${data.ideas.join('\n')}`,
+            timestamp: new Date().toISOString(),
+            type: 'ai'
+          };
+          setMessages(prev => [...prev, brainstormMessage]);
+          setShowBrainstorm(false);
+          setBrainstormTopic('');
+        } else {
+          console.error('Brainstorm response error:', data);
+        }
       }
     } catch (error) {
       console.error('Error brainstorming:', error);
+      // Add error message to chat
+      const errorMessage = {
+        id: Date.now(),
+        message: "Sorry, I couldn't brainstorm ideas right now. Please try again!",
+        timestamp: new Date().toISOString(),
+        type: 'ai'
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
