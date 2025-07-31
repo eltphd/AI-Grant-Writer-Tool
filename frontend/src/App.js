@@ -255,14 +255,82 @@ function App() {
   };
 
   const handleEditSection = (sectionKey) => {
-    setCurrentStep(2); // Go back to the creation step
-    // In a real app, you'd pass the sectionKey to a modal or a dedicated editing component
-    // For now, we'll just show a placeholder message
-    alert(`Editing section: ${sectionKey}`);
+    // Placeholder for section editing
+    console.log(`Editing section: ${sectionKey}`);
   };
 
   const handleStepChange = (stepId) => {
     setCurrentStep(stepId);
+  };
+
+  const handleExportMarkdown = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/export/markdown`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          project_id: currentProject?.id || 'test-project',
+          sections: sections
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'grant-proposal.md';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Export failed:', response.status);
+        alert('Export failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error exporting:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleExportDocx = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/export/docx`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          project_id: currentProject?.id || 'test-project',
+          sections: sections
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'grant-proposal.docx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Export failed:', response.status);
+        alert('Export failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error exporting:', error);
+      alert('Export failed. Please try again.');
+    }
+  };
+
+  const handleReviewSections = () => {
+    setCurrentStep(2); // Go back to the grant creation page
   };
 
   return (
@@ -482,13 +550,13 @@ function App() {
               <p>Review your completed grant proposal before exporting.</p>
               
               <div className="export-actions">
-                <button className="btn btn-primary">
+                <button className="btn btn-primary" onClick={handleExportMarkdown}>
                   📝 Export as Markdown
                 </button>
-                <button className="btn btn-primary">
+                <button className="btn btn-primary" onClick={handleExportDocx}>
                   📄 Export as DOCX
                 </button>
-                <button className="btn btn-secondary">
+                <button className="btn btn-secondary" onClick={handleReviewSections}>
                   📋 Review Sections
                 </button>
               </div>

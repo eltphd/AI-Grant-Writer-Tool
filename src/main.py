@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import our utilities
@@ -983,6 +983,85 @@ async def get_grant_sections(project_id: str):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.post("/export/markdown")
+async def export_markdown(request: dict):
+    """Export grant proposal as Markdown"""
+    try:
+        project_id = request.get('project_id', 'test-project')
+        sections = request.get('sections', {})
+        
+        # Generate markdown content
+        markdown_content = "# Grant Proposal\n\n"
+        
+        section_titles = {
+            'executive_summary': 'Executive Summary',
+            'organization_profile': 'Organization Profile',
+            'project_approach': 'Project Description & Approach',
+            'timeline': 'Timeline & Implementation',
+            'budget': 'Budget & Financial Plan',
+            'evaluation': 'Evaluation & Impact Measurement'
+        }
+        
+        for section_key, section_title in section_titles.items():
+            content = sections.get(section_key, '')
+            if content:
+                markdown_content += f"## {section_title}\n\n{content}\n\n"
+            else:
+                markdown_content += f"## {section_title}\n\n*Content to be added*\n\n"
+        
+        # Add metadata
+        markdown_content += f"\n---\n*Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+        
+        return Response(
+            content=markdown_content,
+            media_type="text/markdown",
+            headers={"Content-Disposition": "attachment; filename=grant-proposal.md"}
+        )
+        
+    except Exception as e:
+        print(f"❌ Error exporting markdown: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/export/docx")
+async def export_docx(request: dict):
+    """Export grant proposal as DOCX"""
+    try:
+        project_id = request.get('project_id', 'test-project')
+        sections = request.get('sections', {})
+        
+        # For now, return a simple text file since we don't have docx library
+        # In production, you'd use python-docx library
+        docx_content = "Grant Proposal\n\n"
+        
+        section_titles = {
+            'executive_summary': 'Executive Summary',
+            'organization_profile': 'Organization Profile',
+            'project_approach': 'Project Description & Approach',
+            'timeline': 'Timeline & Implementation',
+            'budget': 'Budget & Financial Plan',
+            'evaluation': 'Evaluation & Impact Measurement'
+        }
+        
+        for section_key, section_title in section_titles.items():
+            content = sections.get(section_key, '')
+            if content:
+                docx_content += f"{section_title}\n\n{content}\n\n"
+            else:
+                docx_content += f"{section_title}\n\nContent to be added\n\n"
+        
+        # Add metadata
+        docx_content += f"\n---\nGenerated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        
+        return Response(
+            content=docx_content,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": "attachment; filename=grant-proposal.docx"}
+        )
+        
+    except Exception as e:
+        print(f"❌ Error exporting docx: {e}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

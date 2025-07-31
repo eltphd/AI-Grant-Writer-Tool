@@ -7,8 +7,6 @@ const ChatComponent = ({ projectId }) => {
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showBrainstorm, setShowBrainstorm] = useState(false);
-  const [brainstormTopic, setBrainstormTopic] = useState('');
   const [privacyStatus, setPrivacyStatus] = useState('high');
   const messagesEndRef = useRef(null);
 
@@ -118,55 +116,6 @@ const ChatComponent = ({ projectId }) => {
     }
   };
 
-  const handleBrainstorm = async (e) => {
-    e.preventDefault();
-    if (!brainstormTopic.trim() || isLoading) return;
-
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`${API_BASE}/chat/brainstorm`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          project_id: projectId || 'test-project',
-          topic: brainstormTopic
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.ideas) {
-          const brainstormMessage = {
-            id: Date.now(),
-            message: `💡 **Brainstorming Ideas for: "${brainstormTopic}"**\n\n${data.ideas.join('\n\n')}`,
-            timestamp: new Date().toISOString(),
-            type: 'ai'
-          };
-          setMessages(prev => [...prev, brainstormMessage]);
-          setBrainstormTopic('');
-          setShowBrainstorm(false);
-        } else {
-          console.error('Brainstorm response error:', data);
-        }
-      }
-    } catch (error) {
-      console.error('Error brainstorming:', error);
-      // Add error message to chat
-      const errorMessage = {
-        id: Date.now(),
-        message: "Sorry, I couldn't brainstorm ideas right now. Please try again!",
-        timestamp: new Date().toISOString(),
-        type: 'ai'
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const formatTime = (timestamp) => {
     return new Date(timestamp).toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -235,55 +184,7 @@ const ChatComponent = ({ projectId }) => {
             ➤
           </button>
         </form>
-
-        <div className="input-actions">
-          <button
-            className="action-btn"
-            onClick={() => setShowBrainstorm(!showBrainstorm)}
-            disabled={isLoading}
-          >
-            💡 Brainstorm
-          </button>
-          <button
-            className="action-btn"
-            onClick={() => window.open(`${API_BASE}/grant/sections/${projectId}/export/markdown`, '_blank')}
-            disabled={isLoading}
-          >
-            📄 Export
-          </button>
-        </div>
       </div>
-
-      {/* Brainstorming Section */}
-      {showBrainstorm && (
-        <div className="brainstorm-section">
-          <div className="brainstorm-header">
-            <h4>💡 Brainstorming Assistant</h4>
-            <button 
-              className="close-btn"
-              onClick={() => setShowBrainstorm(false)}
-            >
-              ✕
-            </button>
-          </div>
-          
-          <form onSubmit={handleBrainstorm} className="brainstorm-input">
-            <textarea
-              value={brainstormTopic}
-              onChange={(e) => setBrainstormTopic(e.target.value)}
-              placeholder="What would you like to brainstorm about? (e.g., 'funding sources for education projects', 'evaluation methods for community programs')"
-              rows={3}
-            />
-            <button 
-              type="submit" 
-              className="btn btn-secondary"
-              disabled={isLoading || !brainstormTopic.trim()}
-            >
-              {isLoading ? 'Generating...' : 'Generate Ideas'}
-            </button>
-          </form>
-        </div>
-      )}
     </div>
   );
 };
