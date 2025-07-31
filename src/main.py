@@ -180,13 +180,17 @@ async def update_project_context(project_id: str, request: dict):
 # Chat endpoints
 @app.post("/chat/send_message")
 async def send_message(request: dict):
-    """Send chat message"""
+    """Send chat message with context-aware responses"""
     try:
-        message = request.get('message', '')
+        message = request.get('message', '').lower()
         project_id = request.get('project_id', 'test-project')
         
-        # Mock AI response
-        ai_response = f"Thank you for your message: '{message}'. I'm here to help with your grant writing project {project_id}."
+        # Get project context and RFP analysis
+        project_context = get_project_context_data(project_id)
+        rfp_analysis = get_rfp_analysis_data(project_id)
+        
+        # Generate context-aware response
+        ai_response = generate_contextual_response(message, project_context, rfp_analysis)
         
         return {
             "success": True,
@@ -196,6 +200,249 @@ async def send_message(request: dict):
     except Exception as e:
         print(f"❌ Error sending message: {e}")
         return {"success": False, "error": str(e)}
+
+def get_project_context_data(project_id: str) -> dict:
+    """Get project context data"""
+    try:
+        # This would normally fetch from database
+        return {
+            "organization_info": "Sample organization with community focus",
+            "initiative_description": "Youth development program",
+            "uploaded_files": ["rfp_document.pdf", "org_profile.docx"],
+            "rfp_requirements": ["Non-profit status", "Community focus", "Measurable outcomes"]
+        }
+    except Exception as e:
+        print(f"Error getting project context: {e}")
+        return {}
+
+def get_rfp_analysis_data(project_id: str) -> dict:
+    """Get RFP analysis data"""
+    try:
+        # This would normally fetch from database
+        return {
+            "requirements": ["Non-profit status required", "Minimum 3 years operation", "Community focus"],
+            "eligibility_criteria": ["501(c)(3) status", "Annual budget > $100k"],
+            "funding_amount": "$50,000",
+            "deadline": "December 15, 2024",
+            "alignment_score": 85
+        }
+    except Exception as e:
+        print(f"Error getting RFP analysis: {e}")
+        return {}
+
+def generate_contextual_response(message: str, context: dict, rfp_analysis: dict) -> str:
+    """Generate contextual AI response based on message and available data"""
+    
+    # Check for specific keywords and provide relevant guidance
+    if any(word in message for word in ['grant', 'section', 'write', 'create']):
+        return generate_grant_section_guidance(context, rfp_analysis)
+    
+    elif any(word in message for word in ['content', 'access', 'document', 'file']):
+        return generate_content_access_response(context)
+    
+    elif any(word in message for word in ['rfp', 'requirement', 'eligibility']):
+        return generate_rfp_guidance(rfp_analysis)
+    
+    elif any(word in message for word in ['budget', 'funding', 'cost']):
+        return generate_budget_guidance(rfp_analysis)
+    
+    elif any(word in message for word in ['timeline', 'deadline', 'schedule']):
+        return generate_timeline_guidance(rfp_analysis)
+    
+    elif any(word in message for word in ['help', 'guide', 'assist']):
+        return generate_general_guidance(context, rfp_analysis)
+    
+    else:
+        return generate_default_response(message, context, rfp_analysis)
+
+def generate_grant_section_guidance(context: dict, rfp_analysis: dict) -> str:
+    """Generate guidance for grant section writing"""
+    
+    response = "📋 **Grant Section Writing Guidance**\n\n"
+    
+    if rfp_analysis.get('requirements'):
+        response += "**Based on your RFP requirements, focus on these sections:**\n"
+        for req in rfp_analysis['requirements'][:3]:
+            response += f"• {req}\n"
+        response += "\n"
+    
+    response += "**Recommended sections to include:**\n"
+    response += "1. **Executive Summary** - Highlight key outcomes and impact\n"
+    response += "2. **Organization Profile** - Show your track record and credibility\n"
+    response += "3. **Project Approach** - Detail your methodology and innovation\n"
+    response += "4. **Timeline** - Provide clear milestones and deliverables\n"
+    response += "5. **Budget** - Align with RFP funding requirements\n"
+    response += "6. **Evaluation** - Show how you'll measure success\n\n"
+    
+    if context.get('organization_info'):
+        response += "**Your organization context:** " + context['organization_info'][:100] + "...\n\n"
+    
+    response += "Would you like me to help you write any specific section?"
+    
+    return response
+
+def generate_content_access_response(context: dict) -> str:
+    """Generate response about content access"""
+    
+    response = "📄 **Content Access Status**\n\n"
+    
+    if context.get('uploaded_files'):
+        response += "**Uploaded Documents:**\n"
+        for file in context['uploaded_files']:
+            response += f"• {file}\n"
+        response += "\n"
+    else:
+        response += "No documents uploaded yet.\n\n"
+    
+    if context.get('organization_info'):
+        response += "**Organization Context:** Available\n"
+    else:
+        response += "**Organization Context:** Not provided\n"
+    
+    response += "\n**To improve guidance, please:**\n"
+    response += "1. Upload your RFP document\n"
+    response += "2. Provide organization information\n"
+    response += "3. Add any supporting documents\n\n"
+    
+    response += "I can then provide more specific, tailored advice!"
+    
+    return response
+
+def generate_rfp_guidance(rfp_analysis: dict) -> str:
+    """Generate RFP-specific guidance"""
+    
+    response = "📋 **RFP Analysis & Requirements**\n\n"
+    
+    if rfp_analysis.get('requirements'):
+        response += "**Key Requirements:**\n"
+        for req in rfp_analysis['requirements']:
+            response += f"• {req}\n"
+        response += "\n"
+    
+    if rfp_analysis.get('eligibility_criteria'):
+        response += "**Eligibility Criteria:**\n"
+        for criteria in rfp_analysis['eligibility_criteria']:
+            response += f"• {criteria}\n"
+        response += "\n"
+    
+    if rfp_analysis.get('funding_amount'):
+        response += f"**Funding Amount:** {rfp_analysis['funding_amount']}\n"
+    
+    if rfp_analysis.get('deadline'):
+        response += f"**Deadline:** {rfp_analysis['deadline']}\n\n"
+    
+    if rfp_analysis.get('alignment_score'):
+        response += f"**Your Alignment Score:** {rfp_analysis['alignment_score']}%\n\n"
+    
+    response += "**Recommendations:**\n"
+    response += "• Emphasize requirements you meet well\n"
+    response += "• Address any gaps with specific plans\n"
+    response += "• Align your narrative with RFP priorities\n"
+    
+    return response
+
+def generate_budget_guidance(rfp_analysis: dict) -> str:
+    """Generate budget guidance"""
+    
+    response = "💰 **Budget Guidance**\n\n"
+    
+    if rfp_analysis.get('funding_amount'):
+        response += f"**RFP Funding:** {rfp_analysis['funding_amount']}\n\n"
+    
+    response += "**Budget Best Practices:**\n"
+    response += "• Align with RFP funding limits\n"
+    response += "• Include all required cost categories\n"
+    response += "• Provide detailed line items\n"
+    response += "• Show cost-effectiveness\n"
+    response += "• Include matching funds if required\n\n"
+    
+    response += "**Common Budget Categories:**\n"
+    response += "• Personnel (salaries, benefits)\n"
+    response += "• Equipment and supplies\n"
+    response += "• Travel and training\n"
+    response += "• Indirect costs\n"
+    response += "• Evaluation and reporting\n\n"
+    
+    response += "Would you like help structuring your budget?"
+    
+    return response
+
+def generate_timeline_guidance(rfp_analysis: dict) -> str:
+    """Generate timeline guidance"""
+    
+    response = "⏰ **Timeline & Deadline Guidance**\n\n"
+    
+    if rfp_analysis.get('deadline'):
+        response += f"**RFP Deadline:** {rfp_analysis['deadline']}\n\n"
+    
+    response += "**Timeline Best Practices:**\n"
+    response += "• Start early - allow 2-3 weeks for writing\n"
+    response += "• Include internal review time\n"
+    response += "• Plan for revisions and feedback\n"
+    response += "• Consider submission requirements\n\n"
+    
+    response += "**Project Timeline Structure:**\n"
+    response += "• Month 1-3: Planning and preparation\n"
+    response += "• Month 4-6: Implementation phase\n"
+    response += "• Month 7-9: Evaluation and reporting\n"
+    response += "• Month 10-12: Sustainability planning\n\n"
+    
+    response += "**Key Milestones to Include:**\n"
+    response += "• Project kickoff\n"
+    response += "• Major deliverables\n"
+    response += "• Progress reviews\n"
+    response += "• Final evaluation\n"
+    
+    return response
+
+def generate_general_guidance(context: dict, rfp_analysis: dict) -> str:
+    """Generate general guidance"""
+    
+    response = "🎯 **GWAT Grant Writing Assistant**\n\n"
+    
+    response += "**I can help you with:**\n"
+    response += "• 📋 Writing grant sections\n"
+    response += "• 📄 Analyzing RFP requirements\n"
+    response += "• 💰 Budget planning\n"
+    response += "• ⏰ Timeline development\n"
+    response += "• 📊 Evaluation strategies\n"
+    response += "• 🎯 Alignment optimization\n\n"
+    
+    if context.get('organization_info'):
+        response += "**Your Organization:** " + context['organization_info'][:50] + "...\n\n"
+    
+    if rfp_analysis.get('alignment_score'):
+        response += f"**Current Alignment:** {rfp_analysis['alignment_score']}%\n\n"
+    
+    response += "**Try asking:**\n"
+    response += "• 'Help me write the executive summary'\n"
+    response += "• 'What are the key RFP requirements?'\n"
+    response += "• 'How should I structure the budget?'\n"
+    response += "• 'What's my alignment score?'\n"
+    
+    return response
+
+def generate_default_response(message: str, context: dict, rfp_analysis: dict) -> str:
+    """Generate default response for unrecognized messages"""
+    
+    response = f"Thank you for your message: '{message}'\n\n"
+    
+    if context.get('organization_info'):
+        response += "I can see your organization context. "
+    
+    if rfp_analysis.get('requirements'):
+        response += f"I have analyzed your RFP with {len(rfp_analysis['requirements'])} requirements. "
+    
+    response += "\n**How can I help?**\n"
+    response += "• Write grant sections\n"
+    response += "• Analyze RFP requirements\n"
+    response += "• Provide budget guidance\n"
+    response += "• Help with timeline planning\n"
+    response += "• Check alignment with requirements\n\n"
+    
+    response += "Just ask me anything specific about your grant proposal!"
+    
+    return response
 
 @app.get("/chat/history/{project_id}")
 async def get_chat_history(project_id: str):
@@ -218,19 +465,209 @@ async def get_chat_history(project_id: str):
 
 @app.post("/chat/brainstorm")
 async def brainstorm_ideas(project_id: str, request: dict):
-    """Brainstorm grant ideas"""
+    """Brainstorm grant ideas and strategies"""
     try:
+        topic = request.get('topic', '').lower()
+        project_context = get_project_context_data(project_id)
+        rfp_analysis = get_rfp_analysis_data(project_id)
+        
+        # Generate topic-specific brainstorming
+        if any(word in topic for word in ['section', 'write', 'content']):
+            ideas = generate_section_ideas(project_context, rfp_analysis)
+        elif any(word in topic for word in ['budget', 'funding', 'cost']):
+            ideas = generate_budget_ideas(rfp_analysis)
+        elif any(word in topic for word in ['timeline', 'schedule', 'deadline']):
+            ideas = generate_timeline_ideas(rfp_analysis)
+        elif any(word in topic for word in ['evaluation', 'measure', 'outcome']):
+            ideas = generate_evaluation_ideas(project_context, rfp_analysis)
+        elif any(word in topic for word in ['partnership', 'collaboration', 'network']):
+            ideas = generate_partnership_ideas(project_context)
+        else:
+            ideas = generate_general_ideas(project_context, rfp_analysis)
+        
         return {
             "success": True,
-            "ideas": [
-                "Mock idea 1: Focus on community impact",
-                "Mock idea 2: Emphasize innovation",
-                "Mock idea 3: Highlight sustainability"
-            ]
+            "ideas": ideas
         }
     except Exception as e:
         print(f"❌ Error brainstorming: {e}")
         return {"success": False, "error": str(e)}
+
+def generate_section_ideas(context: dict, rfp_analysis: dict) -> list:
+    """Generate ideas for grant sections"""
+    ideas = [
+        "📋 **Executive Summary Ideas:**",
+        "• Start with a compelling hook about your organization's impact",
+        "• Include 2-3 key statistics that demonstrate success",
+        "• End with a clear call to action about the proposed project",
+        "",
+        "🏢 **Organization Profile Ideas:**",
+        "• Highlight your unique mission and values",
+        "• Showcase past achievements with specific metrics",
+        "• Emphasize your expertise in the target area",
+        "• Include testimonials from partners or beneficiaries",
+        "",
+        "🎯 **Project Approach Ideas:**",
+        "• Describe your innovative methodology",
+        "• Explain how you'll address the specific RFP requirements",
+        "• Include risk mitigation strategies",
+        "• Show how you'll measure and report progress"
+    ]
+    
+    if rfp_analysis.get('requirements'):
+        ideas.append("")
+        ideas.append("**RFP-Specific Focus Areas:**")
+        for req in rfp_analysis['requirements'][:3]:
+            ideas.append(f"• Emphasize how you meet: {req}")
+    
+    return ideas
+
+def generate_budget_ideas(rfp_analysis: dict) -> list:
+    """Generate budget-related ideas"""
+    ideas = [
+        "💰 **Budget Strategy Ideas:**",
+        "• Align every line item with RFP requirements",
+        "• Show cost-effectiveness through detailed breakdowns",
+        "• Include matching funds if required by the RFP",
+        "• Demonstrate sustainability beyond the grant period",
+        "",
+        "📊 **Budget Categories to Consider:**",
+        "• Personnel (salaries, benefits, training)",
+        "• Equipment and technology needs",
+        "• Travel and professional development",
+        "• Evaluation and reporting costs",
+        "• Indirect costs (if allowed)",
+        "",
+        "💡 **Budget Presentation Tips:**",
+        "• Use clear, professional formatting",
+        "• Include narrative explanations for major items",
+        "• Show how costs align with project outcomes",
+        "• Demonstrate value for money"
+    ]
+    
+    if rfp_analysis.get('funding_amount'):
+        ideas.append("")
+        ideas.append(f"**RFP Funding Target:** {rfp_analysis['funding_amount']}")
+        ideas.append("• Structure your budget to maximize this amount")
+        ideas.append("• Show how you'll use funds effectively")
+    
+    return ideas
+
+def generate_timeline_ideas(rfp_analysis: dict) -> list:
+    """Generate timeline-related ideas"""
+    ideas = [
+        "⏰ **Timeline Strategy Ideas:**",
+        "• Create realistic milestones that align with RFP requirements",
+        "• Include buffer time for unexpected challenges",
+        "• Show how you'll maintain momentum throughout the project",
+        "• Demonstrate sustainability planning",
+        "",
+        "📅 **Timeline Structure Ideas:**",
+        "• Month 1-3: Planning and preparation phase",
+        "• Month 4-6: Implementation and early results",
+        "• Month 7-9: Evaluation and mid-course corrections",
+        "• Month 10-12: Reporting and sustainability planning",
+        "",
+        "🎯 **Key Milestones to Include:**",
+        "• Project kickoff and team formation",
+        "• Major deliverables and checkpoints",
+        "• Progress reviews and stakeholder meetings",
+        "• Final evaluation and reporting"
+    ]
+    
+    if rfp_analysis.get('deadline'):
+        ideas.append("")
+        ideas.append(f"**RFP Deadline:** {rfp_analysis['deadline']}")
+        ideas.append("• Plan backwards from this date")
+        ideas.append("• Include time for revisions and feedback")
+    
+    return ideas
+
+def generate_evaluation_ideas(context: dict, rfp_analysis: dict) -> list:
+    """Generate evaluation-related ideas"""
+    ideas = [
+        "📊 **Evaluation Strategy Ideas:**",
+        "• Design measurable outcomes that align with RFP goals",
+        "• Include both quantitative and qualitative measures",
+        "• Plan for ongoing monitoring and reporting",
+        "• Show how you'll use data to improve programs",
+        "",
+        "📈 **Evaluation Methods to Consider:**",
+        "• Pre/post assessments for participants",
+        "• Regular progress reports and check-ins",
+        "• Stakeholder feedback and surveys",
+        "• External evaluation or peer review",
+        "• Long-term impact measurement",
+        "",
+        "🎯 **Key Metrics to Track:**",
+        "• Number of people served",
+        "• Quality of services delivered",
+        "• Participant satisfaction and outcomes",
+        "• Cost-effectiveness and efficiency",
+        "• Sustainability and lasting impact"
+    ]
+    
+    return ideas
+
+def generate_partnership_ideas(context: dict) -> list:
+    """Generate partnership-related ideas"""
+    ideas = [
+        "🤝 **Partnership Strategy Ideas:**",
+        "• Identify complementary organizations in your field",
+        "• Show how partnerships strengthen your proposal",
+        "• Include letters of support or commitment",
+        "• Demonstrate collaborative capacity and experience",
+        "",
+        "🏢 **Potential Partner Types:**",
+        "• Local government agencies",
+        "• Educational institutions",
+        "• Healthcare providers",
+        "• Community organizations",
+        "• Private sector partners",
+        "• Faith-based organizations",
+        "",
+        "💡 **Partnership Benefits to Highlight:**",
+        "• Shared resources and expertise",
+        "• Broader reach and impact",
+        "• Cost-effectiveness through collaboration",
+        "• Sustainability through diverse support"
+    ]
+    
+    return ideas
+
+def generate_general_ideas(context: dict, rfp_analysis: dict) -> list:
+    """Generate general grant writing ideas"""
+    ideas = [
+        "🎯 **General Grant Writing Strategies:**",
+        "• Tell a compelling story about your organization's impact",
+        "• Use specific examples and success stories",
+        "• Include data and statistics to support your case",
+        "• Show how you'll address the funder's priorities",
+        "",
+        "📋 **Proposal Enhancement Ideas:**",
+        "• Include visual elements (charts, photos, diagrams)",
+        "• Add testimonials from beneficiaries or partners",
+        "• Provide clear, concise executive summary",
+        "• Show innovation and creativity in your approach",
+        "",
+        "💡 **Competitive Advantage Ideas:**",
+        "• Highlight your unique expertise or approach",
+        "• Show proven track record in similar projects",
+        "• Demonstrate strong community relationships",
+        "• Include plans for sustainability and scaling"
+    ]
+    
+    if rfp_analysis.get('alignment_score'):
+        ideas.append("")
+        ideas.append(f"**Your Alignment Score: {rfp_analysis['alignment_score']}%**")
+        if rfp_analysis['alignment_score'] >= 80:
+            ideas.append("• Excellent alignment - emphasize your strengths")
+        elif rfp_analysis['alignment_score'] >= 60:
+            ideas.append("• Good alignment - address any gaps specifically")
+        else:
+            ideas.append("• Focus on improving alignment with RFP requirements")
+    
+    return ideas
 
 # Privacy audit endpoint
 @app.get("/privacy/audit/{project_id}")
