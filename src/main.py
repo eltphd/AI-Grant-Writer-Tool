@@ -2,8 +2,15 @@ import os
 from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
-from .utils.rfp_analysis import rfp_analyzer
+
+# Import our utilities
+try:
+    from .utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
+    from .utils.rfp_analysis import rfp_analyzer
+except ImportError:
+    # Fallback for direct execution
+    from utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
+    from utils.rfp_analysis import rfp_analyzer
 
 app = FastAPI(title="GWAT API", version="1.0.0")
 
