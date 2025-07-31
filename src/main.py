@@ -468,7 +468,7 @@ async def test_endpoint():
 @app.get("/simple")
 async def simple_test():
     """Simple test endpoint"""
-    return {"status": "ok", "message": "Simple endpoint working - updated"}
+    return {"status": "ok", "message": "Simple endpoint working - updated", "deployment": "latest"}
 
 @app.post("/generate")
 async def generate_response(request: dict):
