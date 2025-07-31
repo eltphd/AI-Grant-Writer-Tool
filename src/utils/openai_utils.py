@@ -56,7 +56,11 @@ def generate_grant_response(question: str, project_context: str = "") -> str:
     """
     system_message = """You are an expert grant writer with years of experience helping organizations secure funding. 
     You provide practical, actionable advice for grant writing. Be specific, helpful, and encouraging. 
-    Focus on best practices, common pitfalls to avoid, and step-by-step guidance."""
+    Focus on best practices, common pitfalls to avoid, and step-by-step guidance.
+    
+    When provided with project context (organization info, initiative details, or uploaded documents), 
+    use this information to provide personalized, relevant advice that takes into account the specific 
+    organization and project details."""
     
     full_prompt = f"""
     Project Context: {project_context}
@@ -64,6 +68,7 @@ def generate_grant_response(question: str, project_context: str = "") -> str:
     Question: {question}
     
     Please provide detailed, helpful advice for this grant writing question. Include specific examples and actionable steps where appropriate.
+    If project context is available, reference the organization's specific situation and documents in your response.
     """
     
     return get_openai_response(full_prompt, system_message)
@@ -125,7 +130,11 @@ def chat_grant_assistant(message: str, project_context: str = "", conversation_h
     """
     system_message = """You are a helpful grant writing assistant. You provide expert advice on grant writing, 
     help users brainstorm ideas, answer questions about grant requirements, and guide them through the grant writing process. 
-    Be encouraging, practical, and specific in your advice."""
+    Be encouraging, practical, and specific in your advice.
+    
+    When provided with project context (organization info, initiative details, or uploaded documents), 
+    use this information to provide personalized, relevant advice that takes into account the specific 
+    organization and project details."""
     
     # Build conversation context
     messages = [{"role": "system", "content": system_message}]

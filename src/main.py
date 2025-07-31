@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime
@@ -130,8 +130,7 @@ async def generate(request: Request):
         # Get project context if available
         project_context = ""
         if project_id:
-            # TODO: Implement project context retrieval from database
-            project_context = f"Project ID: {project_id}"
+            project_context = file_utils.get_context_summary(project_id)
         
         # Generate AI response using OpenAI
         ai_response = openai_utils.generate_grant_response(question, project_context)
@@ -155,8 +154,7 @@ async def send_message(request: Request):
         # Get project context if available
         project_context = ""
         if project_id:
-            # TODO: Implement project context retrieval from database
-            project_context = f"Project ID: {project_id}"
+            project_context = file_utils.get_context_summary(project_id)
         
         # Generate AI response using OpenAI
         ai_response = openai_utils.chat_grant_assistant(message, project_context)
@@ -179,8 +177,7 @@ async def brainstorm(request: Request):
         # Get project context if available
         project_context = ""
         if project_id:
-            # TODO: Implement project context retrieval from database
-            project_context = f"Project ID: {project_id}"
+            project_context = file_utils.get_context_summary(project_id)
         
         # Generate brainstorming ideas using OpenAI
         ideas = openai_utils.brainstorm_grant_ideas(topic, project_context)
@@ -189,6 +186,88 @@ async def brainstorm(request: Request):
     except Exception as e:
         print(f"❌ Error in /chat/brainstorm: {e}")
         return {"error": str(e)}
+
+# File upload endpoint
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    project_id: str = Form(...)
+):
+    try:
+        print(f"✅ /upload called for project {project_id}, file: {file.filename}")
+        
+        # Read file content
+        file_content = await file.read()
+        
+        # Save file and extract context
+        result = file_utils.save_uploaded_file(file_content, file.filename, project_id)
+        
+        if result.get("success"):
+            return {
+                "success": True,
+                "message": f"File {file.filename} uploaded successfully",
+                "file_info": result
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get("error", "Unknown error")
+            }
+            
+    except Exception as e:
+        print(f"❌ Error in /upload: {e}")
+        return {"success": False, "error": str(e)}
+
+# Get project context
+@app.get("/context/{project_id}")
+async def get_context(project_id: str):
+    try:
+        print(f"✅ /context/{project_id} called")
+        
+        context = file_utils.get_project_context(project_id)
+        return context
+        
+    except Exception as e:
+        print(f"❌ Error in /context/{project_id}: {e}")
+        return {"error": str(e)}
+
+# Update project information
+@app.post("/context/{project_id}")
+async def update_context(project_id: str, request: Request):
+    try:
+        data = await request.json()
+        organization_info = data.get('organization_info', '')
+        initiative_description = data.get('initiative_description', '')
+        
+        print(f"✅ /context/{project_id} update called")
+        
+        success = file_utils.update_project_info(project_id, organization_info, initiative_description)
+        
+        if success:
+            return {"success": True, "message": "Project information updated successfully"}
+        else:
+            return {"success": False, "error": "Failed to update project information"}
+            
+    except Exception as e:
+        print(f"❌ Error in /context/{project_id} update: {e}")
+        return {"success": False, "error": str(e)}
+
+# Delete project context
+@app.delete("/context/{project_id}")
+async def delete_context(project_id: str):
+    try:
+        print(f"✅ /context/{project_id} delete called")
+        
+        success = file_utils.delete_project_context(project_id)
+        
+        if success:
+            return {"success": True, "message": "Project context deleted successfully"}
+        else:
+            return {"success": False, "error": "Failed to delete project context"}
+            
+    except Exception as e:
+        print(f"❌ Error in /context/{project_id} delete: {e}")
+        return {"success": False, "error": str(e)}
 
 # Analyze organization and initiative for grant writing guidance
 @app.post("/analyze")

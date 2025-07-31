@@ -31,3 +31,6 @@ supabase
 # encounter import errors you may need to add more packages here.
 python-dotenv
 multiprocess
+# File processing dependencies
+PyPDF2
+python-docx
