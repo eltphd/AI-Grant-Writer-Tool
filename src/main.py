@@ -122,6 +122,38 @@ async def get_chat_history(project_id: str):
         print(f"❌ Error getting chat history: {e}")
         return {"success": False, "error": str(e)}
 
+@app.post("/chat/brainstorm")
+async def brainstorm_ideas(project_id: str, request: dict):
+    """Brainstorm grant ideas"""
+    try:
+        return {
+            "success": True,
+            "ideas": [
+                "Mock idea 1: Focus on community impact",
+                "Mock idea 2: Emphasize innovation",
+                "Mock idea 3: Highlight sustainability"
+            ]
+        }
+    except Exception as e:
+        print(f"❌ Error brainstorming: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/privacy/audit/{project_id}")
+async def privacy_audit(project_id: str):
+    """Get privacy audit for a project"""
+    try:
+        return {
+            "success": True,
+            "audit_result": {
+                "overall_privacy_level": "low",
+                "sensitive_data_found": False,
+                "recommendations": []
+            }
+        }
+    except Exception as e:
+        print(f"❌ Error privacy audit: {e}")
+        return {"success": False, "error": str(e)}
+
 # Context endpoint (simplified)
 @app.get("/context/{project_id}")
 async def get_project_context(project_id: str):

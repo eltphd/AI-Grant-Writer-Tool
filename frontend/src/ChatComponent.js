@@ -47,12 +47,7 @@ const ChatComponent = ({ projectId }) => {
 
   const checkPrivacyStatus = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE}/privacy/audit/${projectId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(`${API_BASE}/privacy/audit/${projectId}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -82,12 +77,10 @@ const ChatComponent = ({ projectId }) => {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE}/chat/send_message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           project_id: projectId,
@@ -136,12 +129,10 @@ const ChatComponent = ({ projectId }) => {
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE}/chat/brainstorm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           project_id: projectId,
