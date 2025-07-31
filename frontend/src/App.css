@@ -202,7 +202,7 @@ body {
 }
 
 .step-container {
-  background: var(--glass-bg);
+  background: rgba(28, 28, 30, 0.95);
   backdrop-filter: var(--glass-blur);
   border-radius: 16px;
   box-shadow: var(--glass-shadow);
