@@ -29,7 +29,7 @@ RUN npm run build
 ################################
 # Stage 2: Build Python back‑end #
 ################################
-FROM python:3.11-slim AS backend
+FROM python:3.11-alpine AS backend
 
 # Avoid writing pyc files to disk and ensure stdout/stderr is unbuffered
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -38,25 +38,17 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Install minimal system dependencies needed for psycopg2
-# Use --no-install-recommends and clean up in the same layer to reduce image size
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        gcc \
-        libpq-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /tmp/* /var/tmp/*
+# Install minimal system dependencies for psycopg2-binary
+RUN apk add --no-cache \
+    postgresql-dev \
+    gcc \
+    musl-dev \
+    && rm -rf /var/cache/apk/*
 
-# Install Python dependencies in separate layers for better caching
+# Install Python dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --upgrade pip
-
-# Install heavy dependencies first
-RUN pip install --no-cache-dir numpy==1.24.3 scikit-learn==1.3.2
-
-# Install remaining dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy backend source code
 COPY src ./src

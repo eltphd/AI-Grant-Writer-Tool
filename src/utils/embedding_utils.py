@@ -6,11 +6,18 @@ for rapid contextual recall in RAG applications.
 
 import os
 import json
-import numpy as np
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 from openai import OpenAI
 import hashlib
+
+# Try to import numpy with graceful fallback
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    print("⚠️ numpy not available. Some embedding features may be limited.")
+    NUMPY_AVAILABLE = False
 
 # Import config
 try:
@@ -131,6 +138,20 @@ class EmbeddingManager:
     
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """Calculate cosine similarity between two vectors."""
+        if not NUMPY_AVAILABLE:
+            # Fallback to manual calculation without numpy
+            if len(vec1) != len(vec2):
+                return 0.0
+            
+            dot_product = sum(a * b for a, b in zip(vec1, vec2))
+            norm1 = sum(a * a for a in vec1) ** 0.5
+            norm2 = sum(b * b for b in vec2) ** 0.5
+            
+            if norm1 == 0 or norm2 == 0:
+                return 0.0
+            
+            return dot_product / (norm1 * norm2)
+        
         try:
             vec1_array = np.array(vec1)
             vec2_array = np.array(vec2)
