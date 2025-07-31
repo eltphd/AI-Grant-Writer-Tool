@@ -12,6 +12,11 @@ from datetime import datetime
 # Configure OpenAI client
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Check if OpenAI API key is configured
+if not openai.api_key:
+    print("⚠️ Warning: OPENAI_API_KEY not found in environment variables")
+    print("⚠️ AI responses will be limited. Please set OPENAI_API_KEY for full functionality.")
+
 def get_openai_response(prompt: str, system_message: str = None, max_tokens: int = 1000) -> str:
     """Get a response from OpenAI's GPT model.
     
@@ -23,6 +28,10 @@ def get_openai_response(prompt: str, system_message: str = None, max_tokens: int
     Returns:
         The AI-generated response
     """
+    # Check if OpenAI API key is configured
+    if not openai.api_key:
+        return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
+    
     try:
         messages = []
         
@@ -42,7 +51,12 @@ def get_openai_response(prompt: str, system_message: str = None, max_tokens: int
         
     except Exception as e:
         print(f"❌ OpenAI API error: {e}")
-        return f"Sorry, I encountered an error: {str(e)}"
+        if "authentication" in str(e).lower() or "api key" in str(e).lower():
+            return "⚠️ OpenAI API key is invalid or not configured. Please check your OPENAI_API_KEY environment variable."
+        elif "quota" in str(e).lower() or "billing" in str(e).lower():
+            return "⚠️ OpenAI API quota exceeded or billing issue. Please check your OpenAI account."
+        else:
+            return f"⚠️ OpenAI API error: {str(e)}"
 
 def generate_grant_response(question: str, project_context: str = "") -> str:
     """Generate a grant writing response based on the user's question.

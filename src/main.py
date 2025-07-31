@@ -133,8 +133,24 @@ def root():
 @app.get("/test")
 def test():
     print("✅ /test endpoint called")
+    
+    # Test OpenAI connection
+    openai_status = "unknown"
+    try:
+        if openai_utils.get_openai_response("Hello", "You are a helpful assistant.", max_tokens=10):
+            openai_status = "working"
+        else:
+            openai_status = "not configured"
+    except Exception as e:
+        openai_status = f"error: {str(e)}"
+    
     return JSONResponse(
-        content={"status": "ok", "message": "Backend is working!", "timestamp": datetime.now().isoformat()},
+        content={
+            "status": "ok", 
+            "message": "Backend is working!", 
+            "timestamp": datetime.now().isoformat(),
+            "openai_status": openai_status
+        },
         headers={
             "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -187,7 +203,11 @@ async def send_message(request: Request):
             project_context = file_utils.get_context_summary(project_id)
         
         # Generate AI response using OpenAI
-        ai_response = openai_utils.chat_grant_assistant(message, project_context)
+        try:
+            ai_response = openai_utils.chat_grant_assistant(message, project_context)
+        except Exception as e:
+            print(f"❌ OpenAI chat error: {e}")
+            ai_response = f"I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later. Error: {str(e)}"
         
         return {"ai_response": ai_response}
     except Exception as e:
@@ -210,7 +230,15 @@ async def brainstorm(request: Request):
             project_context = file_utils.get_context_summary(project_id)
         
         # Generate brainstorming ideas using OpenAI
-        ideas = openai_utils.brainstorm_grant_ideas(topic, project_context)
+        try:
+            ideas = openai_utils.brainstorm_grant_ideas(topic, project_context)
+        except Exception as e:
+            print(f"❌ OpenAI brainstorm error: {e}")
+            ideas = {
+                "topic": topic,
+                "suggestions": f"I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later. Error: {str(e)}",
+                "error": str(e)
+            }
         
         return ideas
     except Exception as e:
