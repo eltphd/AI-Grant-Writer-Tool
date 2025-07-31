@@ -214,6 +214,23 @@ def health():
         }
     )
 
+# Super simple test endpoint
+@app.get("/simple")
+def simple():
+    print("✅ /simple endpoint called")
+    return JSONResponse(
+        content={
+            "message": "Simple endpoint working!",
+            "timestamp": datetime.now().isoformat()
+        },
+        headers={
+            "Access-Control-Allow-Origin": "https://ai-grant-writer-tool.vercel.app",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
+
 # Root route to prevent 404 on /
 @app.get("/")
 def root():
