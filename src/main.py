@@ -123,6 +123,15 @@ async def get_chat_history(project_id: str):
         return {"success": False, "error": str(e)}
 
 # Context endpoint (simplified)
+@app.get("/context/{project_id}")
+async def get_project_context(project_id: str):
+    """Get project context"""
+    try:
+        return {"success": True, "context": {"files": []}}
+    except Exception as e:
+        print(f"❌ Error getting project context: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.post("/context/{project_id}")
 async def update_project_context(project_id: str, context_data: dict):
     """Update project context"""
