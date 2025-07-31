@@ -13,12 +13,38 @@ try:
 except ImportError:
     print("python-dotenv not installed. Skipping .env loading.")
 
-# Optional: import your utility module safely
+# Import utility modules
 try:
     from utils import file_utils  # from src/utils/file_utils.py
     from utils import openai_utils  # from src/utils/openai_utils.py
+    print("✅ Successfully imported utils modules")
 except ImportError as e:
-    print(f"[Startup Warning] Could not import utils modules: {e}")
+    print(f"❌ Error importing utils modules: {e}")
+    # Create dummy modules to prevent crashes
+    class DummyFileUtils:
+        def save_uploaded_file(self, *args, **kwargs):
+            return {"success": False, "error": "File utils not available"}
+        def get_project_context(self, *args, **kwargs):
+            return {"error": "File utils not available"}
+        def update_project_info(self, *args, **kwargs):
+            return False
+        def delete_project_context(self, *args, **kwargs):
+            return False
+        def get_context_summary(self, *args, **kwargs):
+            return "Context not available"
+    
+    class DummyOpenAIUtils:
+        def generate_grant_response(self, *args, **kwargs):
+            return "OpenAI utils not available"
+        def chat_grant_assistant(self, *args, **kwargs):
+            return "OpenAI utils not available"
+        def brainstorm_grant_ideas(self, *args, **kwargs):
+            return {"error": "OpenAI utils not available"}
+        def analyze_grant_requirements(self, *args, **kwargs):
+            return {"error": "OpenAI utils not available"}
+    
+    file_utils = DummyFileUtils()
+    openai_utils = DummyOpenAIUtils()
 
 # Initialize the app
 app = FastAPI()
@@ -133,7 +159,11 @@ async def generate(request: Request):
             project_context = file_utils.get_context_summary(project_id)
         
         # Generate AI response using OpenAI
-        ai_response = openai_utils.generate_grant_response(question, project_context)
+        try:
+            ai_response = openai_utils.generate_grant_response(question, project_context)
+        except Exception as e:
+            print(f"❌ OpenAI error: {e}")
+            ai_response = f"I'm sorry, I'm having trouble connecting to the AI service right now. Please try again later. Error: {str(e)}"
         
         return {"result": ai_response}
     except Exception as e:
@@ -196,8 +226,22 @@ async def upload_file(
     try:
         print(f"✅ /upload called for project {project_id}, file: {file.filename}")
         
-        # Read file content
+        # Validate file size (max 10MB)
         file_content = await file.read()
+        if len(file_content) > 10 * 1024 * 1024:  # 10MB
+            return {
+                "success": False,
+                "error": "File size too large. Maximum size is 10MB."
+            }
+        
+        # Validate file type
+        allowed_extensions = ['.pdf', '.docx', '.doc', '.txt', '.md']
+        file_extension = '.' + file.filename.split('.')[-1].lower()
+        if file_extension not in allowed_extensions:
+            return {
+                "success": False,
+                "error": f"File type not supported. Allowed types: {', '.join(allowed_extensions)}"
+            }
         
         # Save file and extract context
         result = file_utils.save_uploaded_file(file_content, file.filename, project_id)
@@ -229,7 +273,15 @@ async def get_context(project_id: str):
         
     except Exception as e:
         print(f"❌ Error in /context/{project_id}: {e}")
-        return {"error": str(e)}
+        return {
+            "project_id": project_id,
+            "files": [],
+            "organization_info": "",
+            "initiative_description": "",
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+            "error": str(e)
+        }
 
 # Update project information
 @app.post("/context/{project_id}")
