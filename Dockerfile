@@ -19,8 +19,8 @@ WORKDIR /app/frontend
 COPY frontend/package.json ./
 COPY frontend/package-lock.json ./
 
-# Use npm ci for faster, more reliable installs
-RUN npm ci --only=production --silent
+# Use npm install with reduced memory usage
+RUN npm install --production --no-audit --no-fund --silent
 
 # Copy the rest of the front‑end source and build the production assets
 COPY frontend/ ./
