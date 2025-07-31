@@ -157,7 +157,7 @@ function App() {
         
         {/* Step 1: Project Selection */}
         {currentStep === 1 && (
-          <div className="step-container">
+          <div className="step-container" style={{background: 'red', color: 'white', padding: '20px'}}>
             <div className="step-header">
               <h2>Your Grant Projects</h2>
               <p>Select an existing project or create a new one to get started</p>
