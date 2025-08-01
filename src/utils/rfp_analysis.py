@@ -1,7 +1,7 @@
 import re
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-from .storage_utils import OrganizationInfo, RFPDocument, ProjectResponse, db_manager
+from .storage_utils import OrganizationInfo, RFPDocument, ProjectResponse
 
 class RFPAnalyzer:
     """Analyzes RFP documents and aligns with organization information"""

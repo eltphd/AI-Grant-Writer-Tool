@@ -11,18 +11,19 @@ except ImportError:
 class SupabaseRAG:
     """RAG implementation using Supabase for data storage and retrieval."""
 
-    def get_relevant_context(self, question: str, files: List[str]) -> str:
+    def get_relevant_context(self, question: str, files: List[str], project_id: str = None) -> str:
         """Get the most relevant context from Supabase using vector similarity search.
         
         Args:
             question: The user's question.
             files: A list of file names to search within.
+            project_id: Project ID for data isolation.
             
         Returns:
             The most relevant text chunk.
         """
         # Call the Supabase Edge Function to get the best matching context
-        return db_manager.rag_context(question, files)
+        return db_manager.rag_context(question, files, project_id)
 
 # Global instance of the SupabaseRAG class
 rag_db = SupabaseRAG() 

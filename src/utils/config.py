@@ -3,17 +3,14 @@
 This module centralizes environment‑driven configuration values so they can be
 easily overridden without editing source code.  If an environment variable is
 unset, sensible defaults are used.  The database credentials here are used by
-pgvector_utils to connect to PostgreSQL.  See README for instructions on
+supabase_utils to connect to Supabase.  See README for instructions on
 customizing these values in your deployment.
 """
 
 import os
 
-# Database connection parameters.  Use environment variables to override
-# these defaults when deploying into different environments (e.g. local
-# development vs. production).  If you are running the docker‑compose
-# environment, you can set these values in the .env file referenced by
-# docker‑compose.yaml.
+# Database connection parameters (legacy - now using Supabase)
+# These are kept for backward compatibility but not used
 DB_HOSTNAME: str = os.getenv("DB_HOSTNAME", "localhost")
 DB_NAME: str = os.getenv("DB_NAME", "vectordb")
 DB_USER: str = os.getenv("DB_USER", "testuser")
@@ -39,8 +36,8 @@ SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_KEY
 
 # Flag indicating whether to use the Supabase API.  When set to "true"
 # (case‑insensitive), the FastAPI app will route all database operations
-# through the supabase_utils module.  Defaults to "false".
-USE_SUPABASE: bool = os.getenv("USE_SUPABASE", "false").lower() == "true"
+# through the supabase_utils module.  Defaults to "true" since we're now fully Supabase-based.
+USE_SUPABASE: bool = os.getenv("USE_SUPABASE", "true").lower() == "true"
 
 # FastAPI base URL for use by the Streamlit front‑end.  This should include
 # the trailing slash.  For example, if you are running the API on localhost

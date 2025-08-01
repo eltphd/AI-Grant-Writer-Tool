@@ -25,10 +25,10 @@ scipy==1.11.4
 nltk==3.8.1
 spacy==3.7.2
 
-# Database and Storage
-psycopg2-binary==2.9.9
-sqlalchemy==2.0.23
-alembic==1.13.1
+# Database and Storage (Supabase only)
+# psycopg2-binary==2.9.9  # Removed - using Supabase REST API
+# sqlalchemy==2.0.23       # Removed - using Supabase REST API  
+# alembic==1.13.1          # Removed - using Supabase REST API
 
 # Evaluation and Assessment Dependencies
 textstat==0.7.3

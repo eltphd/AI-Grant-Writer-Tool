@@ -28,12 +28,12 @@ except ImportError as e:
 
 # Import other utilities
 try:
-    from .utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
+    from .utils.storage_utils import OrganizationInfo, RFPDocument, ProjectResponse
     from .utils import supabase_utils as supa
     from .utils.rfp_analysis import rfp_analyzer
 except ImportError:
     # Fallback for direct import
-    from utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
+    from utils.storage_utils import OrganizationInfo, RFPDocument, ProjectResponse
     from utils import supabase_utils as supa
     from utils.rfp_analysis import rfp_analyzer
 
@@ -567,7 +567,7 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
     
     else:
         # Use Supabase RAG for general questions
-        rag_response = rag_db.get_relevant_context(message, context.get('uploaded_files', []))
+        rag_response = rag_db.get_relevant_context(message, context.get('uploaded_files', []), project_id)
         if rag_response:
             return rag_response
             else:
