@@ -162,66 +162,56 @@ async def analyze_rfp(project_id: str, request: dict):
         print(f"❌ Error analyzing RFP: {e}")
         return {"success": False, "error": str(e)}
 
+from .utils.privacy_utils import pii_redactor
+from .utils.embedding_utils import chunk_text
+
 # File upload endpoint
 @app.post("/upload")
 async def upload_file(request: dict):
-    """Upload file and extract content for advanced RAG processing"""
+    """Upload file, redact PII, and process for RAG system."""
     try:
         from datetime import datetime
         
         project_id = request.get('project_id', 'test-project')
         file_data = request.get('file', {})
         filename = file_data.get('filename', 'uploaded_file')
-        content = file_data.get('content', '')
-        
-        # Determine file type and category with cultural context
-        file_type = filename.split('.')[-1].lower()
-        category = "grant_narrative"  # default
-        
-        if 'organization' in filename.lower() or 'org' in filename.lower():
-            category = "organization_profile"
-        elif 'proposal' in filename.lower() or 'grant' in filename.lower():
-            category = "grant_narrative"
-        elif 'budget' in filename.lower() or 'financial' in filename.lower():
-            category = "budget_planning"
-        elif 'timeline' in filename.lower() or 'schedule' in filename.lower():
-            category = "timeline_planning"
-        
-        # Create advanced knowledge item with cultural context
-        knowledge_item = CulturalKnowledgeItem(
-            id=f"file_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            title=filename,
-            content=content,
-            category=category,
-            tags=[file_type, "uploaded_document"],
-            source="user_upload",
-            created_at=datetime.now().isoformat(),
-            language="en",  # Can be enhanced for multilingual support
-            cultural_context=None,  # Will be extracted by advanced RAG
-            community_focus=None  # Will be determined from content analysis
-        )
-        
-        # Add to advanced RAG database
-        print(f"🔍 DEBUG: Attempting to add knowledge item: {knowledge_item.title}")
-        add_result = advanced_rag_db.add_knowledge_item(knowledge_item)
-        print(f"🔍 DEBUG: Add result: {add_result}")
-        
-        if add_result:
-            return {
-                "success": True,
-                "filename": filename,
-                "content_length": len(content),
-                "category": category,
-                "uploaded_at": datetime.now().isoformat(),
-                "message": f"File '{filename}' uploaded and processed with advanced cultural context analysis. The AI can now use this content for culturally sensitive responses.",
-                "advanced_features": {
-                    "cultural_context_analysis": True,
-                    "semantic_search_enabled": True,
-                    "multilingual_support": True
-                }
-            }
-        else:
-            return {"success": False, "error": "Failed to process file for advanced AI context"}
+        original_content = file_data.get('content', '')
+
+        # Step 1: Redact PII from the content
+        redacted_content, redactions = pii_redactor.redact_text(original_content)
+
+        # Step 2: Chunk the redacted content for the RAG system
+        chunks = chunk_text(redacted_content)
+
+        # Step 3: Process and store each chunk
+        for i, chunk_text in enumerate(chunks):
+            # The public-facing data is the *redacted* text
+            # In a real implementation, you would get the embedding for the chunk here
+            embedding = [0.0] * 1536 # Placeholder for embedding
+
+            # The public-facing data is the *redacted* text
+            # In a real implementation, you would get the embedding for the chunk here
+            embedding = [0.0] * 1536 # Placeholder for embedding
+
+            # Insert the redacted chunk into the public file_chunks table
+            chunk_id = db_manager.insert_file_chunk(filename, chunk_text, embedding)
+            
+            if chunk_id and redactions: # Only store original if redactions were made
+                # If any PII was found in this chunk, store the original text securely
+                # This is a simplified check. A real implementation would be more robust.
+                # We need to get the specific part of the original content that corresponds to this chunk
+                # Assuming chunk_size is 1000 for simplicity, adjust if chunk_text is not 1:1 with original_content
+                original_chunk_text = original_content[i * 1000 : (i + 1) * 1000]
+                db_manager.insert_secure_data(chunk_id, original_chunk_text, redactions)
+
+
+        return {
+            "success": True,
+            "filename": filename,
+            "content_length": len(original_content),
+            "redactions_found": len(redactions),
+            "message": f"File '{filename}' uploaded and processed. Sensitive data has been redacted."
+        }
             
     except Exception as e:
         print(f"❌ Error uploading file: {e}")

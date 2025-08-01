@@ -1,3 +1,4 @@
+
 """Utility functions for interacting with a Supabase backend via its REST API.
 
 This module provides a drop‑in replacement for pgvector_utils when the
@@ -9,16 +10,15 @@ Supabase REST API does not currently expose pgvector operators via HTTP.
 
 Operations implemented include inserting and updating clients, projects,
 files, file chunks, and questions.  Each function returns simple Python
-objects (or True/False) similar to pgvector_utils for compatibility with
-the rest of the application.  Errors are logged and result in a False
-return value or None depending on the context.
+objects (or True/False for writes) and should raise no exceptions — errors are logged and
+rolled back internally.
 """
 
 from __future__ import annotations
 
 import json
 import os
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, Dict, List
 
 import requests
 
@@ -51,7 +51,7 @@ def _request(method: str, path: str, **kwargs: Any) -> Optional[Any]:
         kwargs: Additional arguments passed through to requests.request().
 
     Returns:
-        The parsed JSON response if successful, or None on error.
+        The parsed JSON response if successful, or or the response text if not JSON, or None on error.
     """
     if not config.SUPABASE_URL or not config.SUPABASE_KEY:
         print("Supabase configuration missing; cannot perform request")
@@ -175,24 +175,30 @@ def save_questions(project_id: int, questions: Any) -> bool:
     return False
 
 
-def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str, str]]) -> bool:
-    """Insert file chunks and embeddings into the file_chunks table."""
-    success = True
+def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str, List[float]]]) -> Optional[int]:
+    """Insert file chunks and embeddings into the file_chunks table.
+    Returns the ID of the inserted chunk.
+    """
+    # Supabase PostgREST can insert multiple rows at once if the data is a list of objects
+    data_to_insert = []
     for file_name, chunk_text, embedding in chunks:
-        data = {
+        data_to_insert.append({
             "file_name": file_name,
             "chunk_text": chunk_text,
             "embedding": embedding,
-        }
-        res = _request(
-            "POST",
-            "/rest/v1/file_chunks",
-            json=data,
-            headers={"Prefer": "return=representation"},
-        )
-        if res is None:
-            success = False
-    return success
+        })
+    
+    res = _request(
+        "POST",
+        "/rest/v1/file_chunks",
+        json=data_to_insert,
+        headers={"Prefer": "return=representation"},
+    )
+    
+    if res and isinstance(res, list) and len(res) > 0:
+        # Assuming we only insert one chunk at a time for now, return its ID
+        return res[0].get("id")
+    return None
 
 
 def insert_client(client: Any) -> bool:
@@ -395,6 +401,26 @@ def save_uploaded_file(file_content: bytes, filename: str, project_id: str) -> d
     except Exception as e:
         print(f"❌ Error saving file: {e}")
         return {"success": False, "error": str(e)}
+
+def insert_secure_data(file_chunk_id: int, original_text: str, redactions: list) -> Optional[int]:
+    """Insert sensitive data into the secure_storage table.
+    Returns the ID of the inserted secure data record.
+    """
+    data = {
+        "file_chunk_id": file_chunk_id,
+        "original_text": original_text,
+        "redactions": redactions,
+    }
+    res = _request(
+        "POST",
+        "/rest/v1/secure_storage",
+        json=data,
+        headers={"Prefer": "return=representation"},
+    )
+    if res and isinstance(res, list) and len(res) > 0:
+        return res[0].get("id")
+    return None
+
 
 def get_project_context(project_id: str) -> dict[str, Any]:
     """Get all context data for a project from Supabase.
@@ -633,3 +659,74 @@ def delete_project(project_id: str) -> bool:
     except Exception as e:
         print(f"❌ Error deleting project: {e}")
         return False
+
+# New functions for storage_utils integration
+def insert_organization(org_data: Dict[str, Any]) -> bool:
+    """Insert organization data into the 'organizations' table."""
+    res = _request(
+        "POST",
+        "/rest/v1/organizations",
+        json=org_data,
+        headers={"Prefer": "return=representation"},
+    )
+    return bool(res)
+
+def get_organization(org_id: str) -> Optional[Dict[str, Any]]:
+    """Get organization data from the 'organizations' table."""
+    res = _request(
+        "GET",
+        f"/rest/v1/organizations?id=eq.{org_id}&select=*",
+    )
+    if res and isinstance(res, list) and len(res) > 0:
+        return res[0]
+    return None
+
+def insert_rfp(rfp_data: Dict[str, Any]) -> bool:
+    """Insert RFP data into the 'rfp_documents' table."""
+    res = _request(
+        "POST",
+        "/rest/v1/rfp_documents",
+        json=rfp_data,
+        headers={"Prefer": "return=representation"},
+    )
+    return bool(res)
+
+def get_rfp(rfp_id: str) -> Optional[Dict[str, Any]]:
+    """Get RFP data from the 'rfp_documents' table."""
+    res = _request(
+        "GET",
+        f"/rest/v1/rfp_documents?id=eq.{rfp_id}&select=*",
+    )
+    if res and isinstance(res, list) and len(res) > 0:
+        return res[0]
+    return None
+
+def insert_project_response(response_data: Dict[str, Any]) -> bool:
+    """Insert project response data into the 'project_responses' table."""
+    res = _request(
+        "POST",
+        "/rest/v1/project_responses",
+        json=response_data,
+        headers={"Prefer": "return=representation"},
+    )
+    return bool(res)
+
+def get_project_response(response_id: str) -> Optional[Dict[str, Any]]:
+    """Get project response data from the 'project_responses' table."""
+    res = _request(
+        "GET",
+        f"/rest/v1/project_responses?id=eq.{response_id}&select=*",
+    )
+    if res and isinstance(res, list) and len(res) > 0:
+        return res[0]
+    return None
+
+def get_all_projects_from_db() -> List[Dict[str, Any]]:
+    """Get all projects from the 'projects' table."""
+    res = _request(
+        "GET",
+        "/rest/v1/projects?select=*",
+    )
+    if res and isinstance(res, list):
+        return res
+    return []

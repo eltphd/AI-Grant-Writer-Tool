@@ -9,7 +9,20 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
-import os
+
+# Import Supabase utility functions
+try:
+    from .supabase_utils import (
+        insert_organization, get_organization, insert_rfp, get_rfp,
+        insert_project_response, get_project_response, insert_file_chunks_into_db,
+        insert_secure_data, get_all_projects_from_db
+    ) # type: ignore
+except ImportError:
+    from utils.supabase_utils import (
+        insert_organization, get_organization, insert_rfp, get_rfp,
+        insert_project_response, get_project_response, insert_file_chunks_into_db,
+        insert_secure_data, get_all_projects_from_db
+    ) # type: ignore
 
 @dataclass
 class OrganizationInfo:
@@ -56,132 +69,98 @@ class ProjectResponse:
 class SecureData:
     """Securely stored sensitive information"""
     id: str
-    org_id: str
-    data_type: str  # 'financial', 'personal', 'confidential'
-    encrypted_data: str
-    redacted_summary: str
+    file_chunk_id: int
+    original_text: str
+    redactions: List[Dict[str, Any]]
     created_at: str
 
 class DatabaseManager:
     """Manages all database operations with security"""
     
-    def __init__(self):
-        self.data_dir = "data"
-        self.secure_dir = "secure_data"
-        self._ensure_directories()
-    
-    def _ensure_directories(self):
-        """Create necessary directories"""
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.secure_dir, exist_ok=True)
-    
-    def _get_file_path(self, filename: str, secure: bool = False) -> str:
-        """Get file path for data storage"""
-        base_dir = self.secure_dir if secure else self.data_dir
-        return os.path.join(base_dir, f"{filename}.json")
-    
     def save_organization(self, org: OrganizationInfo) -> bool:
-        """Save organization information"""
+        """Save organization information to Supabase"""
         try:
-            file_path = self._get_file_path(f"org_{org.id}")
-            with open(file_path, 'w') as f:
-                json.dump(asdict(org), f, indent=2)
-            return True
+            return insert_organization(asdict(org))
         except Exception as e:
-            print(f"Error saving organization: {e}")
+            print(f"Error saving organization to Supabase: {e}")
             return False
     
     def get_organization(self, org_id: str) -> Optional[OrganizationInfo]:
-        """Get organization information"""
+        """Get organization information from Supabase"""
         try:
-            file_path = self._get_file_path(f"org_{org_id}")
-            if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
-                    data = json.load(f)
-                    return OrganizationInfo(**data)
+            data = get_organization(org_id)
+            if data:
+                return OrganizationInfo(**data)
             return None
         except Exception as e:
-            print(f"Error getting organization: {e}")
+            print(f"Error getting organization from Supabase: {e}")
             return None
     
     def save_rfp(self, rfp: RFPDocument) -> bool:
-        """Save RFP document with analysis"""
+        """Save RFP document with analysis to Supabase"""
         try:
-            file_path = self._get_file_path(f"rfp_{rfp.id}")
-            with open(file_path, 'w') as f:
-                json.dump(asdict(rfp), f, indent=2)
-            return True
+            return insert_rfp(asdict(rfp))
         except Exception as e:
-            print(f"Error saving RFP: {e}")
+            print(f"Error saving RFP to Supabase: {e}")
             return False
     
     def get_rfp(self, rfp_id: str) -> Optional[RFPDocument]:
-        """Get RFP document"""
+        """Get RFP document from Supabase"""
         try:
-            file_path = self._get_file_path(f"rfp_{rfp_id}")
-            if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
-                    data = json.load(f)
-                    return RFPDocument(**data)
+            data = get_rfp(rfp_id)
+            if data:
+                return RFPDocument(**data)
             return None
         except Exception as e:
-            print(f"Error getting RFP: {e}")
+            print(f"Error getting RFP from Supabase: {e}")
             return None
     
     def save_project_response(self, response: ProjectResponse) -> bool:
-        """Save project response"""
+        """Save project response to Supabase"""
         try:
-            file_path = self._get_file_path(f"response_{response.id}")
-            with open(file_path, 'w') as f:
-                json.dump(asdict(response), f, indent=2)
-            return True
+            return insert_project_response(asdict(response))
         except Exception as e:
-            print(f"Error saving project response: {e}")
+            print(f"Error saving project response to Supabase: {e}")
             return False
     
     def get_project_response(self, response_id: str) -> Optional[ProjectResponse]:
-        """Get project response"""
+        """Get project response from Supabase"""
         try:
-            file_path = self._get_file_path(f"response_{response_id}")
-            if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
-                    data = json.load(f)
-                    return ProjectResponse(**data)
+            data = get_project_response(response_id)
+            if data:
+                return ProjectResponse(**data)
             return None
         except Exception as e:
-            print(f"Error getting project response: {e}")
+            print(f"Error getting project response from Supabase: {e}")
             return None
-    
-    def save_secure_data(self, secure_data: SecureData) -> bool:
-        """Save sensitive data securely"""
+
+    def insert_file_chunk(self, file_name: str, chunk_text: str, embedding: List[float]) -> Optional[int]:
+        """Insert a file chunk into the file_chunks table in Supabase.
+        Returns the ID of the inserted chunk.
+        """
         try:
-            file_path = self._get_file_path(f"secure_{secure_data.id}", secure=True)
-            with open(file_path, 'w') as f:
-                json.dump(asdict(secure_data), f, indent=2)
-            return True
+            # insert_file_chunks_into_db expects a list of tuples
+            chunk_id = insert_file_chunks_into_db([(file_name, chunk_text, embedding)])
+            return chunk_id
         except Exception as e:
-            print(f"Error saving secure data: {e}")
+            print(f"Error inserting file chunk into Supabase: {e}")
+            return None
+
+    def insert_secure_data(self, file_chunk_id: int, original_text: str, redactions: List[Dict[str, Any]]) -> bool:
+        """Save sensitive data to the secure_storage table in Supabase."""
+        try:
+            return insert_secure_data(file_chunk_id, original_text, redactions)
+        except Exception as e:
+            print(f"Error saving secure data to Supabase: {e}")
             return False
     
     def get_all_projects(self) -> List[Dict[str, Any]]:
-        """Get all projects"""
+        """Get all projects from Supabase"""
         try:
-            projects = []
-            for filename in os.listdir(self.data_dir):
-                if filename.startswith("response_") and filename.endswith(".json"):
-                    response_id = filename.replace("response_", "").replace(".json", "")
-                    response = self.get_project_response(response_id)
-                    if response:
-                        projects.append({
-                            "id": response.project_id,
-                            "name": f"Project {response.project_id}",
-                            "description": f"RFP Response - {response.rfp_id}",
-                            "created_at": response.created_at
-                        })
-            return projects
+            return get_all_projects_from_db()
         except Exception as e:
-            print(f"Error getting projects: {e}")
+            print(f"Error getting all projects from Supabase: {e}")
             return []
 
 # Global database manager instance
-db_manager = DatabaseManager() 
+db_manager = DatabaseManager()
