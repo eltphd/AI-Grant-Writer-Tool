@@ -249,8 +249,8 @@ async def send_message(request: dict):
         print(f"🔍 DEBUG: Chat request - Message: {message}")
         print(f"🔍 DEBUG: Project context: {project_context}")
         print(f"🔍 DEBUG: RFP analysis: {rfp_analysis}")
-        print(f"🔍 DEBUG: Uploaded files: {context.get('uploaded_files', [])}")
-        print(f"🔍 DEBUG: Uploaded content count: {len(context.get('uploaded_content', []))}")
+        print(f"🔍 DEBUG: Uploaded files: {project_context.get('uploaded_files', [])}")
+        print(f"🔍 DEBUG: Uploaded content count: {len(project_context.get('uploaded_content', []))}")
         
         # Generate context-aware response
         ai_response = generate_contextual_response(message, project_context, rfp_analysis)
