@@ -88,17 +88,14 @@ function App() {
         const content = await readFileContent(file);
         
         // Upload file as JSON (matching backend expectation)
-        const response = await fetch(`${API_BASE}/upload`, {
+        const response = await fetch(`${API_BASE}/upload?project_id=${currentProject.id}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            project_id: currentProject.id,
-            file: {
-              filename: file.name,
-              content: content
-            }
+            filename: file.name,
+            content: content
           }),
         });
 
