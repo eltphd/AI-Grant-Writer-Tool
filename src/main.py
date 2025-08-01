@@ -3,12 +3,19 @@ from datetime import datetime
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import our utilities
+# Import RAG utilities
+try:
+    from .utils.rag_utils import rag_db, KnowledgeItem, CulturalGuideline, CommunityProfile
+except ImportError:
+    # Fallback for direct import
+    from utils.rag_utils import rag_db, KnowledgeItem, CulturalGuideline, CommunityProfile
+
+# Import other utilities
 try:
     from .utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
     from .utils.rfp_analysis import rfp_analyzer
 except ImportError:
-    # Fallback for direct execution
+    # Fallback for direct import
     from utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
     from utils.rfp_analysis import rfp_analyzer
 
@@ -233,24 +240,27 @@ def get_rfp_analysis_data(project_id: str) -> dict:
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict) -> str:
     """Generate contextual AI response based on message and available data"""
     
+    # Get RAG context for enhanced responses
+    rag_context = rag_db.get_relevant_context(message, "grant_section", context.get('community_focus'))
+    
     # Check for specific section writing requests
     if any(word in message.lower() for word in ['executive summary', 'summary']):
-        return generate_executive_summary(context, rfp_analysis)
+        return generate_executive_summary_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['organization profile', 'organization', 'profile']):
-        return generate_organization_profile(context, rfp_analysis)
+        return generate_organization_profile_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['project description', 'project', 'description']):
-        return generate_project_description(context, rfp_analysis)
+        return generate_project_description_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['timeline', 'schedule', 'deadline']):
-        return generate_timeline_section(context, rfp_analysis)
+        return generate_timeline_section_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['budget', 'funding', 'cost']):
-        return generate_budget_section(context, rfp_analysis)
+        return generate_budget_section_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['evaluation', 'measure', 'outcome']):
-        return generate_evaluation_section(context, rfp_analysis)
+        return generate_evaluation_section_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['grant', 'section', 'write', 'create']):
         return generate_grant_section_guidance(context, rfp_analysis)
@@ -267,13 +277,19 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
     else:
         return generate_default_response(message, context, rfp_analysis)
 
-def generate_executive_summary(context: dict, rfp_analysis: dict) -> str:
-    """Generate actual executive summary using user data"""
+def generate_executive_summary_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
+    """Generate executive summary using RAG context for cultural competence"""
     
     org_info = context.get('organization_info', {})
     rfp_reqs = rfp_analysis.get('requirements', [])
     
     response = "📋 **Executive Summary**\n\n"
+    
+    # Incorporate cultural guidelines if available
+    cultural_guidance = ""
+    if rag_context.get('cultural_guidelines'):
+        cultural_guidance = f"\n**Cultural Context:** Based on community guidelines, this proposal emphasizes "
+        cultural_guidance += ", ".join(rag_context['cultural_guidelines'][0]['guidelines'][:2]) + ".\n\n"
     
     if org_info.get('name'):
         response += f"**{org_info['name']}** is seeking funding to "
@@ -297,6 +313,13 @@ def generate_executive_summary(context: dict, rfp_analysis: dict) -> str:
     
     response += "innovative programming that delivers measurable impact.\n\n"
     
+    # Incorporate best practices from RAG
+    if rag_context.get('best_practices'):
+        response += "**Evidence-Based Approach:** This proposal incorporates proven strategies including "
+        response += rag_context['best_practices'][0]['title'] + " and "
+        response += rag_context['best_practices'][1]['title'] if len(rag_context['best_practices']) > 1 else "established best practices"
+        response += ".\n\n"
+    
     response += "**Key Impact Areas:**\n"
     if org_info.get('focus_areas'):
         for area in org_info['focus_areas'][:3]:
@@ -315,16 +338,26 @@ def generate_executive_summary(context: dict, rfp_analysis: dict) -> str:
     response += "• Measurable program impact\n"
     response += "• Sustainable long-term benefits\n\n"
     
+    response += cultural_guidance
+    
     response += "This proposal represents a strategic investment in our community's future."
     
     return response
 
-def generate_organization_profile(context: dict, rfp_analysis: dict) -> str:
-    """Generate actual organization profile using user data"""
+def generate_organization_profile_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
+    """Generate organization profile using RAG context for cultural competence"""
     
     org_info = context.get('organization_info', {})
     
     response = "🏢 **Organization Profile**\n\n"
+    
+    # Incorporate community profile if available
+    community_context = ""
+    if rag_context.get('community_profile'):
+        profile = rag_context['community_profile']
+        community_context = f"\n**Community Understanding:** Our work is informed by deep knowledge of the {profile['community_name']} community, "
+        community_context += f"including {', '.join(profile['cultural_backgrounds'][:2])} cultural backgrounds and "
+        community_context += f"languages including {', '.join(profile['languages'][:2])}.\n\n"
     
     if org_info.get('name'):
         response += f"**{org_info['name']}** "
@@ -365,18 +398,28 @@ def generate_organization_profile(context: dict, rfp_analysis: dict) -> str:
     response += "• Proven track record of success\n"
     response += "• Robust evaluation systems\n\n"
     
+    response += community_context
+    
     response += "**Why We're the Right Choice:**\n"
     response += "Our deep community roots, proven expertise, and commitment to measurable outcomes make us the ideal partner for this initiative."
     
     return response
 
-def generate_project_description(context: dict, rfp_analysis: dict) -> str:
-    """Generate actual project description using user data"""
+def generate_project_description_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
+    """Generate project description using RAG context for cultural competence"""
     
     org_info = context.get('organization_info', {})
     rfp_reqs = rfp_analysis.get('requirements', [])
     
     response = "🎯 **Project Description & Approach**\n\n"
+    
+    # Incorporate community profile if available
+    community_context = ""
+    if rag_context.get('community_profile'):
+        profile = rag_context['community_profile']
+        community_context = f"\n**Community Understanding:** Our work is informed by deep knowledge of the {profile['community_name']} community, "
+        community_context += f"including {', '.join(profile['cultural_backgrounds'][:2])} cultural backgrounds and "
+        community_context += f"languages including {', '.join(profile['languages'][:2])}.\n\n"
     
     if org_info.get('name'):
         response += f"**{org_info['name']}** proposes to "
@@ -389,6 +432,13 @@ def generate_project_description(context: dict, rfp_analysis: dict) -> str:
         response += "implement a comprehensive community development initiative. "
     
     response += "This project will address critical community needs while meeting all RFP requirements.\n\n"
+    
+    # Incorporate best practices from RAG
+    if rag_context.get('best_practices'):
+        response += "**Evidence-Based Approach:** This proposal incorporates proven strategies including "
+        response += rag_context['best_practices'][0]['title'] + " and "
+        response += rag_context['best_practices'][1]['title'] if len(rag_context['best_practices']) > 1 else "established best practices"
+        response += ".\n\n"
     
     response += "**Project Objectives:**\n"
     if rfp_reqs:
@@ -409,10 +459,12 @@ def generate_project_description(context: dict, rfp_analysis: dict) -> str:
     response += "**Innovative Approach:**\n"
     response += "Our methodology combines proven best practices with innovative community-driven solutions, ensuring both immediate impact and long-term sustainability."
     
+    response += community_context
+    
     return response
 
-def generate_timeline_section(context: dict, rfp_analysis: dict) -> str:
-    """Generate actual timeline section using user data"""
+def generate_timeline_section_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
+    """Generate timeline section using RAG context for cultural competence"""
     
     response = "⏰ **Timeline & Implementation**\n\n"
     
@@ -450,10 +502,20 @@ def generate_timeline_section(context: dict, rfp_analysis: dict) -> str:
     response += "• Month 9: Mid-term evaluation\n"
     response += "• Month 12: Final project report\n"
     
+    # Incorporate community profile if available
+    community_context = ""
+    if rag_context.get('community_profile'):
+        profile = rag_context['community_profile']
+        community_context = f"\n**Community Understanding:** Our work is informed by deep knowledge of the {profile['community_name']} community, "
+        community_context += f"including {', '.join(profile['cultural_backgrounds'][:2])} cultural backgrounds and "
+        community_context += f"languages including {', '.join(profile['languages'][:2])}.\n\n"
+    
+    response += community_context
+    
     return response
 
-def generate_budget_section(context: dict, rfp_analysis: dict) -> str:
-    """Generate actual budget section using user data"""
+def generate_budget_section_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
+    """Generate budget section using RAG context for cultural competence"""
     
     response = "💰 **Budget & Financial Plan**\n\n"
     
@@ -490,10 +552,20 @@ def generate_budget_section(context: dict, rfp_analysis: dict) -> str:
     response += "• Shared resources maximize impact\n"
     response += "• Sustainable approach ensures long-term value\n"
     
+    # Incorporate community profile if available
+    community_context = ""
+    if rag_context.get('community_profile'):
+        profile = rag_context['community_profile']
+        community_context = f"\n**Community Understanding:** Our work is informed by deep knowledge of the {profile['community_name']} community, "
+        community_context += f"including {', '.join(profile['cultural_backgrounds'][:2])} cultural backgrounds and "
+        community_context += f"languages including {', '.join(profile['languages'][:2])}.\n\n"
+    
+    response += community_context
+    
     return response
 
-def generate_evaluation_section(context: dict, rfp_analysis: dict) -> str:
-    """Generate actual evaluation section using user data"""
+def generate_evaluation_section_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
+    """Generate evaluation section using RAG context for cultural competence"""
     
     response = "📊 **Evaluation & Impact Measurement**\n\n"
     
@@ -521,6 +593,16 @@ def generate_evaluation_section(context: dict, rfp_analysis: dict) -> str:
     
     response += "**Continuous Improvement:**\n"
     response += "Evaluation findings will inform ongoing program refinement, ensuring maximum effectiveness and community benefit."
+    
+    # Incorporate community profile if available
+    community_context = ""
+    if rag_context.get('community_profile'):
+        profile = rag_context['community_profile']
+        community_context = f"\n**Community Understanding:** Our work is informed by deep knowledge of the {profile['community_name']} community, "
+        community_context += f"including {', '.join(profile['cultural_backgrounds'][:2])} cultural backgrounds and "
+        community_context += f"languages including {', '.join(profile['languages'][:2])}.\n\n"
+    
+    response += community_context
     
     return response
 
@@ -1060,6 +1142,200 @@ async def export_txt(request: dict):
         
     except Exception as e:
         print(f"❌ Error exporting txt: {e}")
+        return {"success": False, "error": str(e)}
+
+# RAG Database Endpoints
+@app.post("/rag/knowledge/add")
+async def add_knowledge_item(request: dict):
+    """Add a new knowledge item to the RAG database"""
+    try:
+        item = KnowledgeItem(
+            id=request.get('id', f"knowledge_{datetime.now().timestamp()}"),
+            title=request['title'],
+            content=request['content'],
+            category=request['category'],
+            tags=request.get('tags', []),
+            source=request['source'],
+            created_at=datetime.now().isoformat(),
+            cultural_context=request.get('cultural_context'),
+            community_focus=request.get('community_focus'),
+            success_metrics=request.get('success_metrics')
+        )
+        
+        success = rag_db.add_knowledge_item(item)
+        
+        return {
+            "success": success,
+            "message": "Knowledge item added successfully" if success else "Failed to add knowledge item"
+        }
+    except Exception as e:
+        print(f"❌ Error adding knowledge item: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/rag/cultural/add")
+async def add_cultural_guideline(request: dict):
+    """Add cultural competency guidelines"""
+    try:
+        guideline = CulturalGuideline(
+            id=request.get('id', f"cultural_{datetime.now().timestamp()}"),
+            community=request['community'],
+            guidelines=request['guidelines'],
+            cultural_sensitivities=request.get('cultural_sensitivities', []),
+            language_preferences=request.get('language_preferences', []),
+            best_practices=request.get('best_practices', []),
+            created_at=datetime.now().isoformat()
+        )
+        
+        success = rag_db.add_cultural_guideline(guideline)
+        
+        return {
+            "success": success,
+            "message": "Cultural guideline added successfully" if success else "Failed to add cultural guideline"
+        }
+    except Exception as e:
+        print(f"❌ Error adding cultural guideline: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/rag/community/add")
+async def add_community_profile(request: dict):
+    """Add community profile"""
+    try:
+        profile = CommunityProfile(
+            id=request.get('id', f"community_{datetime.now().timestamp()}"),
+            community_name=request['community_name'],
+            demographics=request['demographics'],
+            cultural_backgrounds=request.get('cultural_backgrounds', []),
+            languages=request.get('languages', []),
+            key_concerns=request.get('key_concerns', []),
+            strengths=request.get('strengths', []),
+            created_at=datetime.now().isoformat()
+        )
+        
+        success = rag_db.add_community_profile(profile)
+        
+        return {
+            "success": success,
+            "message": "Community profile added successfully" if success else "Failed to add community profile"
+        }
+    except Exception as e:
+        print(f"❌ Error adding community profile: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/rag/knowledge/search")
+async def search_knowledge(query: str, category: str = None, limit: int = 5):
+    """Search knowledge items"""
+    try:
+        results = rag_db.search_knowledge(query, category, limit)
+        
+        return {
+            "success": True,
+            "results": [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "content": item.content,
+                    "category": item.category,
+                    "tags": item.tags,
+                    "source": item.source,
+                    "cultural_context": item.cultural_context,
+                    "community_focus": item.community_focus
+                }
+                for item in results
+            ]
+        }
+    except Exception as e:
+        print(f"❌ Error searching knowledge: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/rag/cultural/{community}")
+async def get_cultural_guidelines(community: str):
+    """Get cultural guidelines for a specific community"""
+    try:
+        guidelines = rag_db.get_cultural_guidelines(community)
+        
+        return {
+            "success": True,
+            "guidelines": [
+                {
+                    "id": g.id,
+                    "community": g.community,
+                    "guidelines": g.guidelines,
+                    "cultural_sensitivities": g.cultural_sensitivities
+                }
+                for g in guidelines
+            ]
+        }
+    except Exception as e:
+        print(f"❌ Error getting cultural guidelines: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/rag/community/{community_name}")
+async def get_community_profile(community_name: str):
+    """Get community profile"""
+    try:
+        profile = rag_db.get_community_profile(community_name)
+        
+        if profile:
+            return {
+                "success": True,
+                "profile": {
+                    "id": profile.id,
+                    "community_name": profile.community_name,
+                    "demographics": profile.demographics,
+                    "cultural_backgrounds": profile.cultural_backgrounds,
+                    "languages": profile.languages,
+                    "key_concerns": profile.key_concerns,
+                    "strengths": profile.strengths
+                }
+            }
+        else:
+            return {"success": False, "message": "Community profile not found"}
+            
+    except Exception as e:
+        print(f"❌ Error getting community profile: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/rag/context")
+async def get_relevant_context(query: str, section_type: str, community_context: str = None):
+    """Get relevant context for grant section generation"""
+    try:
+        context = rag_db.get_relevant_context(query, section_type, community_context)
+        
+        return {
+            "success": True,
+            "context": {
+                "knowledge_items": [
+                    {
+                        "id": item.id,
+                        "title": item.title,
+                        "content": item.content,
+                        "category": item.category,
+                        "tags": item.tags
+                    }
+                    for item in context['knowledge_items']
+                ],
+                "cultural_guidelines": [
+                    {
+                        "id": g.id,
+                        "community": g.community,
+                        "guidelines": g.guidelines,
+                        "cultural_sensitivities": g.cultural_sensitivities
+                    }
+                    for g in context['cultural_guidelines']
+                ],
+                "community_profile": context['community_profile'],
+                "best_practices": [
+                    {
+                        "id": item.id,
+                        "title": item.title,
+                        "content": item.content
+                    }
+                    for item in context['best_practices']
+                ]
+            }
+        }
+    except Exception as e:
+        print(f"❌ Error getting relevant context: {e}")
         return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":

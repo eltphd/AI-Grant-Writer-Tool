@@ -1,0 +1,30 @@
+{
+  "id": "cultural_001",
+  "community": "general",
+  "guidelines": [
+    "Respect and honor community traditions and cultural practices",
+    "Engage community leaders and elders in decision-making processes",
+    "Use inclusive language that reflects the community's diversity",
+    "Provide materials in multiple languages when possible",
+    "Build trust through consistent, transparent communication"
+  ],
+  "cultural_sensitivities": [
+    "Avoid assumptions about cultural practices",
+    "Respect traditional healing and wellness practices",
+    "Be mindful of gender roles and family structures",
+    "Consider religious and spiritual beliefs in programming"
+  ],
+  "language_preferences": [
+    "Use community-preferred terminology",
+    "Avoid jargon and technical language",
+    "Provide translation services when needed",
+    "Include community members in content creation"
+  ],
+  "best_practices": [
+    "Conduct community needs assessments",
+    "Partner with local organizations",
+    "Provide culturally appropriate training",
+    "Evaluate programs with community input"
+  ],
+  "created_at": "2024-01-15T10:00:00Z"
+} 

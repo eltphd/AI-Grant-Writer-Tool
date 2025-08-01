@@ -9,20 +9,19 @@ from openai import OpenAI
 from typing import Dict, List, Optional
 from datetime import datetime
 
-# Configure OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# Debug: Print API key status (without exposing the key)
-api_key = os.getenv("OPENAI_API_KEY")
-print(f"🔧 OpenAI API key status: {'configured' if api_key else 'not configured'}")
-if api_key:
-    print(f"🔧 API key length: {len(api_key)} characters")
-    print(f"🔧 API key starts with: {api_key[:7]}...")
-
-# Check if OpenAI API key is configured
-if not api_key:
-    print("⚠️ Warning: OPENAI_API_KEY not found in environment variables")
-    print("⚠️ AI responses will be limited. Please set OPENAI_API_KEY for full functionality.")
+# Configure OpenAI client (with fallback)
+try:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        client = OpenAI(api_key=api_key)
+        print(f"🔧 OpenAI API key status: configured ({len(api_key)} characters)")
+    else:
+        client = None
+        print("⚠️ Warning: OPENAI_API_KEY not found in environment variables")
+        print("⚠️ AI responses will be limited. Please set OPENAI_API_KEY for full functionality.")
+except Exception as e:
+    client = None
+    print(f"⚠️ Error initializing OpenAI client: {e}")
 
 def get_openai_response(prompt: str, system_message: str = None, max_tokens: int = 1000) -> str:
     """Get a response from OpenAI's GPT model.
@@ -35,20 +34,14 @@ def get_openai_response(prompt: str, system_message: str = None, max_tokens: int
     Returns:
         The AI-generated response
     """
+    # Check if OpenAI client is available
+    if client is None:
+        return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
+    
     # Check if OpenAI API key is configured (recheck at runtime)
     current_api_key = os.getenv("OPENAI_API_KEY")
     if not current_api_key:
         print("🔧 Runtime check: OPENAI_API_KEY not found in environment")
-        return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
-    
-    # Update the client if API key changed
-    global client
-    if current_api_key != api_key:
-        print("🔧 Updating OpenAI API key")
-        client = OpenAI(api_key=current_api_key)
-    
-    # Check if OpenAI API key is configured
-    if not current_api_key:
         return "⚠️ OpenAI API key not configured. Please set the OPENAI_API_KEY environment variable to enable AI responses."
     
     try:

@@ -1,0 +1,43 @@
+{
+  "id": "community_001",
+  "community_name": "Urban Community",
+  "demographics": {
+    "population": "diverse",
+    "age_range": "all_ages",
+    "income_levels": "mixed",
+    "education_levels": "varied"
+  },
+  "cultural_backgrounds": [
+    "African American",
+    "Hispanic/Latino",
+    "Asian American",
+    "European American",
+    "Indigenous",
+    "Multi-ethnic"
+  ],
+  "languages": [
+    "English",
+    "Spanish",
+    "Mandarin",
+    "Vietnamese",
+    "French",
+    "Arabic"
+  ],
+  "key_concerns": [
+    "Economic opportunity and job training",
+    "Access to quality education",
+    "Healthcare access and affordability",
+    "Housing stability and affordability",
+    "Community safety and violence prevention",
+    "Environmental justice and sustainability"
+  ],
+  "strengths": [
+    "Strong community networks and social capital",
+    "Cultural diversity and resilience",
+    "Local leadership and grassroots organizations",
+    "Innovation and entrepreneurship",
+    "Youth engagement and leadership",
+    "Community-based problem solving"
+  ],
+  "created_at": "2024-01-15T10:00:00Z"
+} 
