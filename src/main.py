@@ -298,7 +298,7 @@ async def send_message(request: dict):
                 print(f"⚠️ Error getting relevant snippets: {e}")
         
         # Generate context-aware response with relevant snippets
-        ai_response = generate_contextual_response(message, project_context, rfp_analysis)
+        ai_response = generate_contextual_response(message, project_context, rfp_analysis, relevant_snippets)
         
         # Save chat message to database
         try:
@@ -450,11 +450,16 @@ def get_rfp_analysis_data(project_id: str) -> dict:
             "alignment_score": 0
         }
 
-def generate_contextual_response(message: str, context: dict, rfp_analysis: dict) -> str:
+def generate_contextual_response(message: str, context: dict, rfp_analysis: dict, relevant_snippets: list = None) -> str:
     """Generate culturally sensitive contextual AI response using specialized LLM approach with evaluation feedback loop"""
     
-    # Get advanced RAG context for enhanced responses
-    rag_context = advanced_rag_db.get_relevant_context(message, "grant_section", context.get('community_focus'))
+    # Use provided relevant snippets or fall back to advanced RAG
+    if relevant_snippets and len(relevant_snippets) > 0:
+        rag_context = {"relevant_chunks": relevant_snippets}
+        print(f"🔍 DEBUG: Using {len(relevant_snippets)} relevant snippets from Supabase")
+    else:
+        rag_context = advanced_rag_db.get_relevant_context(message, "grant_section", context.get('community_focus'))
+        print(f"🔍 DEBUG: No relevant snippets found, using fallback RAG")
     
     # Build project context string with uploaded content
     uploaded_content_summary = ""
@@ -473,6 +478,11 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
     community_context = context.get('community_focus', '')
     if rag_context and 'cultural_context' in rag_context:
         community_context += f" {rag_context['cultural_context']}"
+    
+    # Add relevant snippets to context if available
+    if relevant_snippets and len(relevant_snippets) > 0:
+        snippets_text = "\n\n".join([f"Relevant content: {snippet}" for snippet in relevant_snippets])
+        project_context += f"\n\nRelevant Document Content:\n{snippets_text}"
     
     # Generate initial response
     initial_response = _generate_initial_response(message, context, rfp_analysis, rag_context, project_context, community_context)
@@ -558,6 +568,11 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
         rag_response = rag_db.get_relevant_context(message, context.get('uploaded_files', []))
         if rag_response:
             return rag_response
+            else:
+        # Use relevant snippets in the default response if available
+        if relevant_snippets and len(relevant_snippets) > 0:
+            snippets_context = "\n\n".join([f"From your documents: {snippet}" for snippet in relevant_snippets])
+            return f"Based on your uploaded documents:\n\n{snippets_context}\n\n{generate_default_response(message, context, rfp_analysis)}"
         else:
             return generate_default_response(message, context, rfp_analysis)
 
