@@ -235,6 +235,8 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
   padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .project-card {
@@ -642,6 +644,8 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .context-upload-panel {
@@ -887,10 +891,26 @@ body {
 @media (min-width: 1024px) {
   .app-main {
     padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
   }
   
   .step-container {
     min-height: calc(100vh - 250px);
+  }
+  
+  .grant-creation-layout {
+    grid-template-columns: 1fr 1.5fr;
+    gap: 3rem;
+    padding: 2rem;
+  }
+  
+  .context-upload-panel {
+    padding: 2rem;
+  }
+  
+  .grant-sections-panel {
+    padding: 2rem;
   }
 } 
 
@@ -904,6 +924,7 @@ body {
 @media (max-width: 768px) {
   .grant-creation-layout {
     padding: 1rem;
+    gap: 1rem;
   }
   
   .context-upload-panel,
@@ -941,6 +962,29 @@ body {
   
   .step-header {
     margin-bottom: 1rem;
+  }
+}
+
+/* Large desktop improvements */
+@media (min-width: 1440px) {
+  .app-main {
+    max-width: 1600px;
+    padding: 3rem;
+  }
+  
+  .grant-creation-layout {
+    grid-template-columns: 1fr 2fr;
+    gap: 4rem;
+    padding: 3rem;
+  }
+  
+  .context-upload-panel,
+  .grant-sections-panel {
+    padding: 2.5rem;
+  }
+  
+  .step-container {
+    min-height: calc(100vh - 300px);
   }
 } 
 

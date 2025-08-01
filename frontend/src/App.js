@@ -95,14 +95,17 @@ function App() {
           const content = await readFileContent(file);
           
           // Upload file as JSON (matching backend expectation)
-          const response = await fetch(`${API_BASE}/upload?project_id=${currentProject.id}`, {
+          const response = await fetch(`${API_BASE}/upload`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              filename: file.name,
-              content: content
+              project_id: currentProject.id,
+              file: {
+                filename: file.name,
+                content: content
+              }
             }),
           });
 
@@ -170,13 +173,12 @@ function App() {
       const content = await readFileContent(file);
       
       // Upload RFP for analysis
-      const response = await fetch(`${API_BASE}/rfp/upload`, {
+      const response = await fetch(`${API_BASE}/rfp/upload?project_id=${currentProject.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          project_id: currentProject.id,
           filename: file.name,
           content: content
         }),
@@ -328,6 +330,18 @@ function App() {
     try {
       setLoading(true);
       
+      // Create a more specific prompt for section generation
+      const sectionPrompts = {
+        'executive_summary': 'Generate a comprehensive executive summary for our grant proposal. Include our organization background, project goals, funding request, and expected impact.',
+        'organization_profile': 'Write a detailed organization profile section. Include our mission, history, key accomplishments, leadership team, and capacity to deliver this project.',
+        'project_approach': 'Create a detailed project description and approach section. Include SMART objectives, activities, timeline, staffing plan, and key partnerships.',
+        'timeline': 'Develop a comprehensive timeline and implementation plan. Include milestones, deliverables, and project phases.',
+        'budget': 'Create a detailed budget and financial plan section. Include cost breakdown, justifications, and sustainability plan.',
+        'evaluation': 'Write an evaluation and impact measurement section. Include KPIs, data collection methods, and reporting schedule.'
+      };
+      
+      const prompt = sectionPrompts[sectionKey] || `Generate content for the ${sectionKey.replace('_', ' ')} section of our grant proposal.`;
+      
       // Call the AI to generate content for this section
       const response = await fetch(`${API_BASE}/chat/send_message`, {
         method: 'POST',
@@ -336,7 +350,7 @@ function App() {
         },
         body: JSON.stringify({
           project_id: currentProject?.id || 'test-project',
-          message: `write ${sectionKey.replace('_', ' ')}`
+          message: prompt
         }),
       });
 
@@ -348,14 +362,34 @@ function App() {
             ...prev,
             [sectionKey]: data.response
           }));
+          
+          // Show success message
+          setUploadStatus({ 
+            message: `✅ ${sectionKey.replace('_', ' ')} section generated successfully!`, 
+            type: 'success' 
+          });
+          
+          // Clear status after 3 seconds
+          setTimeout(() => setUploadStatus({ message: '', type: '' }), 3000);
+        } else {
+          setUploadStatus({ 
+            message: `❌ Failed to generate ${sectionKey.replace('_', ' ')} section: ${data.error}`, 
+            type: 'error' 
+          });
         }
       } else {
         console.error('Failed to generate section content:', response.status);
-        alert('Failed to generate content. Please try again.');
+        setUploadStatus({ 
+          message: `❌ Failed to generate ${sectionKey.replace('_', ' ')} section. Please try again.`, 
+          type: 'error' 
+        });
       }
     } catch (error) {
       console.error('Error generating section content:', error);
-      alert('Failed to generate content. Please try again.');
+      setUploadStatus({ 
+        message: `❌ Error generating ${sectionKey.replace('_', ' ')} section: ${error.message}`, 
+        type: 'error' 
+      });
     } finally {
       setLoading(false);
     }
@@ -449,7 +483,7 @@ function App() {
         textAlign: 'center', 
         fontWeight: 'bold' 
       }}>
-        Hello from the Preview Branch! - Today is Friday, August 1, 2025.
+        Friday, August 1, 2025
       </div>
 
       <main className="app-main">
