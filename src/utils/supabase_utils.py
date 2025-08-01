@@ -42,11 +42,25 @@ def get_openai_client() -> OpenAI:
     return get_openai_client.client  # type: ignore
 
 
+def _batch(iterable: list[str], n: int) -> list[list[str]]:
+    """Yield successive n-sized batches from iterable."""
+    return [iterable[i:i + n] for i in range(0, len(iterable), n)]
+
+
 def create_embeddings(chunks: list[str]) -> list[list[float]]:
-    """Create embeddings for a list of text chunks using OpenAI."""
+    """Create embeddings for a list of text chunks using OpenAI.
+
+    The OpenAI embeddings endpoint limits total tokens per request; we therefore
+    break large uploads into smaller batches (e.g., 100 chunks) to stay under
+    the limit and avoid 400 errors.
+    """
     client = get_openai_client()
-    response = client.embeddings.create(model="text-embedding-ada-002", input=chunks)
-    return [embedding.embedding for embedding in response.data]
+    all_embeddings: list[list[float]] = []
+    # Use batches of 100 inputs – this keeps us well below the 300k-token limit
+    for batch in _batch(chunks, 100):
+        response = client.embeddings.create(model="text-embedding-ada-002", input=batch)
+        all_embeddings.extend([e.embedding for e in response.data])
+    return all_embeddings
 
 
 def _build_headers() -> dict[str, str]:
