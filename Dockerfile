@@ -29,7 +29,7 @@ RUN npm run build
 ################################
 # Stage 2: Build Python back‑end #
 ################################
-FROM python:3.11-alpine AS backend
+FROM python:3.13-alpine AS backend
 
 # Avoid writing pyc files to disk and ensure stdout/stderr is unbuffered
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -38,11 +38,14 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Install minimal system dependencies for psycopg2-binary
+# Install system dependencies including build tools for scikit-learn
 RUN apk add --no-cache \
     postgresql-dev \
     gcc \
+    g++ \
     musl-dev \
+    make \
+    cmake \
     && rm -rf /var/cache/apk/*
 
 # Install Python dependencies
