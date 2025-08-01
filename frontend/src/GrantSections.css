@@ -143,7 +143,7 @@
 
 .section-card:hover {
   border-color: var(--indigo-glow);
-  box-shadow: 0 2px 8px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.1);
 }
 
 .section-card.complete {

@@ -1,7 +1,7 @@
 /* GWAT Glassmorphic Dark Theme */
 :root {
   --ink-black: #1C1C1E;
-  --indigo-glow: #6C63FF;
+  --indigo-glow: #1e3a8a;
   --light-slate: #F2F2F7;
   --neon-mint: #00FFD1;
   
@@ -255,7 +255,7 @@ body {
 .project-card:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.2);
 }
 
 .project-card.new-project {
@@ -344,7 +344,7 @@ body {
 .btn-primary {
   background: var(--gradient-primary);
   color: white;
-  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
   border: 2px solid transparent;
   transition: all 0.3s ease;
 }
@@ -352,13 +352,13 @@ body {
 .btn-primary:hover {
   background: var(--primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.4), 0 0 0 2px rgba(30, 58, 138, 0.2);
   border-color: var(--indigo-glow);
 }
 
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
 }
 
 .btn-secondary {
@@ -384,23 +384,23 @@ body {
 .btn-large {
   padding: 1rem 2rem;
   font-size: 1rem;
-  box-shadow: 0 6px 20px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 6px 20px rgba(30, 58, 138, 0.3);
 }
 
 .btn-large:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(108, 99, 255, 0.4), 0 0 0 3px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 12px 35px rgba(30, 58, 138, 0.4), 0 0 0 3px rgba(30, 58, 138, 0.2);
 }
 
 .btn-small {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  box-shadow: 0 2px 8px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.2);
 }
 
 .btn-small:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3), 0 0 0 1px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3), 0 0 0 1px rgba(30, 58, 138, 0.2);
 }
 
 /* Form Styles */
@@ -433,7 +433,7 @@ body {
 .form-group textarea:focus {
   outline: none;
   border-color: var(--indigo-glow);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
 .form-actions {
@@ -694,7 +694,7 @@ body {
 .context-form textarea:focus {
   outline: none;
   border-color: var(--indigo-glow);
-  box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .upload-section {
@@ -747,7 +747,7 @@ body {
 .section-card:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2), 0 0 0 1px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.2), 0 0 0 1px rgba(30, 58, 138, 0.1);
 }
 
 .section-card:hover::before {
@@ -978,7 +978,7 @@ body {
 .project-card:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 12px 35px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .project-card:hover::before {
@@ -995,7 +995,7 @@ body {
 .project-card.new-project:hover {
   border-color: var(--indigo-glow);
   background: var(--surface);
-  box-shadow: 0 12px 35px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 12px 35px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 /* Section Card Glow Effect */
@@ -1026,7 +1026,7 @@ body {
 .section-card:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2), 0 0 0 1px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.2), 0 0 0 1px rgba(30, 58, 138, 0.1);
 }
 
 .section-card:hover::before {
@@ -1067,7 +1067,7 @@ body {
 .nav-item:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .nav-item:hover::before {
@@ -1077,7 +1077,7 @@ body {
 .nav-item.active {
   border-color: var(--indigo-glow);
   background: var(--surface);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .nav-item.active::before {
@@ -1114,7 +1114,7 @@ body {
 .upload-label:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.2), 0 0 0 2px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.2), 0 0 0 2px rgba(30, 58, 138, 0.1);
 }
 
 .upload-label:hover::before {
@@ -1125,7 +1125,7 @@ body {
 .context-form textarea:focus {
   outline: none;
   border-color: var(--indigo-glow);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2), 0 4px 12px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.2), 0 4px 12px rgba(30, 58, 138, 0.1);
   transform: translateY(-1px);
 }
 
@@ -1133,7 +1133,7 @@ body {
 .input-wrapper textarea:focus {
   outline: none;
   border-color: var(--indigo-glow);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2), 0 4px 12px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.2), 0 4px 12px rgba(30, 58, 138, 0.1);
 }
 
 /* Send Button Glow Effect */
@@ -1148,7 +1148,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
   position: relative;
   overflow: hidden;
 }
@@ -1169,7 +1169,7 @@ body {
 
 .send-button:hover {
   transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4), 0 0 0 3px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.4), 0 0 0 3px rgba(30, 58, 138, 0.2);
 }
 
 .send-button:hover::before {

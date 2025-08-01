@@ -30,7 +30,7 @@ except ImportError:
     # Fallback for direct import
     from utils.evaluation_utils import cognitive_evaluator, cultural_evaluator, performance_monitor
 
-app = FastAPI(title="GWAT API", version="1.0.0")
+app = FastAPI(title="GET$ API", version="1.0.0")
 
 # CORS middleware
 app.add_middleware(
@@ -214,9 +214,28 @@ async def upload_file(project_id: str, file: dict):
 # Context endpoint
 @app.get("/context/{project_id}")
 async def get_project_context(project_id: str):
-    """Get project context"""
+    """Get project context with uploaded files from RAG system"""
     try:
-        return {"success": True, "context": {"files": []}}
+        # Get uploaded files from RAG system
+        uploaded_files = []
+        knowledge_items = advanced_rag_db.search_knowledge("", limit=50)  # Get all items
+        for item in knowledge_items:
+            if item.source == "user_upload":
+                uploaded_files.append({
+                    "filename": item.title,
+                    "category": item.category,
+                    "content_length": len(item.content),
+                    "uploaded_at": item.created_at
+                })
+        
+        return {
+            "success": True, 
+            "context": {
+                "files": uploaded_files,
+                "project_id": project_id,
+                "total_files": len(uploaded_files)
+            }
+        }
     except Exception as e:
         print(f"❌ Error getting project context: {e}")
         return {"success": False, "error": str(e)}
@@ -282,17 +301,17 @@ async def send_message(request: dict):
         return {"success": False, "error": str(e)}
 
 def get_project_context_data(project_id: str) -> dict:
-    """Get project context data from RAG system"""
+    """Get project context data from advanced RAG system"""
     try:
-        # Get uploaded documents from RAG system
+        # Get uploaded documents from advanced RAG system
         uploaded_files = []
-        knowledge_items = rag_db.search_knowledge("", limit=50)  # Get all items
+        knowledge_items = advanced_rag_db.search_knowledge("", limit=50)  # Get all items
         for item in knowledge_items:
             if item.source == "user_upload":
                 uploaded_files.append(item.title)
         
         # Get organization info if available
-        org_items = rag_db.search_knowledge("organization", category="organization_profile", limit=5)
+        org_items = advanced_rag_db.search_knowledge("organization", category="organization_profile", limit=5)
         organization_info = ""
         if org_items:
             organization_info = org_items[0].content[:500] + "..." if len(org_items[0].content) > 500 else org_items[0].content
@@ -315,10 +334,10 @@ def get_project_context_data(project_id: str) -> dict:
         }
 
 def get_rfp_analysis_data(project_id: str) -> dict:
-    """Get RFP analysis data from RAG system"""
+    """Get RFP analysis data from advanced RAG system"""
     try:
         # Search for RFP-related documents
-        rfp_items = rag_db.search_knowledge("RFP funding requirements", category="grant_narrative", limit=5)
+        rfp_items = advanced_rag_db.search_knowledge("RFP funding requirements", category="grant_narrative", limit=5)
         
         if rfp_items:
             # Extract requirements from RFP content
@@ -921,7 +940,7 @@ def generate_timeline_guidance(rfp_analysis: dict) -> str:
 def generate_general_guidance(context: dict, rfp_analysis: dict) -> str:
     """Generate conversational general guidance"""
     
-    response = "🎯 **Hi! I'm your GWAT Assistant**\n\n"
+            response = "🎯 **Hi! I'm your GET$ Assistant**\n\n"
     
     response += "**I'm here to help you write a winning grant proposal!**\n\n"
     
@@ -1008,7 +1027,7 @@ async def get_chat_history(project_id: str):
             "messages": [
                 {
                     "id": 1,
-                    "message": "Welcome to GWAT! How can I help with your grant writing?",
+                    "message": "Welcome to GET$! How can I help with your grant writing?",
                     "timestamp": datetime.now().isoformat(),
                     "type": "ai"
                 }

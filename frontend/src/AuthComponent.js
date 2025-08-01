@@ -73,7 +73,7 @@ const AuthComponent = ({ onAuthSuccess, onSwitchMode }) => {
     <div className="auth-container">
       <div className="auth-card">
         <div className="auth-header">
-          <h2>Welcome to GWAT</h2>
+          <h2>Welcome to GET$</h2>
           <p>{isLogin ? 'Sign in to continue' : 'Create your account'}</p>
         </div>
 

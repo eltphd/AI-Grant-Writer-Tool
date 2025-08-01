@@ -70,7 +70,7 @@
 .form-group input:focus {
   outline: none;
   border-color: var(--indigo-glow);
-  box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
 .form-group input::placeholder {
@@ -107,7 +107,7 @@
 .auth-submit-btn:hover:not(:disabled) {
   background: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
 }
 
 .auth-submit-btn:disabled {

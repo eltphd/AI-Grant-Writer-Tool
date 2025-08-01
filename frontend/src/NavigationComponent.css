@@ -129,7 +129,7 @@
 .nav-item:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .nav-item:hover::before {
@@ -139,7 +139,7 @@
 .nav-item.active {
   border-color: var(--indigo-glow);
   background: var(--surface);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .nav-item.active::before {
@@ -352,7 +352,7 @@
 .mobile-nav-item:hover {
   border-color: var(--indigo-glow);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .mobile-nav-item:hover::before {
@@ -362,7 +362,7 @@
 .mobile-nav-item.active {
   border-color: var(--indigo-glow);
   background: var(--surface-light);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3), 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3), 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .mobile-nav-item.active::before {

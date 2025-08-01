@@ -167,7 +167,7 @@
 .input-wrapper textarea:focus {
   outline: none;
   border-color: var(--indigo-glow);
-  box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 .input-wrapper textarea:disabled {
@@ -193,7 +193,7 @@
 
 .send-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.3);
 }
 
 .send-btn:disabled {
