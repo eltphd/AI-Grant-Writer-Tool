@@ -147,7 +147,7 @@ async def upload_rfp(project_id: str, request: dict):
         
         # Save RFP document metadata and chunks in Supabase
         supa.save_uploaded_file(content.encode('utf-8'), rfp.filename, project_id)
-        supa.insert_file_chunks_into_db([(rfp.filename, chunk) for chunk in chunk_text(content)])
+        supa.insert_file_chunks_into_db([(rfp.filename, chunk) for chunk in chunk_text(content)], project_id)
 
         return {"success": True, "rfp": rfp.__dict__, "analysis": analysis}
     except Exception as e:
@@ -212,7 +212,7 @@ async def upload_file(request: dict):
         
         # Insert chunks and embeddings into Supabase
         chunk_pairs = [(filename, c) for c in chunks]
-        supa.insert_file_chunks_into_db(chunk_pairs)
+        supa.insert_file_chunks_into_db(chunk_pairs, project_id)
 
         return {
             "success": True,
@@ -292,7 +292,7 @@ async def send_message(request: dict):
         if uploaded_files:
             try:
                 # Search for relevant chunks based on user message
-                snippet = supa.rag_context(message, uploaded_files)
+                snippet = supa.rag_context(message, uploaded_files, project_id)
                 if snippet:
                     relevant_snippets = [snippet]
                 print(f"🔍 DEBUG: Found {len(relevant_snippets)} relevant snippets")

@@ -206,7 +206,7 @@ def save_questions(project_id: int, questions: Any) -> bool:
     return False
 
 
-def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str]]) -> Optional[int]:
+def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str]], project_id: str = None) -> Optional[int]:
     """Insert file chunks and embeddings into the file_chunks table.
     Returns the ID of the inserted chunk.
     """
@@ -222,6 +222,7 @@ def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str]]) -> Optional[in
             "chunk_text": chunk_text,
             # pgvector expects string representation via PostgREST
             "embedding": f"[{', '.join(str(x) for x in embeddings[i])}]",
+            "project_id": project_id,
         })
     
     res = _request(
@@ -280,7 +281,7 @@ def update_client(client_id: int, client: Any) -> bool:
     return bool(res)
 
 
-def rag_context(question: str, files: list[str]) -> Optional[str]:
+def rag_context(question: str, files: list[str], project_id: str = None) -> Optional[str]:
     """Return the best matching context chunk for a question.
 
     This function now calls a Supabase Edge Function to perform the vector search.
@@ -289,9 +290,10 @@ def rag_context(question: str, files: list[str]) -> Optional[str]:
         response = _request(
             "POST",
             f"/functions/v1/rag_context",
-            json={"query": question, "files": files},
+            json={"query": question, "files": files, "project_id": project_id},
         )
         if response and isinstance(response, list) and len(response) > 0:
+            # Return the most relevant chunk (highest similarity)
             return response[0].get("chunk_text")
         return None
     except Exception as e:
