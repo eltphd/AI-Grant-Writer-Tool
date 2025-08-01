@@ -254,9 +254,41 @@ function App() {
     }
   };
 
-  const handleEditSection = (sectionKey) => {
-    // Placeholder for section editing
-    console.log(`Editing section: ${sectionKey}`);
+  const handleEditSection = async (sectionKey) => {
+    try {
+      setLoading(true);
+      
+      // Call the AI to generate content for this section
+      const response = await fetch(`${API_BASE}/chat/send_message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          project_id: currentProject?.id || 'test-project',
+          message: `write ${sectionKey.replace('_', ' ')}`
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          // Update the section with AI-generated content
+          setSections(prev => ({
+            ...prev,
+            [sectionKey]: data.response
+          }));
+        }
+      } else {
+        console.error('Failed to generate section content:', response.status);
+        alert('Failed to generate content. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error generating section content:', error);
+      alert('Failed to generate content. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleStepChange = (stepId) => {
@@ -298,7 +330,7 @@ function App() {
 
   const handleExportDocx = async () => {
     try {
-      const response = await fetch(`${API_BASE}/export/docx`, {
+      const response = await fetch(`${API_BASE}/export/txt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -314,7 +346,7 @@ function App() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'grant-proposal.docx';
+        a.download = 'grant-proposal.txt';
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -499,13 +531,14 @@ function App() {
                         <button 
                           className="btn btn-primary btn-small"
                           onClick={() => handleEditSection(sectionKey)}
+                          disabled={loading}
                         >
-                          Edit
+                          {loading ? 'Generating...' : 'Auto-Generate'}
                         </button>
                       </div>
                       
                       <div className="section-content">
-                        {sections[sectionKey] || `No content yet. Click 'Edit' to start writing your ${sectionTitle.toLowerCase()}.`}
+                        {sections[sectionKey] || `No content yet. Click 'Auto-Generate' to create your ${sectionTitle.toLowerCase()} using AI.`}
                       </div>
                     </div>
                   ))}
@@ -554,7 +587,7 @@ function App() {
                   📝 Export as Markdown
                 </button>
                 <button className="btn btn-primary" onClick={handleExportDocx}>
-                  📄 Export as DOCX
+                  📄 Export as TXT
                 </button>
                 <button className="btn btn-secondary" onClick={handleReviewSections}>
                   📋 Review Sections

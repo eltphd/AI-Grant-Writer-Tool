@@ -1023,16 +1023,15 @@ async def export_markdown(request: dict):
         print(f"❌ Error exporting markdown: {e}")
         return {"success": False, "error": str(e)}
 
-@app.post("/export/docx")
-async def export_docx(request: dict):
-    """Export grant proposal as DOCX"""
+@app.post("/export/txt")
+async def export_txt(request: dict):
+    """Export grant proposal as TXT"""
     try:
         project_id = request.get('project_id', 'test-project')
         sections = request.get('sections', {})
         
-        # For now, return a simple text file since we don't have docx library
-        # In production, you'd use python-docx library
-        docx_content = "Grant Proposal\n\n"
+        # Generate text content
+        txt_content = "Grant Proposal\n\n"
         
         section_titles = {
             'executive_summary': 'Executive Summary',
@@ -1046,21 +1045,21 @@ async def export_docx(request: dict):
         for section_key, section_title in section_titles.items():
             content = sections.get(section_key, '')
             if content:
-                docx_content += f"{section_title}\n\n{content}\n\n"
+                txt_content += f"{section_title}\n\n{content}\n\n"
             else:
-                docx_content += f"{section_title}\n\nContent to be added\n\n"
+                txt_content += f"{section_title}\n\nContent to be added\n\n"
         
         # Add metadata
-        docx_content += f"\n---\nGenerated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        txt_content += f"\n---\nGenerated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
         
         return Response(
-            content=docx_content,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": "attachment; filename=grant-proposal.docx"}
+            content=txt_content,
+            media_type="text/plain",
+            headers={"Content-Disposition": "attachment; filename=grant-proposal.txt"}
         )
         
     except Exception as e:
-        print(f"❌ Error exporting docx: {e}")
+        print(f"❌ Error exporting txt: {e}")
         return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
