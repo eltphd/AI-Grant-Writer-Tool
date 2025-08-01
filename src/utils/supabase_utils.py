@@ -57,7 +57,7 @@ def create_embeddings(chunks: list[str]) -> list[list[float]]:
     client = get_openai_client()
     all_embeddings: list[list[float]] = []
     # Use batches of 100 inputs – this keeps us well below the 300k-token limit
-    for batch in _batch(chunks, 100):
+    for batch in _batch(chunks, 10):
         response = client.embeddings.create(model="text-embedding-ada-002", input=batch)
         all_embeddings.extend([e.embedding for e in response.data])
     return all_embeddings
