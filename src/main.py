@@ -940,7 +940,7 @@ def generate_timeline_guidance(rfp_analysis: dict) -> str:
 def generate_general_guidance(context: dict, rfp_analysis: dict) -> str:
     """Generate conversational general guidance"""
     
-            response = "🎯 **Hi! I'm your GET$ Assistant**\n\n"
+    response = "🎯 **Hi! I'm your GET$ Assistant**\n\n"
     
     response += "**I'm here to help you write a winning grant proposal!**\n\n"
     
