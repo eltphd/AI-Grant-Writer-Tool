@@ -164,8 +164,28 @@ async def upload_file(request: dict):
         
         project_id = request.get('project_id', 'test-project')
         file_data = request.get('file', {})
+        import base64, tempfile, os
+        from pathlib import Path
         filename = file_data.get('filename', 'uploaded_file')
-        original_content = file_data.get('content', '')
+        is_base64 = file_data.get('is_base64', False)
+        raw_content = file_data.get('content', '')
+
+        # If the payload is base64-encoded (binary files like PDF/DOCX)
+        if is_base64:
+            # Decode bytes and write to a temp file so we can extract text
+            file_bytes = base64.b64decode(raw_content)
+            suffix = Path(filename).suffix or ".bin"
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(file_bytes)
+                tmp_path = Path(tmp.name)
+            # Extract text using file_utils helper (PDF/DOCX/TXT)
+            from .utils.file_utils import extract_text_from_file
+            extracted_text = extract_text_from_file(tmp_path, tmp_path.suffix.lower())
+            # Clean up temp file
+            os.unlink(tmp_path)
+            original_content = extracted_text
+        else:
+            original_content = raw_content
 
         # Step 1: Redact PII from the content
         redacted_content, redactions = pii_redactor.redact_text(original_content)

@@ -98,7 +98,7 @@ function App() {
       for (const file of files) {
         try {
           // Read file content
-          const content = await readFileContent(file);
+          const { content, is_base64 } = await readFileContent(file);
           
           // Upload file as JSON (matching backend expectation)
           const response = await fetch(`${API_BASE}/upload`, {
@@ -110,7 +110,8 @@ function App() {
               project_id: currentProject.id,
               file: {
                 filename: file.name,
-                content: content
+                content,
+                is_base64
               }
             }),
           });
@@ -182,7 +183,7 @@ function App() {
       setUploadStatus({ message: '', type: '' });
       
       // Read file content
-      const content = await readFileContent(file);
+      const { content, is_base64 } = await readFileContent(file);
       
       // Upload RFP for analysis
       const response = await fetch(`${API_BASE}/rfp/upload/${currentProject.id}`, {
@@ -192,6 +193,8 @@ function App() {
         },
         body: JSON.stringify({
           filename: file.name,
+          is_base64,
+
           content: content
         }),
       });
@@ -241,9 +244,24 @@ function App() {
   const readFileContent = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
+      
       reader.onerror = reject;
-      reader.readAsText(file);
+      // For binary files (PDF, DOCX) we read as ArrayBuffer and convert to base64 string
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf") || file.name.endsWith(".doc") || file.name.endsWith(".docx")) {
+        reader.readAsArrayBuffer(file);
+        reader.onload = (e) => {
+          const buffer = e.target.result;
+          const binary = new Uint8Array(buffer).reduce((acc, byte) => acc + String.fromCharCode(byte), "");
+          const base64String = btoa(binary);
+          resolve({ content: base64String, is_base64: true });
+        };
+      } else {
+        reader.readAsText(file);
+        reader.onload = (e) => {
+          resolve({ content: e.target.result, is_base64: false });
+        };
+      }
+
     });
   };
 
