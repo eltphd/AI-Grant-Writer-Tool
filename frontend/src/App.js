@@ -173,7 +173,7 @@ function App() {
       const content = await readFileContent(file);
       
       // Upload RFP for analysis
-      const response = await fetch(`${API_BASE}/rfp/upload?project_id=${currentProject.id}`, {
+      const response = await fetch(`${API_BASE}/rfp/upload/${currentProject.id}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
