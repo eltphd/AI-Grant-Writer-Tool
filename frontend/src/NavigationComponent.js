@@ -25,6 +25,12 @@ const NavigationComponent = ({ currentStep, onStepChange, user }) => {
     },
     {
       id: 4,
+      title: 'Approvals',
+      icon: '✅',
+      description: 'Review and approve content'
+    },
+    {
+      id: 5,
       title: 'Export',
       icon: '📄',
       description: 'Review and export proposal'

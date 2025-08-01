@@ -3,6 +3,7 @@ import './App.css';
 import ChatComponent from './ChatComponent';
 import GrantSections from './GrantSections';
 import NavigationComponent from './NavigationComponent';
+import ApprovalComponent from './ApprovalComponent';
 
 const API_BASE = process.env.REACT_APP_API_BASE || 'https://ai-grant-writer-tool-production.up.railway.app';
 
@@ -582,8 +583,28 @@ function App() {
           </div>
         )}
 
-        {/* Step 4: Export & Review */}
+        {/* Step 4: Content Approval */}
         {currentStep === 4 && (
+          <div className="step-container">
+            <div className="step-header">
+              <h2>Content Approval Workflow</h2>
+              <p>Review and approve AI-generated content that contains sensitive information</p>
+            </div>
+            
+            <div className="approval-panel">
+              <ApprovalComponent 
+                projectId={currentProject?.id || 'test-project'} 
+                onApprovalUpdate={() => {
+                  // Refresh any necessary data after approval updates
+                  console.log('Approval workflow updated');
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Export & Review */}
+        {currentStep === 5 && (
           <div className="step-container">
             <div className="step-header">
               <h2>Review & Export</h2>

@@ -1,4 +1,6 @@
 import os
+import re
+import json
 from datetime import datetime
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -405,7 +407,7 @@ def get_rfp_analysis_data(project_id: str) -> dict:
         }
 
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict) -> str:
-    """Generate culturally sensitive contextual AI response using specialized LLM approach"""
+    """Generate culturally sensitive contextual AI response using specialized LLM approach with evaluation feedback loop"""
     
     # Get advanced RAG context for enhanced responses
     rag_context = advanced_rag_db.get_relevant_context(message, "grant_section", context.get('community_focus'))
@@ -422,6 +424,27 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
     community_context = context.get('community_focus', '')
     if rag_context and 'cultural_context' in rag_context:
         community_context += f" {rag_context['cultural_context']}"
+    
+    # Generate initial response
+    initial_response = _generate_initial_response(message, context, rfp_analysis, rag_context, project_context, community_context)
+    
+    # Evaluate the response for cultural competency and sensitivity
+    evaluation_result = _evaluate_response_with_feedback_loop(initial_response, community_context, context)
+    
+    # If evaluation indicates issues, regenerate with improvements
+    if evaluation_result.get('needs_regeneration', False):
+        improved_response = _regenerate_with_evaluation_feedback(initial_response, evaluation_result, message, context, rfp_analysis, rag_context, project_context, community_context)
+        return improved_response
+    
+    # If evaluation indicates sensitive content, flag for approval
+    if evaluation_result.get('requires_approval', False):
+        approval_id = _flag_for_approval(initial_response, evaluation_result, context.get('project_id', 'unknown'))
+        return f"{initial_response}\n\n⚠️ **Content flagged for approval** (ID: {approval_id})\nThis response contains sensitive content that requires your review before use."
+    
+    return initial_response
+
+def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, rag_context: dict, project_context: str, community_context: str) -> str:
+    """Generate the initial AI response"""
     
     # Check for specific section writing requests using specialized LLM
     if any(word in message.lower() for word in ['executive summary', 'summary']):
@@ -481,6 +504,175 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
         except Exception as e:
             print(f"Error with specialized LLM response: {e}")
             return generate_default_response(message, context, rfp_analysis)
+
+def _evaluate_response_with_feedback_loop(response: str, community_context: str, context: dict) -> dict:
+    """Evaluate response and determine if regeneration or approval is needed"""
+    
+    evaluation_result = {
+        'cultural_score': 0.0,
+        'sensitivity_flags': [],
+        'needs_regeneration': False,
+        'requires_approval': False,
+        'recommendations': []
+    }
+    
+    try:
+        # Evaluate cultural competency
+        cultural_eval = cultural_evaluator.evaluate_response(response, community_context)
+        evaluation_result['cultural_score'] = cultural_eval.get('overall_score', 0.0)
+        
+        # Check for sensitivity issues
+        sensitivity_issues = _check_sensitivity_issues(response, context)
+        evaluation_result['sensitivity_flags'] = sensitivity_issues
+        
+        # Determine if regeneration is needed (low cultural score)
+        if evaluation_result['cultural_score'] < 0.7:  # Threshold for cultural competency
+            evaluation_result['needs_regeneration'] = True
+            evaluation_result['recommendations'].append("Cultural competency score is low. Regenerating with improved cultural sensitivity.")
+        
+        # Determine if approval is needed (sensitive content detected)
+        if sensitivity_issues:
+            evaluation_result['requires_approval'] = True
+            evaluation_result['recommendations'].append("Sensitive content detected. Flagging for human approval.")
+        
+        # Record performance metrics
+        performance_monitor.record_performance(
+            "response_evaluation",
+            duration=0.0,  # Will be calculated by the monitor
+            accuracy=evaluation_result['cultural_score']
+        )
+        
+    except Exception as e:
+        print(f"Error in response evaluation: {e}")
+        # Default to safe behavior - flag for approval
+        evaluation_result['requires_approval'] = True
+        evaluation_result['recommendations'].append("Evaluation error occurred. Flagging for human review.")
+    
+    return evaluation_result
+
+def _check_sensitivity_issues(response: str, context: dict) -> list:
+    """Check for potentially sensitive content that requires approval"""
+    
+    sensitivity_flags = []
+    
+    # Check for PII patterns
+    pii_patterns = [
+        r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email
+        r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',  # Phone
+        r'\b[A-Z][a-z]+ [A-Z][a-z]+\b',  # Names (basic)
+    ]
+    
+    for pattern in pii_patterns:
+        if re.search(pattern, response):
+            sensitivity_flags.append("Potential PII detected")
+            break
+    
+    # Check for sensitive cultural references
+    sensitive_cultural_terms = [
+        'tribal', 'indigenous', 'native', 'ethnic', 'racial',
+        'religious', 'spiritual', 'cultural', 'traditional'
+    ]
+    
+    cultural_mentions = sum(1 for term in sensitive_cultural_terms if term.lower() in response.lower())
+    if cultural_mentions > 2:  # Threshold for cultural sensitivity
+        sensitivity_flags.append("Multiple cultural references detected")
+    
+    # Check for financial/confidential information
+    financial_patterns = [
+        r'\$\d+',  # Dollar amounts
+        r'\b\d{9,}\b',  # Large numbers (potential SSN, etc.)
+    ]
+    
+    for pattern in financial_patterns:
+        if re.search(pattern, response):
+            sensitivity_flags.append("Potential financial/confidential data detected")
+            break
+    
+    return sensitivity_flags
+
+def _regenerate_with_evaluation_feedback(original_response: str, evaluation_result: dict, message: str, context: dict, rfp_analysis: dict, rag_context: dict, project_context: str, community_context: str) -> str:
+    """Regenerate response with evaluation feedback to improve cultural competency"""
+    
+    # Build improved prompt with cultural feedback
+    cultural_feedback = evaluation_result.get('recommendations', [])
+    feedback_text = "\n".join(cultural_feedback)
+    
+    improved_prompt = f"""
+    Original request: {message}
+    
+    Previous response had cultural competency issues. Please regenerate with these improvements:
+    {feedback_text}
+    
+    Focus on:
+    - Enhanced cultural sensitivity
+    - Community-appropriate language
+    - Respectful cultural references
+    - Inclusive language
+    """
+    
+    # Generate improved response using specialized LLM
+    try:
+        improved_response = specialized_llm.generate_culturally_sensitive_response(
+            "improved_response",
+            {
+                "original_request": message,
+                "project_context": project_context,
+                "community_focus": community_context,
+                "cultural_feedback": feedback_text,
+                "cultural_guidelines": rag_context.get('cultural_context', '')
+            },
+            community_context
+        )
+        
+        # Add note about improvement
+        improved_response += f"\n\n✅ **Response improved** based on cultural competency evaluation."
+        
+        return improved_response
+        
+    except Exception as e:
+        print(f"Error regenerating response: {e}")
+        return original_response
+
+def _flag_for_approval(response: str, evaluation_result: dict, project_id: str) -> str:
+    """Flag response for human approval and return approval ID"""
+    
+    approval_id = f"approval_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{project_id}"
+    
+    # Store approval request in database
+    approval_data = {
+        'approval_id': approval_id,
+        'project_id': project_id,
+        'response_text': response,
+        'evaluation_result': evaluation_result,
+        'status': 'pending',
+        'created_at': datetime.now().isoformat(),
+        'sensitivity_flags': evaluation_result.get('sensitivity_flags', [])
+    }
+    
+    try:
+        # Save to database (you'll need to implement this)
+        _save_approval_request(approval_data)
+    except Exception as e:
+        print(f"Error saving approval request: {e}")
+    
+    return approval_id
+
+def _save_approval_request(approval_data: dict) -> bool:
+    """Save approval request to database"""
+    try:
+        # For now, save to a simple file-based storage
+        # In production, this should use the database
+        approval_dir = "src/secure_data/approvals"
+        os.makedirs(approval_dir, exist_ok=True)
+        
+        approval_file = f"{approval_dir}/{approval_data['approval_id']}.json"
+        with open(approval_file, 'w') as f:
+            json.dump(approval_data, f, indent=2)
+        
+        return True
+    except Exception as e:
+        print(f"Error saving approval request: {e}")
+        return False
 
 def generate_executive_summary_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
     """Generate culturally sensitive executive summary using RAG context"""
@@ -1841,6 +2033,236 @@ async def get_evaluation_targets():
         return {"success": True, "targets": targets}
     except Exception as e:
         print(f"❌ Error getting evaluation targets: {e}")
+        return {"success": False, "error": str(e)}
+
+# Approval Workflow Endpoints
+@app.get("/approval/pending/{project_id}")
+async def get_pending_approvals(project_id: str):
+    """Get all pending approval requests for a project"""
+    try:
+        approval_dir = "src/secure_data/approvals"
+        pending_approvals = []
+        
+        if os.path.exists(approval_dir):
+            for filename in os.listdir(approval_dir):
+                if filename.endswith('.json') and project_id in filename:
+                    with open(os.path.join(approval_dir, filename), 'r') as f:
+                        approval_data = json.load(f)
+                        if approval_data.get('status') == 'pending':
+                            pending_approvals.append(approval_data)
+        
+        return {"success": True, "pending_approvals": pending_approvals}
+    except Exception as e:
+        print(f"❌ Error getting pending approvals: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/approval/{approval_id}")
+async def get_approval_details(approval_id: str):
+    """Get details of a specific approval request"""
+    try:
+        approval_file = f"src/secure_data/approvals/{approval_id}.json"
+        
+        if not os.path.exists(approval_file):
+            return {"success": False, "error": "Approval request not found"}
+        
+        with open(approval_file, 'r') as f:
+            approval_data = json.load(f)
+        
+        return {"success": True, "approval": approval_data}
+    except Exception as e:
+        print(f"❌ Error getting approval details: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/approval/{approval_id}/approve")
+async def approve_content(approval_id: str, request: dict):
+    """Approve content and grant temporary access to secure storage"""
+    try:
+        approval_file = f"src/secure_data/approvals/{approval_id}.json"
+        
+        if not os.path.exists(approval_file):
+            return {"success": False, "error": "Approval request not found"}
+        
+        with open(approval_file, 'r') as f:
+            approval_data = json.load(f)
+        
+        # Update approval status
+        approval_data['status'] = 'approved'
+        approval_data['approved_at'] = datetime.now().isoformat()
+        approval_data['approved_by'] = request.get('user_id', 'unknown')
+        approval_data['approval_notes'] = request.get('notes', '')
+        
+        # Save updated approval data
+        with open(approval_file, 'w') as f:
+            json.dump(approval_data, f, indent=2)
+        
+        # Grant temporary access to secure storage
+        project_id = approval_data.get('project_id', 'unknown')
+        access_granted = _grant_secure_storage_access(project_id, approval_id)
+        
+        if access_granted:
+            return {
+                "success": True, 
+                "message": "Content approved and secure storage access granted",
+                "approval_id": approval_id,
+                "access_granted": True
+            }
+        else:
+            return {
+                "success": True, 
+                "message": "Content approved but secure storage access failed",
+                "approval_id": approval_id,
+                "access_granted": False
+            }
+            
+    except Exception as e:
+        print(f"❌ Error approving content: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/approval/{approval_id}/deny")
+async def deny_content(approval_id: str, request: dict):
+    """Deny content and provide feedback"""
+    try:
+        approval_file = f"src/secure_data/approvals/{approval_id}.json"
+        
+        if not os.path.exists(approval_file):
+            return {"success": False, "error": "Approval request not found"}
+        
+        with open(approval_file, 'r') as f:
+            approval_data = json.load(f)
+        
+        # Update approval status
+        approval_data['status'] = 'denied'
+        approval_data['denied_at'] = datetime.now().isoformat()
+        approval_data['denied_by'] = request.get('user_id', 'unknown')
+        approval_data['denial_reason'] = request.get('reason', 'No reason provided')
+        approval_data['feedback'] = request.get('feedback', '')
+        
+        # Save updated approval data
+        with open(approval_file, 'w') as f:
+            json.dump(approval_data, f, indent=2)
+        
+        return {
+            "success": True, 
+            "message": "Content denied",
+            "approval_id": approval_id
+        }
+            
+    except Exception as e:
+        print(f"❌ Error denying content: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/approval/{approval_id}/request-access")
+async def request_secure_storage_access(approval_id: str, request: dict):
+    """Request access to secure storage for approved content"""
+    try:
+        approval_file = f"src/secure_data/approvals/{approval_id}.json"
+        
+        if not os.path.exists(approval_file):
+            return {"success": False, "error": "Approval request not found"}
+        
+        with open(approval_file, 'r') as f:
+            approval_data = json.load(f)
+        
+        if approval_data.get('status') != 'approved':
+            return {"success": False, "error": "Content must be approved before requesting access"}
+        
+        project_id = approval_data.get('project_id', 'unknown')
+        access_granted = _grant_secure_storage_access(project_id, approval_id)
+        
+        if access_granted:
+            return {
+                "success": True, 
+                "message": "Secure storage access granted",
+                "approval_id": approval_id,
+                "access_granted": True
+            }
+        else:
+            return {
+                "success": False, 
+                "error": "Failed to grant secure storage access"
+            }
+            
+    except Exception as e:
+        print(f"❌ Error requesting secure storage access: {e}")
+        return {"success": False, "error": str(e)}
+
+def _grant_secure_storage_access(project_id: str, approval_id: str) -> bool:
+    """Grant temporary access to secure storage for approved content"""
+    try:
+        # This would typically involve:
+        # 1. Creating temporary database permissions
+        # 2. Setting up row-level security policies
+        # 3. Logging the access for audit purposes
+        
+        # For now, we'll create a simple access log
+        access_log = {
+            'project_id': project_id,
+            'approval_id': approval_id,
+            'access_granted_at': datetime.now().isoformat(),
+            'access_type': 'secure_storage',
+            'duration': 'temporary'
+        }
+        
+        # Save access log
+        access_dir = "src/secure_data/access_logs"
+        os.makedirs(access_dir, exist_ok=True)
+        
+        access_file = f"{access_dir}/{approval_id}_access.json"
+        with open(access_file, 'w') as f:
+            json.dump(access_log, f, indent=2)
+        
+        print(f"✅ Secure storage access granted for project {project_id} via approval {approval_id}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error granting secure storage access: {e}")
+        return False
+
+@app.get("/approval/stats/{project_id}")
+async def get_approval_statistics(project_id: str):
+    """Get approval statistics for a project"""
+    try:
+        approval_dir = "src/secure_data/approvals"
+        stats = {
+            'total_requests': 0,
+            'pending': 0,
+            'approved': 0,
+            'denied': 0,
+            'avg_approval_time': 0,
+            'sensitivity_flags': {}
+        }
+        
+        if os.path.exists(approval_dir):
+            approval_times = []
+            
+            for filename in os.listdir(approval_dir):
+                if filename.endswith('.json') and project_id in filename:
+                    with open(os.path.join(approval_dir, filename), 'r') as f:
+                        approval_data = json.load(f)
+                        
+                        stats['total_requests'] += 1
+                        status = approval_data.get('status', 'pending')
+                        stats[status] += 1
+                        
+                        # Calculate approval time if approved
+                        if status == 'approved' and 'approved_at' in approval_data:
+                            created_at = datetime.fromisoformat(approval_data['created_at'])
+                            approved_at = datetime.fromisoformat(approval_data['approved_at'])
+                            approval_time = (approved_at - created_at).total_seconds()
+                            approval_times.append(approval_time)
+                        
+                        # Count sensitivity flags
+                        flags = approval_data.get('sensitivity_flags', [])
+                        for flag in flags:
+                            stats['sensitivity_flags'][flag] = stats['sensitivity_flags'].get(flag, 0) + 1
+            
+            # Calculate average approval time
+            if approval_times:
+                stats['avg_approval_time'] = sum(approval_times) / len(approval_times)
+        
+        return {"success": True, "statistics": stats}
+    except Exception as e:
+        print(f"❌ Error getting approval statistics: {e}")
         return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
