@@ -35,7 +35,10 @@ except Exception:
 def get_openai_client() -> OpenAI:
     """Return an OpenAI client, caching it for future use."""
     if not getattr(get_openai_client, "client", None):
-        get_openai_client.client = OpenAI(api_key=config.OPENAI_API_KEY)  # type: ignore
+        openai_key = getattr(config, "OPENAI_API_KEY", None) or os.getenv("OPENAI_API_KEY")
+        if not openai_key:
+            raise RuntimeError("OPENAI_API_KEY not configured in environment variables or config.py")
+        get_openai_client.client = OpenAI(api_key=openai_key)  # type: ignore
     return get_openai_client.client  # type: ignore
 
 
