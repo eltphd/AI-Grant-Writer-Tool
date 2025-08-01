@@ -29,10 +29,12 @@ except ImportError as e:
 # Import other utilities
 try:
     from .utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
+    from .utils import supabase_utils as supa
     from .utils.rfp_analysis import rfp_analyzer
 except ImportError:
     # Fallback for direct import
     from utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
+    from utils import supabase_utils as supa
     from utils.rfp_analysis import rfp_analyzer
 
 # Import evaluation utilities
@@ -129,11 +131,11 @@ async def upload_rfp(project_id: str, request: dict):
             created_at=datetime.now().isoformat()
         )
         
-        # Save RFP document
-        if db_manager.save_rfp(rfp):
-            return {"success": True, "rfp": rfp.__dict__, "analysis": analysis}
-        else:
-            return {"success": False, "error": "Failed to save RFP"}
+        # Save RFP document metadata and chunks in Supabase
+        supa.save_uploaded_file(content.encode('utf-8'), rfp.filename, project_id)
+        supa.insert_file_chunks_into_db([(rfp.filename, chunk) for chunk in chunk_text(content)])
+
+        return {"success": True, "rfp": rfp.__dict__, "analysis": analysis}
     except Exception as e:
         print(f"❌ Error uploading RFP: {e}")
         return {"success": False, "error": str(e)}
@@ -171,33 +173,19 @@ async def upload_file(request: dict):
         # Step 2: Chunk the redacted content for the RAG system
         chunks = chunk_text(redacted_content)
 
-        # Step 3: Process and store each chunk
-        for i, chunk_text in enumerate(chunks):
-            # The public-facing data is the *redacted* text
-            # In a real implementation, you would get the embedding for the chunk here
-            embedding = [0.0] * 1536 # Placeholder for embedding
-
-            # The public-facing data is the *redacted* text
-            # In a real implementation, you would get the embedding for the chunk here
-            embedding = [0.0] * 1536 # Placeholder for embedding
-
-            # Insert the redacted chunk into the public file_chunks table
-            chunk_id = db_manager.insert_file_chunk(filename, chunk_text, embedding)
-            
-            if chunk_id and redactions: # Only store original if redactions were made
-                # If any PII was found in this chunk, store the original text securely
-                # This is a simplified check. A real implementation would be more robust.
-                # We need to get the specific part of the original content that corresponds to this chunk
-                # Assuming chunk_size is 1000 for simplicity, adjust if chunk_text is not 1:1 with original_content
-                original_chunk_text = original_content[i * 1000 : (i + 1) * 1000]
-                db_manager.insert_secure_data(chunk_id, original_chunk_text, redactions)
-
+        # Save file metadata in Supabase
+        supa.save_uploaded_file(original_content.encode("utf-8"), filename, project_id)
+        
+        # Insert chunks and embeddings into Supabase
+        chunk_pairs = [(filename, c) for c in chunks]
+        supa.insert_file_chunks_into_db(chunk_pairs)
 
         return {
             "success": True,
             "filename": filename,
             "content_length": len(original_content),
             "redactions_found": len(redactions),
+            "chunk_count": len(chunks),
             "message": f"File '{filename}' uploaded and processed. Sensitive data has been redacted."
         }
             
