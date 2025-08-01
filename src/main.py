@@ -275,6 +275,8 @@ async def send_message(request: dict):
         print(f"🔍 DEBUG: Chat request - Message: {message}")
         print(f"🔍 DEBUG: Project context: {project_context}")
         print(f"🔍 DEBUG: RFP analysis: {rfp_analysis}")
+        print(f"🔍 DEBUG: Uploaded files: {context.get('uploaded_files', [])}")
+        print(f"🔍 DEBUG: Uploaded content count: {len(context.get('uploaded_content', []))}")
         
         # Generate context-aware response
         ai_response = generate_contextual_response(message, project_context, rfp_analysis)
@@ -461,6 +463,12 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
 def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, rag_context: dict, project_context: str, community_context: str) -> str:
     """Generate the initial AI response"""
     
+    # Priority check for file-related questions
+    file_keywords = ['file', 'files', 'upload', 'uploaded', 'see', 'check', 'document', 'documents']
+    if any(keyword in message.lower() for keyword in file_keywords):
+        print(f"🔍 DEBUG: Detected file-related question: {message}")
+        return generate_content_access_response(context)
+    
     # Check for specific section writing requests using specialized LLM
     if any(word in message.lower() for word in ['executive summary', 'summary']):
         return specialized_llm.generate_culturally_sensitive_response(
@@ -504,7 +512,7 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
     elif any(word in message.lower() for word in ['grant', 'section', 'write', 'create']):
         return generate_grant_section_guidance(context, rfp_analysis)
     
-    elif any(word in message.lower() for word in ['content', 'access', 'document', 'file']):
+    elif any(word in message.lower() for word in ['content', 'access', 'document', 'file', 'files', 'upload', 'uploaded', 'see', 'check']):
         return generate_content_access_response(context)
     
     elif any(word in message.lower() for word in ['rfp', 'requirement', 'eligibility']):
