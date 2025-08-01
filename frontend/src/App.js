@@ -442,6 +442,16 @@ function App() {
         onStepChange={handleStepChange}
       />
 
+      <div style={{ 
+        padding: '1rem', 
+        backgroundColor: '#0070f3', 
+        color: 'white', 
+        textAlign: 'center', 
+        fontWeight: 'bold' 
+      }}>
+        Hello from the Preview Branch! - Today is Friday, August 1, 2025.
+      </div>
+
       <main className="app-main">
         
         {/* Step 1: Project Selection */}
