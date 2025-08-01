@@ -327,13 +327,15 @@ def get_project_context_data(project_id: str) -> dict:
         
         # Get uploaded documents from advanced RAG system
         uploaded_files = []
+        uploaded_content = []
         knowledge_items = advanced_rag_db.search_knowledge("", limit=50)  # Get all items
         print(f"🔍 DEBUG: Found {len(knowledge_items)} knowledge items in RAG system")
         
         for item in knowledge_items:
             print(f"🔍 DEBUG: Item - Title: {item.title}, Source: {item.source}, Category: {item.category}")
-            if item.source == "user_upload":
+            if item.source == "user_upload" or item.source == "uploaded_document":
                 uploaded_files.append(item.title)
+                uploaded_content.append(f"Document: {item.title}\nContent: {item.content[:1000]}...")
         
         print(f"🔍 DEBUG: Found {len(uploaded_files)} uploaded files")
         
@@ -344,11 +346,19 @@ def get_project_context_data(project_id: str) -> dict:
             organization_info = org_items[0].content[:500] + "..." if len(org_items[0].content) > 500 else org_items[0].content
             print(f"🔍 DEBUG: Found organization info: {organization_info[:100]}...")
         
+        # Get RFP requirements from uploaded documents
+        rfp_items = advanced_rag_db.search_knowledge("RFP", category="grant_narrative", limit=10)
+        rfp_requirements = []
+        if rfp_items:
+            for item in rfp_items:
+                rfp_requirements.append(f"RFP Requirements from {item.title}: {item.content[:500]}...")
+        
         context_data = {
             "organization_info": organization_info,
             "initiative_description": "Based on uploaded documents",
             "uploaded_files": uploaded_files,
-            "rfp_requirements": ["Requirements from uploaded RFP documents"],
+            "uploaded_content": uploaded_content,
+            "rfp_requirements": rfp_requirements if rfp_requirements else ["Requirements from uploaded RFP documents"],
             "community_focus": "Based on uploaded community documents"
         }
         
@@ -412,11 +422,16 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
     # Get advanced RAG context for enhanced responses
     rag_context = advanced_rag_db.get_relevant_context(message, "grant_section", context.get('community_focus'))
     
-    # Build project context string
+    # Build project context string with uploaded content
+    uploaded_content_summary = ""
+    if context.get('uploaded_content'):
+        uploaded_content_summary = "\n".join(context.get('uploaded_content', []))
+    
     project_context = f"""
     Organization: {context.get('organization_info', 'Not provided')}
     Initiative: {context.get('initiative_description', 'Not provided')}
     Uploaded Files: {', '.join(context.get('uploaded_files', []))}
+    Uploaded Content: {uploaded_content_summary}
     RFP Requirements: {', '.join(rfp_analysis.get('requirements', []))}
     """
     
@@ -453,6 +468,7 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
             {"organization_info": context.get('organization_info', ''), 
              "community_focus": community_context,
              "uploaded_files": ', '.join(context.get('uploaded_files', [])),
+             "uploaded_content": '\n'.join(context.get('uploaded_content', [])),
              "rfp_requirements": ', '.join(rfp_analysis.get('requirements', []))},
             community_context
         )
@@ -462,6 +478,7 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
             "organization_profile",
             {"organization_info": context.get('organization_info', ''),
              "community_focus": community_context,
+             "uploaded_content": '\n'.join(context.get('uploaded_content', [])),
              "cultural_guidelines": rag_context.get('cultural_context', '')},
             community_context
         )
