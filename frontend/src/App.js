@@ -449,7 +449,7 @@ function App() {
         textAlign: 'center', 
         fontWeight: 'bold' 
       }}>
-        Hello from the Preview Branch! - Today is Friday, August 1, 2025.
+        Friday, August 1, 2025
       </div>
 
       <main className="app-main">
