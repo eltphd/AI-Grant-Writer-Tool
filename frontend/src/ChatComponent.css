@@ -98,6 +98,88 @@
   text-align: left;
 }
 
+/* Evaluation Display Styles */
+.message-evaluation {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--surface-light);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.evaluation-scores {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.score {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.score.cognitive {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.score.cultural {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.score.overall {
+  background: #e8f5e8;
+  color: #388e3c;
+}
+
+.quality-level {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quality-level.excellent {
+  background: #4caf50;
+  color: white;
+}
+
+.quality-level.good {
+  background: #ff9800;
+  color: white;
+}
+
+.quality-level.needs_improvement {
+  background: #f44336;
+  color: white;
+}
+
+/* Approval Notification Styles */
+.approval-notification {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  color: #856404;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.approval-notification::before {
+  content: "⚠️";
+  font-size: 1rem;
+}
+
 .typing-indicator {
   display: flex;
   gap: 0.25rem;

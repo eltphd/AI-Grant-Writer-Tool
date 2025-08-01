@@ -262,7 +262,7 @@ async def update_project_context(project_id: str, request: dict):
 async def send_message(request: dict):
     """Send chat message with context-aware responses and automatic evaluation"""
     try:
-        message = request.get('message', '').lower()
+        message = request.get('message', '')
         project_id = request.get('project_id', 'test-project')
         
         # Start performance timer

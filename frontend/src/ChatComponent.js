@@ -88,9 +88,17 @@ const ChatComponent = ({ projectId }) => {
             id: Date.now() + 1,
             message: data.response,
             timestamp: new Date().toISOString(),
-            type: 'ai'
+            type: 'ai',
+            // Add evaluation data if available
+            evaluation: data.quality_evaluation,
+            recommendations: data.recommendations
           };
           setMessages(prev => [...prev, aiMessage]);
+          
+          // Check if response contains approval flag
+          if (data.response && data.response.toLowerCase().includes('flagged for approval')) {
+            console.log('Content flagged for approval - user should check approval workflow');
+          }
         }
       } else {
         // Handle error
@@ -137,6 +145,37 @@ const ChatComponent = ({ projectId }) => {
                 <div className="message-text">
                   {message.message}
                 </div>
+                
+                {/* Show evaluation info for AI messages */}
+                {message.type === 'ai' && message.evaluation && (
+                  <div className="message-evaluation">
+                    <div className="evaluation-scores">
+                      <span className="score cognitive">
+                        Cognitive: {Math.round(message.evaluation.cognitive_friendliness_score || 0)}%
+                      </span>
+                      <span className="score cultural">
+                        Cultural: {Math.round(message.evaluation.cultural_competency_score || 0)}%
+                      </span>
+                      <span className="score overall">
+                        Overall: {Math.round(message.evaluation.overall_quality_score || 0)}%
+                      </span>
+                    </div>
+                    {message.evaluation.quality_level && (
+                      <span className={`quality-level ${message.evaluation.quality_level}`}>
+                        {message.evaluation.quality_level}
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {/* Show approval notification */}
+                {message.type === 'ai' && message.message && 
+                 message.message.toLowerCase().includes('flagged for approval') && (
+                  <div className="approval-notification">
+                    ⚠️ Content flagged for approval - Check the Approvals tab
+                  </div>
+                )}
+                
                 <div className="message-timestamp">
                   {formatTime(message.timestamp)}
                 </div>
