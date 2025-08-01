@@ -8,11 +8,21 @@ try:
     from .utils.rag_utils import rag_db, KnowledgeItem, CulturalGuideline, CommunityProfile
     from .utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
     from .utils.specialized_llm_utils import specialized_llm
-except ImportError:
-    # Fallback for direct import
-    from utils.rag_utils import rag_db, KnowledgeItem, CulturalGuideline, CommunityProfile
-    from utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
-    from utils.specialized_llm_utils import specialized_llm
+    RAG_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ RAG import error: {e}")
+    try:
+        # Fallback for direct import
+        from utils.rag_utils import rag_db, KnowledgeItem, CulturalGuideline, CommunityProfile
+        from utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
+        from utils.specialized_llm_utils import specialized_llm
+        RAG_AVAILABLE = True
+    except ImportError as e2:
+        print(f"❌ RAG fallback import error: {e2}")
+        RAG_AVAILABLE = False
+        # Create dummy objects for fallback
+        advanced_rag_db = None
+        specialized_llm = None
 
 # Import other utilities
 try:
@@ -311,6 +321,16 @@ async def send_message(request: dict):
 def get_project_context_data(project_id: str) -> dict:
     """Get project context data from advanced RAG system"""
     try:
+        if not RAG_AVAILABLE or advanced_rag_db is None:
+            print("⚠️ RAG system not available, returning empty context")
+            return {
+                "organization_info": "RAG system not available",
+                "initiative_description": "RAG system not available",
+                "uploaded_files": [],
+                "rfp_requirements": [],
+                "community_focus": None
+            }
+        
         # Get uploaded documents from advanced RAG system
         uploaded_files = []
         knowledge_items = advanced_rag_db.search_knowledge("", limit=50)  # Get all items
@@ -1308,6 +1328,14 @@ async def health_check():
 async def debug_rag_status():
     """Debug endpoint to check RAG system status"""
     try:
+        if not RAG_AVAILABLE or advanced_rag_db is None:
+            return {
+                "status": "error",
+                "error": "RAG system not available",
+                "rag_system": "not_initialized",
+                "rag_available": RAG_AVAILABLE
+            }
+        
         # Test RAG system
         knowledge_items = advanced_rag_db.search_knowledge("", limit=10)
         uploaded_files = [item.title for item in knowledge_items if item.source == "user_upload"]
@@ -1315,6 +1343,7 @@ async def debug_rag_status():
         return {
             "status": "success",
             "rag_system": "operational",
+            "rag_available": RAG_AVAILABLE,
             "total_knowledge_items": len(knowledge_items),
             "uploaded_files": uploaded_files,
             "rag_items": [
@@ -1331,7 +1360,8 @@ async def debug_rag_status():
         return {
             "status": "error",
             "error": str(e),
-            "rag_system": "failed"
+            "rag_system": "failed",
+            "rag_available": RAG_AVAILABLE
         }
 
 @app.get("/debug/test")
