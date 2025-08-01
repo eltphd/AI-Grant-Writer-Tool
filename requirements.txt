@@ -29,3 +29,6 @@ spacy==3.7.2
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
 alembic==1.13.1
+
+# Evaluation and Assessment Dependencies
+textstat==0.7.3

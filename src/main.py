@@ -23,6 +23,13 @@ except ImportError:
     from utils.storage_utils import db_manager, OrganizationInfo, RFPDocument, ProjectResponse
     from utils.rfp_analysis import rfp_analyzer
 
+# Import evaluation utilities
+try:
+    from .utils.evaluation_utils import cognitive_evaluator, cultural_evaluator, performance_monitor
+except ImportError:
+    # Fallback for direct import
+    from utils.evaluation_utils import cognitive_evaluator, cultural_evaluator, performance_monitor
+
 app = FastAPI(title="GWAT API", version="1.0.0")
 
 # CORS middleware
@@ -226,10 +233,13 @@ async def update_project_context(project_id: str, request: dict):
 # Chat endpoints
 @app.post("/chat/send_message")
 async def send_message(request: dict):
-    """Send chat message with context-aware responses"""
+    """Send chat message with context-aware responses and automatic evaluation"""
     try:
         message = request.get('message', '').lower()
         project_id = request.get('project_id', 'test-project')
+        
+        # Start performance timer
+        start_time = performance_monitor.start_timer()
         
         # Get project context and RFP analysis
         project_context = get_project_context_data(project_id)
@@ -238,10 +248,34 @@ async def send_message(request: dict):
         # Generate context-aware response
         ai_response = generate_contextual_response(message, project_context, rfp_analysis)
         
+        # End performance timer
+        response_time = performance_monitor.end_timer(start_time)
+        
+        # Record performance metrics
+        performance_monitor.record_performance("chat_response", response_time)
+        
+        # Perform automatic evaluation
+        cognitive_eval = cognitive_evaluator.evaluate_response(ai_response)
+        cultural_eval = cultural_evaluator.evaluate_response(ai_response, project_context.get('community_focus'))
+        
+        # Calculate quality metrics
+        quality_score = (cognitive_eval['overall_score'] + cultural_eval['overall_cultural_score']) / 2
+        
         return {
             "success": True,
             "response": ai_response,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "performance_metrics": {
+                "response_time": response_time,
+                "meets_target": response_time <= 4.0
+            },
+            "quality_evaluation": {
+                "cognitive_friendliness_score": cognitive_eval['overall_score'],
+                "cultural_competency_score": cultural_eval['overall_cultural_score'],
+                "overall_quality_score": quality_score,
+                "quality_level": "excellent" if quality_score >= 80 else "good" if quality_score >= 60 else "needs_improvement"
+            },
+            "recommendations": cognitive_eval['recommendations'] + cultural_eval['recommendations']
         }
     except Exception as e:
         print(f"❌ Error sending message: {e}")
@@ -1527,6 +1561,189 @@ async def get_advanced_features_status():
         return {"success": True, "status": status}
     except Exception as e:
         print(f"❌ Error getting advanced features status: {e}")
+        return {"success": False, "error": str(e)}
+
+# Evaluation Endpoints
+@app.post("/evaluate/cognitive")
+async def evaluate_cognitive_friendliness(request: dict):
+    """Evaluate cognitive friendliness of AI response"""
+    try:
+        response_text = request.get('response_text', '')
+        
+        if not response_text:
+            return {"success": False, "error": "No response text provided"}
+        
+        evaluation = cognitive_evaluator.evaluate_response(response_text)
+        
+        return {"success": True, "evaluation": evaluation}
+    except Exception as e:
+        print(f"❌ Error evaluating cognitive friendliness: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/evaluate/cultural")
+async def evaluate_cultural_competency(request: dict):
+    """Evaluate cultural competency of AI response"""
+    try:
+        response_text = request.get('response_text', '')
+        community_context = request.get('community_context', '')
+        
+        if not response_text:
+            return {"success": False, "error": "No response text provided"}
+        
+        evaluation = cultural_evaluator.evaluate_response(response_text, community_context)
+        
+        return {"success": True, "evaluation": evaluation}
+    except Exception as e:
+        print(f"❌ Error evaluating cultural competency: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/evaluate/comprehensive")
+async def evaluate_comprehensive_quality(request: dict):
+    """Comprehensive evaluation of AI response quality"""
+    try:
+        response_text = request.get('response_text', '')
+        community_context = request.get('community_context', '')
+        
+        if not response_text:
+            return {"success": False, "error": "No response text provided"}
+        
+        # Perform both evaluations
+        cognitive_eval = cognitive_evaluator.evaluate_response(response_text)
+        cultural_eval = cultural_evaluator.evaluate_response(response_text, community_context)
+        
+        # Calculate overall quality score
+        overall_score = (cognitive_eval['overall_score'] + cultural_eval['overall_cultural_score']) / 2
+        
+        comprehensive_eval = {
+            "timestamp": datetime.now().isoformat(),
+            "response_text": response_text[:200] + "..." if len(response_text) > 200 else response_text,
+            "cognitive_evaluation": cognitive_eval,
+            "cultural_evaluation": cultural_eval,
+            "overall_quality_score": overall_score,
+            "quality_level": "excellent" if overall_score >= 80 else "good" if overall_score >= 60 else "needs_improvement",
+            "recommendations": cognitive_eval['recommendations'] + cultural_eval['recommendations']
+        }
+        
+        return {"success": True, "evaluation": comprehensive_eval}
+    except Exception as e:
+        print(f"❌ Error performing comprehensive evaluation: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/performance/record")
+async def record_performance_metrics(request: dict):
+    """Record performance metrics for monitoring"""
+    try:
+        operation = request.get('operation', 'unknown')
+        duration = request.get('duration', 0.0)
+        accuracy = request.get('accuracy', None)
+        satisfaction = request.get('satisfaction', None)
+        
+        performance_monitor.record_performance(operation, duration, accuracy, satisfaction)
+        
+        return {"success": True, "message": "Performance metrics recorded"}
+    except Exception as e:
+        print(f"❌ Error recording performance metrics: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/performance/summary")
+async def get_performance_summary():
+    """Get performance summary and recommendations"""
+    try:
+        summary = performance_monitor.get_performance_summary()
+        recommendations = performance_monitor.get_recommendations()
+        
+        return {
+            "success": True, 
+            "summary": summary,
+            "recommendations": recommendations
+        }
+    except Exception as e:
+        print(f"❌ Error getting performance summary: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/feedback/expert")
+async def add_expert_feedback(request: dict):
+    """Add community expert feedback for cultural competency evaluation"""
+    try:
+        response_id = request.get('response_id', '')
+        expert_feedback = request.get('feedback', {})
+        
+        if not response_id or not expert_feedback:
+            return {"success": False, "error": "Missing response_id or feedback"}
+        
+        cultural_evaluator.add_expert_feedback(response_id, expert_feedback)
+        
+        return {"success": True, "message": "Expert feedback recorded"}
+    except Exception as e:
+        print(f"❌ Error adding expert feedback: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/feedback/pilot")
+async def add_pilot_test_result(request: dict):
+    """Add pilot testing results for evaluation"""
+    try:
+        response_id = request.get('response_id', '')
+        test_result = request.get('test_result', {})
+        
+        if not response_id or not test_result:
+            return {"success": False, "error": "Missing response_id or test_result"}
+        
+        cultural_evaluator.add_pilot_test_result(response_id, test_result)
+        
+        return {"success": True, "message": "Pilot test result recorded"}
+    except Exception as e:
+        print(f"❌ Error adding pilot test result: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/evaluation/targets")
+async def get_evaluation_targets():
+    """Get evaluation targets and performance goals"""
+    try:
+        targets = {
+            "cognitive_friendliness": {
+                "readability_target": "Flesch Reading Ease >= 60",
+                "sentence_length_target": "Average <= 20 words",
+                "clarity_target": "Include bullet points and examples",
+                "accessibility_target": "Clear structure and positive tone"
+            },
+            "cultural_competency": {
+                "inclusive_language_target": "Use respectful, inclusive language",
+                "strength_based_target": "Emphasize community strengths",
+                "community_focused_target": "Include community voice and expertise",
+                "cultural_sensitivity_target": "Show respect for traditional knowledge"
+            },
+            "performance_targets": {
+                "database_retrieval_time": "<= 0.5 seconds",
+                "llm_generation_time": "<= 3.0 seconds",
+                "overall_response_time": "<= 4.0 seconds",
+                "accuracy_threshold": ">= 80%",
+                "user_satisfaction_target": ">= 4.0/5.0"
+            },
+            "measurement_methods": {
+                "cognitive_friendliness": [
+                    "Readability scores (Flesch, Gunning Fog, etc.)",
+                    "Sentence structure analysis",
+                    "Clarity indicators (bullet points, examples)",
+                    "Accessibility features assessment"
+                ],
+                "cultural_competency": [
+                    "Community expert review and feedback",
+                    "Pilot testing with diverse users",
+                    "Cultural indicator analysis",
+                    "Qualitative feedback collection"
+                ],
+                "performance": [
+                    "Response time monitoring",
+                    "Accuracy assessment",
+                    "User satisfaction surveys",
+                    "System performance metrics"
+                ]
+            }
+        }
+        
+        return {"success": True, "targets": targets}
+    except Exception as e:
+        print(f"❌ Error getting evaluation targets: {e}")
         return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
