@@ -3,6 +3,7 @@ version: '3.4'
 services:
   app:
     container_name: ai-grant-writer-app
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -43,10 +44,13 @@ services:
       POSTGRES_HOST_AUTH_METHOD: trust
       PGDATA: /var/lib/postgresql/data/
     volumes:
-      - ./pgvector/output/database:/var/lib/postgresql/data
+      - pgvector-data:/var/lib/postgresql/data
       - ./pgvector/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d vectordb -U testuser"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+volumes:
+  pgvector-data:
