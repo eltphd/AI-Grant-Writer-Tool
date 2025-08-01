@@ -113,8 +113,22 @@ async def upload_rfp(project_id: str, request: dict):
     try:
         from datetime import datetime
         
-        # Analyze RFP content
-        content = request.get('content', '')
+        import base64, tempfile, os
+        from pathlib import Path
+        # Handle possible base64 payload for binary documents
+        raw_content = request.get('content', '')
+        is_base64 = request.get('is_base64', False)
+        if is_base64:
+            file_bytes = base64.b64decode(raw_content)
+            suffix = Path(request.get('filename','rfp')).suffix or '.bin'
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(file_bytes)
+                tmp_path = Path(tmp.name)
+            from .utils.file_utils import extract_text_from_file
+            content = extract_text_from_file(tmp_path, tmp_path.suffix.lower())
+            os.unlink(tmp_path)
+        else:
+            content = raw_content
         analysis = rfp_analyzer.analyze_rfp_content(content)
         
         # Create RFP document
