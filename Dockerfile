@@ -29,7 +29,7 @@ RUN npm run build
 ################################
 # Stage 2: Build Python back‑end #
 ################################
-FROM python:3.13-alpine AS backend
+FROM python:3.11-alpine AS backend
 
 # Avoid writing pyc files to disk and ensure stdout/stderr is unbuffered
 ENV PYTHONDONTWRITEBYTECODE=1
