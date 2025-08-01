@@ -58,9 +58,9 @@ app.add_middleware(
 # Projects endpoint
 @app.get("/projects")
 async def get_projects():
-    """Get all projects"""
+    """Get all projects from Supabase"""
     try:
-        projects = db_manager.get_all_projects()
+        projects = supa.get_all_projects_from_db()
         return {"success": True, "projects": projects}
     except Exception as e:
         print(f"❌ Error getting projects: {e}")
@@ -85,7 +85,7 @@ async def create_organization(request: dict):
             updated_at=datetime.now().isoformat()
         )
         
-        if db_manager.save_organization(org):
+        if supa.insert_organization(org.__dict__):
             return {"success": True, "organization": org.__dict__}
         else:
             return {"success": False, "error": "Failed to save organization"}
@@ -97,9 +97,9 @@ async def create_organization(request: dict):
 async def get_organization(org_id: str):
     """Get organization profile"""
     try:
-        org = db_manager.get_organization(org_id)
+        org = supa.get_organization(org_id)
         if org:
-            return {"success": True, "organization": org.__dict__}
+            return {"success": True, "organization": org}
         else:
             return {"success": False, "error": "Organization not found"}
     except Exception as e:
