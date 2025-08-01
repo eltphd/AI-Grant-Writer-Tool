@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import RAG utilities
 try:
-    from .utils.rag_utils import rag_db, KnowledgeItem, CulturalGuideline, CommunityProfile
+    from .utils.rag_utils import rag_db
     from .utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
     from .utils.specialized_llm_utils import specialized_llm
     RAG_AVAILABLE = True
@@ -15,7 +15,7 @@ except ImportError as e:
     print(f"⚠️ RAG import error: {e}")
     try:
         # Fallback for direct import
-        from utils.rag_utils import rag_db, KnowledgeItem, CulturalGuideline, CommunityProfile
+        from utils.rag_utils import rag_db
         from utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
         from utils.specialized_llm_utils import specialized_llm
         RAG_AVAILABLE = True
@@ -131,20 +131,6 @@ async def upload_rfp(project_id: str, request: dict):
         
         # Save RFP document
         if db_manager.save_rfp(rfp):
-            # Add to RAG system for context-aware responses
-            knowledge_item = KnowledgeItem(
-                id=f"rfp_{rfp.id}",
-                title=f"RFP: {rfp.filename}",
-                content=content,
-                category="grant_narrative",
-                tags=["rfp", "funding", "requirements"],
-                source="uploaded_document",
-                created_at=datetime.now().isoformat(),
-                cultural_context=analysis.get('cultural_context'),
-                community_focus=analysis.get('community_focus')
-            )
-            rag_db.add_knowledge_item(knowledge_item)
-            
             return {"success": True, "rfp": rfp.__dict__, "analysis": analysis}
         else:
             return {"success": False, "error": "Failed to save RFP"}
@@ -522,12 +508,11 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
         return generate_general_guidance(context, rfp_analysis)
     
     else:
-        # Use specialized LLM approach for general responses
-        try:
-            from utils.openai_utils import chat_grant_assistant
-            return chat_grant_assistant(message, project_context, community_context)
-        except Exception as e:
-            print(f"Error with specialized LLM response: {e}")
+        # Use Supabase RAG for general questions
+        rag_response = rag_db.get_relevant_context(message, context.get('uploaded_files', []))
+        if rag_response:
+            return rag_response
+        else:
             return generate_default_response(message, context, rfp_analysis)
 
 def _evaluate_response_with_feedback_loop(response: str, community_context: str, context: dict) -> dict:
@@ -1658,157 +1643,6 @@ async def export_txt(request: dict):
         
     except Exception as e:
         print(f"❌ Error exporting txt: {e}")
-        return {"success": False, "error": str(e)}
-
-# RAG Database Endpoints
-@app.post("/rag/knowledge/add")
-async def add_knowledge_item(request: dict):
-    """Add a new knowledge item to the RAG database"""
-    try:
-        item = KnowledgeItem(
-            id=request.get('id', f"knowledge_{datetime.now().timestamp()}"),
-            title=request['title'],
-            content=request['content'],
-            category=request['category'],
-            tags=request.get('tags', []),
-            source=request['source'],
-            created_at=datetime.now().isoformat(),
-            cultural_context=request.get('cultural_context'),
-            community_focus=request.get('community_focus'),
-            success_metrics=request.get('success_metrics')
-        )
-        
-        success = rag_db.add_knowledge_item(item)
-        
-        return {
-            "success": success,
-            "message": "Knowledge item added successfully" if success else "Failed to add knowledge item"
-        }
-    except Exception as e:
-        print(f"❌ Error adding knowledge item: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.post("/rag/cultural/add")
-async def add_cultural_guideline(request: dict):
-    """Add cultural competency guidelines"""
-    try:
-        guideline = CulturalGuideline(
-            id=request.get('id', f"cultural_{datetime.now().timestamp()}"),
-            community=request['community'],
-            guidelines=request['guidelines'],
-            cultural_sensitivities=request.get('cultural_sensitivities', []),
-            language_preferences=request.get('language_preferences', []),
-            best_practices=request.get('best_practices', []),
-            created_at=datetime.now().isoformat()
-        )
-        
-        success = rag_db.add_cultural_guideline(guideline)
-        
-        return {
-            "success": success,
-            "message": "Cultural guideline added successfully" if success else "Failed to add cultural guideline"
-        }
-    except Exception as e:
-        print(f"❌ Error adding cultural guideline: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.post("/rag/community/add")
-async def add_community_profile(request: dict):
-    """Add community profile"""
-    try:
-        profile = CommunityProfile(
-            id=request.get('id', f"community_{datetime.now().timestamp()}"),
-            community_name=request['community_name'],
-            demographics=request['demographics'],
-            cultural_backgrounds=request.get('cultural_backgrounds', []),
-            languages=request.get('languages', []),
-            key_concerns=request.get('key_concerns', []),
-            strengths=request.get('strengths', []),
-            created_at=datetime.now().isoformat()
-        )
-        
-        success = rag_db.add_community_profile(profile)
-        
-        return {
-            "success": success,
-            "message": "Community profile added successfully" if success else "Failed to add community profile"
-        }
-    except Exception as e:
-        print(f"❌ Error adding community profile: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.get("/rag/knowledge/search")
-async def search_knowledge(query: str, category: str = None, limit: int = 5):
-    """Search knowledge items"""
-    try:
-        results = rag_db.search_knowledge(query, category, limit)
-        
-        return {
-            "success": True,
-            "results": [
-                {
-                    "id": item.id,
-                    "title": item.title,
-                    "content": item.content,
-                    "category": item.category,
-                    "tags": item.tags,
-                    "source": item.source,
-                    "cultural_context": item.cultural_context,
-                    "community_focus": item.community_focus
-                }
-                for item in results
-            ]
-        }
-    except Exception as e:
-        print(f"❌ Error searching knowledge: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.get("/rag/cultural/{community}")
-async def get_cultural_guidelines(community: str):
-    """Get cultural guidelines for a specific community"""
-    try:
-        guidelines = rag_db.get_cultural_guidelines(community)
-        
-        return {
-            "success": True,
-            "guidelines": [
-                {
-                    "id": g.id,
-                    "community": g.community,
-                    "guidelines": g.guidelines,
-                    "cultural_sensitivities": g.cultural_sensitivities
-                }
-                for g in guidelines
-            ]
-        }
-    except Exception as e:
-        print(f"❌ Error getting cultural guidelines: {e}")
-        return {"success": False, "error": str(e)}
-
-@app.get("/rag/community/{community_name}")
-async def get_community_profile(community_name: str):
-    """Get community profile"""
-    try:
-        profile = rag_db.get_community_profile(community_name)
-        
-        if profile:
-            return {
-                "success": True,
-                "profile": {
-                    "id": profile.id,
-                    "community_name": profile.community_name,
-                    "demographics": profile.demographics,
-                    "cultural_backgrounds": profile.cultural_backgrounds,
-                    "languages": profile.languages,
-                    "key_concerns": profile.key_concerns,
-                    "strengths": profile.strengths
-                }
-            }
-        else:
-            return {"success": False, "message": "Community profile not found"}
-            
-    except Exception as e:
-        print(f"❌ Error getting community profile: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/rag/context")

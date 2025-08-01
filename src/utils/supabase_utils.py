@@ -21,6 +21,7 @@ import os
 from typing import Any, Iterable, Optional, Dict, List
 
 import requests
+from openai import OpenAI
 
 # Load Supabase configuration from config.py.  We import lazily to avoid
 # circular dependencies when the FastAPI app determines which util module
@@ -30,6 +31,19 @@ try:
     from src.utils import config  # type: ignore
 except Exception:
     import config  # type: ignore
+
+def get_openai_client() -> OpenAI:
+    """Return an OpenAI client, caching it for future use."""
+    if not getattr(get_openai_client, "client", None):
+        get_openai_client.client = OpenAI(api_key=config.OPENAI_API_KEY)  # type: ignore
+    return get_openai_client.client  # type: ignore
+
+
+def create_embeddings(chunks: list[str]) -> list[list[float]]:
+    """Create embeddings for a list of text chunks using OpenAI."""
+    client = get_openai_client()
+    response = client.embeddings.create(model="text-embedding-ada-002", input=chunks)
+    return [embedding.embedding for embedding in response.data]
 
 
 def _build_headers() -> dict[str, str]:
@@ -175,17 +189,21 @@ def save_questions(project_id: int, questions: Any) -> bool:
     return False
 
 
-def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str, List[float]]]) -> Optional[int]:
+def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str]]) -> Optional[int]:
     """Insert file chunks and embeddings into the file_chunks table.
     Returns the ID of the inserted chunk.
     """
+    # Create embeddings for all chunks in one go
+    chunk_texts = [chunk_text for _, chunk_text in chunks]
+    embeddings = create_embeddings(chunk_texts)
+
     # Supabase PostgREST can insert multiple rows at once if the data is a list of objects
     data_to_insert = []
-    for file_name, chunk_text, embedding in chunks:
+    for i, (file_name, chunk_text) in enumerate(chunks):
         data_to_insert.append({
             "file_name": file_name,
             "chunk_text": chunk_text,
-            "embedding": embedding,
+            "embedding": embeddings[i],
         })
     
     res = _request(
