@@ -292,7 +292,9 @@ async def send_message(request: dict):
         if uploaded_files:
             try:
                 # Search for relevant chunks based on user message
-                relevant_snippets = supa.rag_context(message, uploaded_files, top_k=5)
+                snippet = supa.rag_context(message, uploaded_files)
+                if snippet:
+                    relevant_snippets = [snippet]
                 print(f"🔍 DEBUG: Found {len(relevant_snippets)} relevant snippets")
             except Exception as e:
                 print(f"⚠️ Error getting relevant snippets: {e}")
