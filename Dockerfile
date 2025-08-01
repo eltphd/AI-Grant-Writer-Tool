@@ -29,7 +29,7 @@ RUN npm run build
 ################################
 # Stage 2: Build Python back‑end #
 ################################
-FROM python:3.11-alpine AS backend
+FROM python:3.11-slim AS backend
 
 # Avoid writing pyc files to disk and ensure stdout/stderr is unbuffered
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -38,16 +38,11 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies including build tools for scikit-learn
-RUN apk add --no-cache \
-    postgresql-dev \
-    gcc \
-    g++ \
-    musl-dev \
-    make \
-    cmake \
-    linux-headers \
-    && rm -rf /var/cache/apk/*
+# Install system dependencies for scientific packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt ./
