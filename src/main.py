@@ -107,7 +107,7 @@ async def get_organization(org_id: str):
         return {"success": False, "error": str(e)}
 
 # RFP upload and analysis
-@app.post("/rfp/upload")
+@app.post("/rfp/upload/{project_id}")
 async def upload_rfp(project_id: str, request: dict):
     """Upload and analyze RFP document"""
     try:
