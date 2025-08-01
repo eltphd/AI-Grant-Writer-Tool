@@ -1334,6 +1334,15 @@ async def debug_rag_status():
             "rag_system": "failed"
         }
 
+@app.get("/debug/test")
+async def debug_test():
+    """Simple debug endpoint to test if routes are working"""
+    return {
+        "status": "success",
+        "message": "Debug endpoint is working",
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.post("/export/markdown")
 async def export_markdown(request: dict):
     """Export grant proposal as Markdown"""
