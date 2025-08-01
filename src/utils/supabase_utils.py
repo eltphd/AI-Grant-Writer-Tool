@@ -206,7 +206,8 @@ def insert_file_chunks_into_db(chunks: Iterable[tuple[str, str]]) -> Optional[in
         data_to_insert.append({
             "file_name": file_name,
             "chunk_text": chunk_text,
-            "embedding": embeddings[i],
+            # pgvector expects string representation via PostgREST
+            "embedding": f"[{', '.join(str(x) for x in embeddings[i])}]",
         })
     
     res = _request(
