@@ -21,11 +21,11 @@ const ChatComponent = ({ projectId }) => {
   useEffect(() => {
     loadChatHistory();
     checkPrivacyStatus();
-  }, []);
+  }, [projectId]);
 
   const loadChatHistory = async () => {
     try {
-      const response = await fetch(`${API_BASE}/chat/history/test-project`);
+      const response = await fetch(`${API_BASE}/chat/history/${projectId}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -40,7 +40,7 @@ const ChatComponent = ({ projectId }) => {
 
   const checkPrivacyStatus = async () => {
     try {
-      const response = await fetch(`${API_BASE}/privacy/audit/test-project`);
+      const response = await fetch(`${API_BASE}/privacy/audit/${projectId}`);
 
       if (response.ok) {
         const data = await response.json();

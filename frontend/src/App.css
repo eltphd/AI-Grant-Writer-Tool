@@ -576,6 +576,16 @@ body {
   border: 1px solid var(--glass-border);
   overflow: hidden;
   box-shadow: var(--glass-shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 600px; /* Ensure minimum height on desktop */
+  max-height: 80vh; /* Limit height on larger screens */
+}
+
+/* Ensure the chat container takes full height */
+.chat-main .chat-container {
+  height: 100%;
+  min-height: 500px;
 }
 
 /* Context and Upload Section */
@@ -909,6 +919,28 @@ body {
   .export-actions .btn {
     width: 100%;
     max-width: 300px;
+  }
+  
+  /* Mobile chat improvements */
+  .chat-main {
+    min-height: 70vh; /* Use viewport height on mobile */
+    max-height: 70vh;
+    margin: 0 -1rem; /* Full width on mobile */
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+  
+  .chat-main .chat-container {
+    min-height: 60vh;
+  }
+  
+  .step-container {
+    padding: 1rem;
+  }
+  
+  .step-header {
+    margin-bottom: 1rem;
   }
 } 
 

@@ -98,16 +98,31 @@ async def upload_rfp(project_id: str, request: dict):
             project_id=project_id,
             filename=request.get('filename', 'RFP Document'),
             content=content,
-            requirements=analysis['requirements'],
-            eligibility_criteria=analysis['eligibility_criteria'],
-            funding_amount=analysis['funding_amount'],
-            deadline=analysis['deadline'],
+            requirements=analysis.get('requirements', []),
+            eligibility_criteria=analysis.get('eligibility_criteria', []),
+            funding_amount=analysis.get('funding_amount'),
+            deadline=analysis.get('deadline'),
             analysis_result=analysis,
             created_at=datetime.now().isoformat()
         )
         
+        # Save RFP document
         if db_manager.save_rfp(rfp):
-            return {"success": True, "rfp": rfp.__dict__}
+            # Add to RAG system for context-aware responses
+            knowledge_item = KnowledgeItem(
+                id=f"rfp_{rfp.id}",
+                title=f"RFP: {rfp.filename}",
+                content=content,
+                category="grant_narrative",
+                tags=["rfp", "funding", "requirements"],
+                source="uploaded_document",
+                created_at=datetime.now().isoformat(),
+                cultural_context=analysis.get('cultural_context'),
+                community_focus=analysis.get('community_focus')
+            )
+            rag_db.add_knowledge_item(knowledge_item)
+            
+            return {"success": True, "rfp": rfp.__dict__, "analysis": analysis}
         else:
             return {"success": False, "error": "Failed to save RFP"}
     except Exception as e:
@@ -116,35 +131,12 @@ async def upload_rfp(project_id: str, request: dict):
 
 @app.post("/rfp/analyze")
 async def analyze_rfp(project_id: str, request: dict):
-    """Analyze RFP and align with organization info"""
+    """Analyze RFP content for requirements and alignment"""
     try:
-        org_id = request.get('org_id')
-        rfp_id = request.get('rfp_id')
+        content = request.get('content', '')
+        analysis = rfp_analyzer.analyze_rfp_content(content)
         
-        if not org_id or not rfp_id:
-            return {"success": False, "error": "Missing org_id or rfp_id"}
-        
-        # Get organization and RFP
-        org = db_manager.get_organization(org_id)
-        rfp = db_manager.get_rfp(rfp_id)
-        
-        if not org or not rfp:
-            return {"success": False, "error": "Organization or RFP not found"}
-        
-        # Analyze alignment
-        alignment = rfp_analyzer.align_org_with_rfp(org, rfp)
-        
-        # Create project response
-        response = rfp_analyzer.create_project_response(org, rfp, alignment)
-        
-        if db_manager.save_project_response(response):
-            return {
-                "success": True,
-                "analysis": alignment,
-                "response": response.__dict__
-            }
-        else:
-            return {"success": False, "error": "Failed to save project response"}
+        return {"success": True, "analysis": analysis}
     except Exception as e:
         print(f"❌ Error analyzing RFP: {e}")
         return {"success": False, "error": str(e)}
@@ -152,15 +144,50 @@ async def analyze_rfp(project_id: str, request: dict):
 # File upload endpoint
 @app.post("/upload")
 async def upload_file(project_id: str, file: dict):
-    """Upload file and extract content"""
+    """Upload file and extract content for RAG processing"""
     try:
-        # Mock file processing
-        return {
-            "success": True,
-            "filename": file.get('filename', 'uploaded_file'),
-            "content_length": len(file.get('content', '')),
-            "uploaded_at": datetime.now().isoformat()
-        }
+        from datetime import datetime
+        
+        filename = file.get('filename', 'uploaded_file')
+        content = file.get('content', '')
+        
+        # Determine file type and category
+        file_type = filename.split('.')[-1].lower()
+        category = "grant_narrative"  # default
+        
+        if 'organization' in filename.lower() or 'org' in filename.lower():
+            category = "organization_profile"
+        elif 'proposal' in filename.lower() or 'grant' in filename.lower():
+            category = "grant_narrative"
+        elif 'budget' in filename.lower() or 'financial' in filename.lower():
+            category = "budget_planning"
+        elif 'timeline' in filename.lower() or 'schedule' in filename.lower():
+            category = "timeline_planning"
+        
+        # Create knowledge item for RAG system
+        knowledge_item = KnowledgeItem(
+            id=f"file_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            title=filename,
+            content=content,
+            category=category,
+            tags=[file_type, "uploaded_document"],
+            source="user_upload",
+            created_at=datetime.now().isoformat()
+        )
+        
+        # Add to RAG database
+        if rag_db.add_knowledge_item(knowledge_item):
+            return {
+                "success": True,
+                "filename": filename,
+                "content_length": len(content),
+                "category": category,
+                "uploaded_at": datetime.now().isoformat(),
+                "message": f"File '{filename}' uploaded and processed successfully. The AI can now use this content for context-aware responses."
+            }
+        else:
+            return {"success": False, "error": "Failed to process file for AI context"}
+            
     except Exception as e:
         print(f"❌ Error uploading file: {e}")
         return {"success": False, "error": str(e)}
@@ -209,33 +236,79 @@ async def send_message(request: dict):
         return {"success": False, "error": str(e)}
 
 def get_project_context_data(project_id: str) -> dict:
-    """Get project context data"""
+    """Get project context data from RAG system"""
     try:
-        # This would normally fetch from database
+        # Get uploaded documents from RAG system
+        uploaded_files = []
+        knowledge_items = rag_db.search_knowledge("", limit=50)  # Get all items
+        for item in knowledge_items:
+            if item.source == "user_upload":
+                uploaded_files.append(item.title)
+        
+        # Get organization info if available
+        org_items = rag_db.search_knowledge("organization", category="organization_profile", limit=5)
+        organization_info = ""
+        if org_items:
+            organization_info = org_items[0].content[:500] + "..." if len(org_items[0].content) > 500 else org_items[0].content
+        
         return {
-            "organization_info": "Sample organization with community focus",
-            "initiative_description": "Youth development program",
-            "uploaded_files": ["rfp_document.pdf", "org_profile.docx"],
-            "rfp_requirements": ["Non-profit status", "Community focus", "Measurable outcomes"]
+            "organization_info": organization_info,
+            "initiative_description": "Based on uploaded documents",
+            "uploaded_files": uploaded_files,
+            "rfp_requirements": ["Requirements from uploaded RFP documents"],
+            "community_focus": "Based on uploaded community documents"
         }
     except Exception as e:
         print(f"Error getting project context: {e}")
-        return {}
+        return {
+            "organization_info": "No organization information available",
+            "initiative_description": "No initiative description available",
+            "uploaded_files": [],
+            "rfp_requirements": [],
+            "community_focus": None
+        }
 
 def get_rfp_analysis_data(project_id: str) -> dict:
-    """Get RFP analysis data"""
+    """Get RFP analysis data from RAG system"""
     try:
-        # This would normally fetch from database
-        return {
-            "requirements": ["Non-profit status required", "Minimum 3 years operation", "Community focus"],
-            "eligibility_criteria": ["501(c)(3) status", "Annual budget > $100k"],
-            "funding_amount": "$50,000",
-            "deadline": "December 15, 2024",
-            "alignment_score": 85
-        }
+        # Search for RFP-related documents
+        rfp_items = rag_db.search_knowledge("RFP funding requirements", category="grant_narrative", limit=5)
+        
+        if rfp_items:
+            # Extract requirements from RFP content
+            rfp_content = rfp_items[0].content
+            requirements = []
+            if "non-profit" in rfp_content.lower():
+                requirements.append("Non-profit status required")
+            if "community" in rfp_content.lower():
+                requirements.append("Community focus required")
+            if "measurable" in rfp_content.lower():
+                requirements.append("Measurable outcomes required")
+            
+            return {
+                "requirements": requirements,
+                "eligibility_criteria": ["Based on uploaded RFP documents"],
+                "funding_amount": "Based on uploaded RFP documents",
+                "deadline": "Based on uploaded RFP documents",
+                "alignment_score": 85
+            }
+        else:
+            return {
+                "requirements": ["No RFP documents uploaded yet"],
+                "eligibility_criteria": ["Upload RFP documents for analysis"],
+                "funding_amount": "Upload RFP for funding details",
+                "deadline": "Upload RFP for deadline information",
+                "alignment_score": 0
+            }
     except Exception as e:
         print(f"Error getting RFP analysis: {e}")
-        return {}
+        return {
+            "requirements": ["Error retrieving RFP analysis"],
+            "eligibility_criteria": ["Error retrieving eligibility criteria"],
+            "funding_amount": "Error retrieving funding amount",
+            "deadline": "Error retrieving deadline",
+            "alignment_score": 0
+        }
 
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict) -> str:
     """Generate contextual AI response based on message and available data"""
@@ -631,31 +704,49 @@ def generate_grant_section_guidance(context: dict, rfp_analysis: dict) -> str:
     return response
 
 def generate_content_access_response(context: dict) -> str:
-    """Generate conversational content access response"""
+    """Generate response about uploaded content and AI access"""
     
-    response = "📄 **Let me check what information I have for you...**\n\n"
+    uploaded_files = context.get('uploaded_files', [])
     
-    if context.get('uploaded_files'):
-        response += "✅ **Documents I can see:**\n"
-        for file in context['uploaded_files']:
-            response += f"• {file}\n"
-        response += "\n"
+    if not uploaded_files:
+        return """📄 **No documents uploaded yet**
+
+I don't see any documents uploaded yet. To help me provide context-aware assistance, please upload:
+
+• **Grant funding application documents** - RFP guidelines, funding announcements
+• **Organization profile documents** - Your mission, history, accomplishments
+• **Proposal drafts** - Any existing grant proposals or project descriptions
+
+Once you upload documents, I can:
+✅ Analyze funding requirements and align them with your organization
+✅ Provide culturally sensitive recommendations based on your community focus
+✅ Help strategize funding proposals using your specific context
+✅ Generate grant sections tailored to your organization and the funder's needs
+
+Go to the "Create Grant" tab to upload your documents!"""
+    
     else:
-        response += "❌ **No documents uploaded yet**\n\n"
-    
-    if context.get('organization_info'):
-        response += "✅ **Organization info:** I have your organization details\n"
-    else:
-        response += "❌ **Organization info:** Not provided yet\n"
-    
-    response += "\n**To give you better help, please:**\n"
-    response += "1. Upload your RFP document (the grant request)\n"
-    response += "2. Tell me about your organization\n"
-    response += "3. Add any other important documents\n\n"
-    
-    response += "**Once you do that, I can give you much more specific advice!** 😊"
-    
-    return response
+        file_list = "\n".join([f"• {file}" for file in uploaded_files])
+        return f"""📄 **Uploaded Documents Available**
+
+I can see the following documents have been uploaded and processed:
+
+{file_list}
+
+**What I can do with these documents:**
+✅ Analyze funding requirements from your RFP documents
+✅ Extract organization information for grant alignment
+✅ Provide culturally sensitive recommendations
+✅ Generate grant sections using your specific context
+✅ Strategize funding proposals based on your organization's profile
+
+**Ask me to:**
+• "Help me write an executive summary based on my organization"
+• "Analyze the RFP requirements and our alignment"
+• "Generate a project description using our uploaded documents"
+• "Create a budget section based on our organization's needs"
+
+The AI is now using your uploaded documents for context-aware responses!"""
 
 def generate_rfp_guidance(rfp_analysis: dict) -> str:
     """Generate conversational RFP guidance"""

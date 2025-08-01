@@ -565,7 +565,7 @@ function App() {
             </div>
             
             <div className="chat-main">
-              <ChatComponent />
+              <ChatComponent projectId={currentProject?.id || 'test-project'} />
             </div>
           </div>
         )}
