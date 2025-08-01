@@ -241,15 +241,20 @@ def update_client(client_id: int, client: Any) -> bool:
 def rag_context(question: str, files: list[str]) -> Optional[str]:
     """Return the best matching context chunk for a question.
 
-    Note: Supabase's REST API does not expose pgvector distance operators,
-    so this function currently returns None.  Vector search should be
-    implemented client‑side or via a dedicated service when using Supabase.
+    This function now calls a Supabase Edge Function to perform the vector search.
     """
-    print(
-        "rag_context is not implemented when using Supabase."
-        " Consider performing vector search client‑side."
-    )
-    return None
+    try:
+        response = _request(
+            "POST",
+            f"/functions/v1/rag_context",
+            json={"query": question, "files": files},
+        )
+        if response and isinstance(response, list) and len(response) > 0:
+            return response[0].get("chunk_text")
+        return None
+    except Exception as e:
+        print(f"Error calling rag_context Edge Function: {e}")
+        return None
 
 # ---------------------------------------------------------------------------
 # Chat History Functions for RAG
