@@ -80,7 +80,13 @@ function App() {
   };
 
   const handleFileUpload = async (files) => {
-    if (!currentProject) return;
+    if (!currentProject) {
+      setUploadStatus({
+        message: '❌ Please select or create a project before uploading.',
+        type: 'error'
+      });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -163,7 +169,13 @@ function App() {
   };
 
   const handleRFPUpload = async (file) => {
-    if (!currentProject) return;
+    if (!currentProject) {
+      setUploadStatus({
+        message: '❌ Please select or create a project before uploading.',
+        type: 'error'
+      });
+      return;
+    }
 
     try {
       setLoading(true);
