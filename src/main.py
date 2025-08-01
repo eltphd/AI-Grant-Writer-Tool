@@ -286,8 +286,31 @@ async def send_message(request: dict):
         print(f"🔍 DEBUG: Uploaded files: {project_context.get('uploaded_files', [])}")
         print(f"🔍 DEBUG: Uploaded content count: {len(project_context.get('uploaded_content', []))}")
         
-        # Generate context-aware response
+        # Get relevant context from uploaded files using vector search
+        uploaded_files = project_context.get('uploaded_files', [])
+        relevant_snippets = []
+        if uploaded_files:
+            try:
+                # Search for relevant chunks based on user message
+                relevant_snippets = supa.rag_context(message, uploaded_files, top_k=5)
+                print(f"🔍 DEBUG: Found {len(relevant_snippets)} relevant snippets")
+            except Exception as e:
+                print(f"⚠️ Error getting relevant snippets: {e}")
+        
+        # Generate context-aware response with relevant snippets
         ai_response = generate_contextual_response(message, project_context, rfp_analysis)
+        
+        # Save chat message to database
+        try:
+            supa.save_chat_message(project_id, {
+                "question": message,
+                "answer": ai_response,
+                "timestamp": datetime.now().isoformat(),
+                "relevant_snippets": relevant_snippets
+            })
+            print(f"✅ Chat message saved to database")
+        except Exception as e:
+            print(f"⚠️ Error saving chat message: {e}")
         
         # End performance timer
         response_time = performance_monitor.end_timer(start_time)
@@ -306,6 +329,7 @@ async def send_message(request: dict):
             "success": True,
             "response": ai_response,
             "timestamp": datetime.now().isoformat(),
+            "relevant_snippets": relevant_snippets,
             "performance_metrics": {
                 "response_time": response_time,
                 "meets_target": response_time <= 4.0
@@ -1273,18 +1297,43 @@ I'm here to make your grant writing process easier and more successful! 😊"""
 
 @app.get("/chat/history/{project_id}")
 async def get_chat_history(project_id: str):
-    """Get chat history"""
+    """Get chat history from database"""
     try:
+        # Get saved chat messages from Supabase
+        chat_messages = supa.get_chat_messages(project_id)
+        
+        # Format messages for frontend
+        formatted_messages = []
+        
+        # Add welcome message if no history
+        if not chat_messages:
+            formatted_messages.append({
+                "id": 1,
+                "message": "Welcome to GET$! How can I help with your grant writing?",
+                "timestamp": datetime.now().isoformat(),
+                "type": "ai"
+            })
+        else:
+            # Convert saved messages to frontend format
+            for i, msg in enumerate(chat_messages):
+                formatted_messages.extend([
+                    {
+                        "id": i * 2 + 1,
+                        "message": msg.get("question", ""),
+                        "timestamp": msg.get("timestamp", datetime.now().isoformat()),
+                        "type": "user"
+                    },
+                    {
+                        "id": i * 2 + 2,
+                        "message": msg.get("answer", ""),
+                        "timestamp": msg.get("timestamp", datetime.now().isoformat()),
+                        "type": "ai"
+                    }
+                ])
+        
         return {
             "success": True,
-            "messages": [
-                {
-                    "id": 1,
-                    "message": "Welcome to GET$! How can I help with your grant writing?",
-                    "timestamp": datetime.now().isoformat(),
-                    "type": "ai"
-                }
-            ]
+            "messages": formatted_messages
         }
     except Exception as e:
         print(f"❌ Error getting chat history: {e}")
