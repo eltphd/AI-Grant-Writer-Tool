@@ -84,23 +84,38 @@ function App() {
       setLoading(true);
       
       for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('project_id', currentProject.id);
-
+        // Read file content
+        const content = await readFileContent(file);
+        
+        // Upload file as JSON (matching backend expectation)
         const response = await fetch(`${API_BASE}/upload`, {
           method: 'POST',
-          body: formData,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            project_id: currentProject.id,
+            file: {
+              filename: file.name,
+              content: content
+            }
+          }),
         });
 
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
             console.log(`File ${file.name} uploaded successfully`);
+          } else {
+            console.error(`Failed to upload ${file.name}:`, result.error);
           }
+        } else {
+          console.error(`HTTP error uploading ${file.name}:`, response.status);
         }
       }
 
+      // Reload project context to show uploaded files
+      await loadProjectContext(currentProject.id);
       setCurrentStep(3);
     } catch (error) {
       console.error('Error uploading files:', error);
