@@ -534,27 +534,7 @@ function App() {
             <div className="grant-creation-layout">
               {/* Left Side - Context & Upload */}
               <div className="context-upload-panel">
-                <h3>📄 Documents & Context</h3>
-                
-                <div className="context-form">
-                  <h4>🏢 Organization Information</h4>
-                  <textarea
-                    value={organizationInfo}
-                    onChange={(e) => setOrganizationInfo(e.target.value)}
-                    placeholder="Tell me about your organization, mission, and key accomplishments..."
-                    rows={4}
-                  />
-                </div>
-                
-                <div className="context-form">
-                  <h4>🎯 Initiative Description</h4>
-                  <textarea
-                    value={initiativeDescription}
-                    onChange={(e) => setInitiativeDescription(e.target.value)}
-                    placeholder="Describe the project or initiative you're seeking funding for..."
-                    rows={4}
-                  />
-                </div>
+                <h3>📄 Document Upload</h3>
                 
                 <div className="upload-section">
                   <h4>📋 RFP Upload (Recommended)</h4>
@@ -608,32 +588,6 @@ function App() {
                       <h4>📊 Alignment Results</h4>
                       <p><strong>Organization Fit Score:</strong> {currentProject.rfpAlignment.org_fit_score}%</p>
                       <p><strong>Overall Score:</strong> {currentProject.rfpAlignment.overall_score}%</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="upload-section">
-                  <h4>📄 Additional Documents</h4>
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.docx,.doc,.txt,.md"
-                    onChange={(e) => handleFileUpload(Array.from(e.target.files))}
-                    className="file-input"
-                    id="file-upload"
-                  />
-                  <label htmlFor="file-upload" className="upload-label">
-                    <div className="upload-icon">📤</div>
-                    <div className="upload-text">
-                      <h4>Drop files here or click to upload</h4>
-                      <p>Supported formats: PDF, DOCX, DOC, TXT, MD</p>
-                    </div>
-                  </label>
-                  
-                  {/* Upload Status Display */}
-                  {uploadStatus.message && uploadStatus.type && (
-                    <div className={`upload-status ${uploadStatus.type}`}>
-                      {uploadStatus.message}
                     </div>
                   )}
                 </div>
