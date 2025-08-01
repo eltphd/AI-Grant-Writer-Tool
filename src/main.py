@@ -190,7 +190,11 @@ async def upload_file(project_id: str, file: dict):
         )
         
         # Add to advanced RAG database
-        if advanced_rag_db.add_knowledge_item(knowledge_item):
+        print(f"🔍 DEBUG: Attempting to add knowledge item: {knowledge_item.title}")
+        add_result = advanced_rag_db.add_knowledge_item(knowledge_item)
+        print(f"🔍 DEBUG: Add result: {add_result}")
+        
+        if add_result:
             return {
                 "success": True,
                 "filename": filename,
@@ -264,6 +268,10 @@ async def send_message(request: dict):
         project_context = get_project_context_data(project_id)
         rfp_analysis = get_rfp_analysis_data(project_id)
         
+        print(f"🔍 DEBUG: Chat request - Message: {message}")
+        print(f"🔍 DEBUG: Project context: {project_context}")
+        print(f"🔍 DEBUG: RFP analysis: {rfp_analysis}")
+        
         # Generate context-aware response
         ai_response = generate_contextual_response(message, project_context, rfp_analysis)
         
@@ -306,25 +314,34 @@ def get_project_context_data(project_id: str) -> dict:
         # Get uploaded documents from advanced RAG system
         uploaded_files = []
         knowledge_items = advanced_rag_db.search_knowledge("", limit=50)  # Get all items
+        print(f"🔍 DEBUG: Found {len(knowledge_items)} knowledge items in RAG system")
+        
         for item in knowledge_items:
+            print(f"🔍 DEBUG: Item - Title: {item.title}, Source: {item.source}, Category: {item.category}")
             if item.source == "user_upload":
                 uploaded_files.append(item.title)
+        
+        print(f"🔍 DEBUG: Found {len(uploaded_files)} uploaded files")
         
         # Get organization info if available
         org_items = advanced_rag_db.search_knowledge("organization", category="organization_profile", limit=5)
         organization_info = ""
         if org_items:
             organization_info = org_items[0].content[:500] + "..." if len(org_items[0].content) > 500 else org_items[0].content
+            print(f"🔍 DEBUG: Found organization info: {organization_info[:100]}...")
         
-        return {
+        context_data = {
             "organization_info": organization_info,
             "initiative_description": "Based on uploaded documents",
             "uploaded_files": uploaded_files,
             "rfp_requirements": ["Requirements from uploaded RFP documents"],
             "community_focus": "Based on uploaded community documents"
         }
+        
+        print(f"🔍 DEBUG: Returning context data: {context_data}")
+        return context_data
     except Exception as e:
-        print(f"Error getting project context: {e}")
+        print(f"❌ Error getting project context: {e}")
         return {
             "organization_info": "No organization information available",
             "initiative_description": "No initiative description available",
@@ -1286,6 +1303,36 @@ async def get_grant_sections(project_id: str):
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+
+@app.get("/debug/rag-status")
+async def debug_rag_status():
+    """Debug endpoint to check RAG system status"""
+    try:
+        # Test RAG system
+        knowledge_items = advanced_rag_db.search_knowledge("", limit=10)
+        uploaded_files = [item.title for item in knowledge_items if item.source == "user_upload"]
+        
+        return {
+            "status": "success",
+            "rag_system": "operational",
+            "total_knowledge_items": len(knowledge_items),
+            "uploaded_files": uploaded_files,
+            "rag_items": [
+                {
+                    "title": item.title,
+                    "source": item.source,
+                    "category": item.category,
+                    "content_length": len(item.content)
+                }
+                for item in knowledge_items[:5]  # Show first 5 items
+            ]
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "rag_system": "failed"
+        }
 
 @app.post("/export/markdown")
 async def export_markdown(request: dict):
