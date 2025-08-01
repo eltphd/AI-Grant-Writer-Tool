@@ -34,7 +34,8 @@ DB_PASSWORD: str = os.getenv("DB_PASSWORD", "testpwd")
 SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
 
 # API key (anon or service role) for authenticating with Supabase REST API.
-SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
+# Accept either SUPABASE_KEY or SUPABASE_SERVICE_KEY for convenience
+SUPABASE_KEY: str = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_KEY", "")
 
 # Flag indicating whether to use the Supabase API.  When set to "true"
 # (case‑insensitive), the FastAPI app will route all database operations
