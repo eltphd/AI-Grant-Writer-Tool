@@ -311,10 +311,26 @@ def get_rfp_analysis_data(project_id: str) -> dict:
         }
 
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict) -> str:
-    """Generate contextual AI response based on message and available data"""
+    """Generate culturally sensitive contextual AI response based on message and available data"""
+    
+    # Import the culturally sensitive functions
+    from utils.openai_utils import chat_grant_assistant, generate_grant_response
     
     # Get RAG context for enhanced responses
     rag_context = rag_db.get_relevant_context(message, "grant_section", context.get('community_focus'))
+    
+    # Build project context string
+    project_context = f"""
+    Organization: {context.get('organization_info', 'Not provided')}
+    Initiative: {context.get('initiative_description', 'Not provided')}
+    Uploaded Files: {', '.join(context.get('uploaded_files', []))}
+    RFP Requirements: {', '.join(rfp_analysis.get('requirements', []))}
+    """
+    
+    # Get community context from RAG
+    community_context = context.get('community_focus', '')
+    if rag_context and 'cultural_context' in rag_context:
+        community_context += f" {rag_context['cultural_context']}"
     
     # Check for specific section writing requests
     if any(word in message.lower() for word in ['executive summary', 'summary']):
@@ -348,74 +364,76 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
         return generate_general_guidance(context, rfp_analysis)
     
     else:
-        return generate_default_response(message, context, rfp_analysis)
+        # Use culturally sensitive chat assistant for general responses
+        try:
+            return chat_grant_assistant(message, project_context, community_context)
+        except Exception as e:
+            print(f"Error with culturally sensitive response: {e}")
+            return generate_default_response(message, context, rfp_analysis)
 
 def generate_executive_summary_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
-    """Generate executive summary using RAG context for cultural competence"""
+    """Generate culturally sensitive executive summary using RAG context"""
+    
+    from utils.openai_utils import get_culturally_sensitive_response
     
     org_info = context.get('organization_info', {})
-    rfp_reqs = rfp_analysis.get('requirements', [])
+    uploaded_files = context.get('uploaded_files', [])
+    community_focus = context.get('community_focus', '')
     
-    response = "📋 **Executive Summary**\n\n"
+    # Build context for the AI
+    project_context = f"""
+    Organization Information: {org_info}
+    Uploaded Documents: {', '.join(uploaded_files)}
+    Community Focus: {community_focus}
+    RFP Requirements: {', '.join(rfp_analysis.get('requirements', []))}
+    """
     
-    # Incorporate cultural guidelines if available
-    cultural_guidance = ""
-    if rag_context.get('cultural_guidelines'):
-        cultural_guidance = f"\n**Cultural Context:** Based on community guidelines, this proposal emphasizes "
-        cultural_guidance += ", ".join(rag_context['cultural_guidelines'][0]['guidelines'][:2]) + ".\n\n"
+    prompt = f"""
+    Please write a culturally sensitive executive summary for a grant proposal.
     
-    if org_info.get('name'):
-        response += f"**{org_info['name']}** is seeking funding to "
-    else:
-        response += "**Our organization** is seeking funding to "
+    Project Context: {project_context}
     
-    if org_info.get('mission'):
-        response += f"advance our mission of {org_info['mission']}. "
-    else:
-        response += "implement a transformative community project. "
+    GUIDELINES:
+    - Use clear, simple language that's easy to understand
+    - Highlight the community impact and benefits
+    - Include specific, measurable goals
+    - Show how this addresses community needs
+    - Use encouraging, positive language
+    - Keep it concise but comprehensive (2-3 paragraphs)
     
-    if rfp_reqs:
-        response += f"This proposal directly addresses {len(rfp_reqs)} key requirements from the RFP, including "
-        response += ", ".join(rfp_reqs[:3]) + ". "
+    FORMAT:
+    - Start with a compelling opening that captures the community's needs
+    - Include the organization's mission and key strengths
+    - Describe the project's goals and expected outcomes
+    - End with a strong call to action about the funding impact
     
-    if org_info.get('years_operating'):
-        response += f"With {org_info['years_operating']} years of experience, "
+    Make sure the language is inclusive and respectful of diverse communities.
+    """
     
-    if org_info.get('target_population'):
-        response += f"we will serve {org_info['target_population']} through "
-    
-    response += "innovative programming that delivers measurable impact.\n\n"
-    
-    # Incorporate best practices from RAG
-    if rag_context.get('best_practices'):
-        response += "**Evidence-Based Approach:** This proposal incorporates proven strategies including "
-        response += rag_context['best_practices'][0]['title'] + " and "
-        response += rag_context['best_practices'][1]['title'] if len(rag_context['best_practices']) > 1 else "established best practices"
-        response += ".\n\n"
-    
-    response += "**Key Impact Areas:**\n"
-    if org_info.get('focus_areas'):
-        for area in org_info['focus_areas'][:3]:
-            response += f"• {area}\n"
-    else:
-        response += "• Community development\n• Capacity building\n• Sustainable outcomes\n"
-    
-    response += "\n**Requested Funding:** "
-    if rfp_analysis.get('funding_amount'):
-        response += f"{rfp_analysis['funding_amount']}\n"
-    else:
-        response += "To be determined based on project scope\n"
-    
-    response += "\n**Expected Outcomes:**\n"
-    response += "• Enhanced community engagement\n"
-    response += "• Measurable program impact\n"
-    response += "• Sustainable long-term benefits\n\n"
-    
-    response += cultural_guidance
-    
-    response += "This proposal represents a strategic investment in our community's future."
-    
-    return response
+    try:
+        response = get_culturally_sensitive_response(prompt, community_focus)
+        return response
+    except Exception as e:
+        print(f"Error generating executive summary: {e}")
+        return f"""📋 **Executive Summary**
+
+Based on your organization's information and uploaded documents, here's a draft executive summary:
+
+**Our Mission & Impact**
+Your organization is dedicated to serving the community with a focus on {community_focus or 'positive community change'}. Through this grant, we will expand our impact and create lasting benefits for those we serve.
+
+**Project Goals**
+This funding will enable us to:
+• Strengthen our community programs and services
+• Reach more individuals and families in need
+• Create measurable, positive outcomes
+• Build sustainable partnerships and resources
+
+**Expected Outcomes**
+With this support, we will achieve specific, measurable results that demonstrate our commitment to community well-being and positive change.
+
+**Next Steps**
+Please review this summary and let me know if you'd like me to adjust the focus, tone, or add specific details from your uploaded documents."""
 
 def generate_organization_profile_with_rag(context: dict, rfp_analysis: dict, rag_context: dict) -> str:
     """Generate organization profile using RAG context for cultural competence"""
@@ -866,27 +884,57 @@ def generate_general_guidance(context: dict, rfp_analysis: dict) -> str:
     return response
 
 def generate_default_response(message: str, context: dict, rfp_analysis: dict) -> str:
-    """Generate conversational default response"""
+    """Generate a culturally sensitive default response when no specific pattern is matched"""
     
-    response = f"Hi! I see you said '{message}'. "
+    uploaded_files = context.get('uploaded_files', [])
     
-    if context.get('organization_info'):
-        response += "I can see you've provided some organization information. "
+    if not uploaded_files:
+        return """🤝 **Welcome! I'm here to help with your grant writing.**
+
+I can see you're working on a grant proposal. To give you the best help possible, I'd love to learn more about your project.
+
+**What I can help you with:**
+• 📝 Writing grant sections (executive summary, organization profile, etc.)
+• 💡 Brainstorming ideas for your proposal
+• 📋 Analyzing RFP requirements
+• 💰 Budget planning and financial sections
+• ⏰ Timeline and implementation planning
+• 📊 Evaluation and impact measurement
+
+**To get started:**
+1. Upload your RFP document and organization information
+2. Tell me about your community and project goals
+3. Ask me to help with specific sections
+
+**Try asking me:**
+• "Help me write an executive summary"
+• "What should I include in my organization profile?"
+• "How do I plan my project timeline?"
+• "Can you help me with the budget section?"
+
+I'm here to support you every step of the way! 😊"""
     
-    if rfp_analysis.get('requirements'):
-        response += f"I also have your RFP analysis with {len(rfp_analysis['requirements'])} requirements. "
-    
-    response += "\n\n**Here's how I can help you today:**\n\n"
-    response += "🎯 **Quick Actions:**\n"
-    response += "• Say 'help me write sections' - I'll guide you through each grant section\n"
-    response += "• Say 'show my RFP analysis' - I'll show what I found in your RFP\n"
-    response += "• Say 'help with budget' - I'll help you plan your budget\n"
-    response += "• Say 'brainstorm ideas' - I'll give you creative grant writing ideas\n\n"
-    
-    response += "📋 **What would you like to work on first?**\n"
-    response += "Just tell me in simple terms what you need help with!"
-    
-    return response
+    else:
+        return f"""🤝 **Great! I can see you've uploaded {len(uploaded_files)} document(s).**
+
+I'm ready to help you create a strong grant proposal using your uploaded information.
+
+**Based on your documents, I can help you with:**
+• 📝 Writing specific grant sections using your organization's information
+• 💡 Brainstorming ideas tailored to your project
+• 📋 Analyzing how your project aligns with funding requirements
+• 💰 Creating budget sections based on your needs
+• ⏰ Planning realistic timelines for your project
+• 📊 Developing evaluation strategies for your impact
+
+**What would you like to work on?**
+• "Write an executive summary using my organization's information"
+• "Help me create an organization profile"
+• "Analyze the RFP requirements and our alignment"
+• "Generate a project description based on our documents"
+• "Help me plan the budget section"
+
+I'm here to make your grant writing process easier and more successful! 😊"""
 
 @app.get("/chat/history/{project_id}")
 async def get_chat_history(project_id: str):
