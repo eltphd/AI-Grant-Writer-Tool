@@ -23,6 +23,7 @@ function App() {
     budget: '',
     evaluation: ''
   });
+  const [uploadStatus, setUploadStatus] = useState({ message: '', type: '' });
 
   // Load projects on app load (no auth required)
   useEffect(() => {
@@ -83,40 +84,76 @@ function App() {
 
     try {
       setLoading(true);
+      setUploadStatus({ message: '', type: '' });
+      
+      let successCount = 0;
+      let errorCount = 0;
       
       for (const file of files) {
-        // Read file content
-        const content = await readFileContent(file);
-        
-        // Upload file as JSON (matching backend expectation)
-        const response = await fetch(`${API_BASE}/upload?project_id=${currentProject.id}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            filename: file.name,
-            content: content
-          }),
-        });
+        try {
+          // Read file content
+          const content = await readFileContent(file);
+          
+          // Upload file as JSON (matching backend expectation)
+          const response = await fetch(`${API_BASE}/upload?project_id=${currentProject.id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              filename: file.name,
+              content: content
+            }),
+          });
 
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            console.log(`File ${file.name} uploaded successfully`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              successCount++;
+              console.log(`File ${file.name} uploaded successfully`);
+            } else {
+              errorCount++;
+              console.error(`Failed to upload ${file.name}:`, result.error);
+            }
           } else {
-            console.error(`Failed to upload ${file.name}:`, result.error);
+            errorCount++;
+            console.error(`HTTP error uploading ${file.name}:`, response.status);
           }
-        } else {
-          console.error(`HTTP error uploading ${file.name}:`, response.status);
+        } catch (error) {
+          errorCount++;
+          console.error(`Error uploading ${file.name}:`, error);
         }
       }
 
+      // Show upload status
+      if (successCount > 0 && errorCount === 0) {
+        setUploadStatus({ 
+          message: `✅ Successfully uploaded ${successCount} file(s)`, 
+          type: 'success' 
+        });
+      } else if (successCount > 0 && errorCount > 0) {
+        setUploadStatus({ 
+          message: `⚠️ Uploaded ${successCount} file(s), ${errorCount} failed`, 
+          type: 'warning' 
+        });
+      } else {
+        setUploadStatus({ 
+          message: `❌ Failed to upload ${errorCount} file(s)`, 
+          type: 'error' 
+        });
+      }
+
+      // Clear status after 5 seconds
+      setTimeout(() => setUploadStatus({ message: '', type: '' }), 5000);
+
       // Reload project context to show uploaded files
       await loadProjectContext(currentProject.id);
-      setCurrentStep(3);
     } catch (error) {
       console.error('Error uploading files:', error);
+      setUploadStatus({ 
+        message: `❌ Error uploading files: ${error.message}`, 
+        type: 'error' 
+      });
     } finally {
       setLoading(false);
     }
@@ -127,6 +164,7 @@ function App() {
 
     try {
       setLoading(true);
+      setUploadStatus({ message: '', type: '' });
       
       // Read file content
       const content = await readFileContent(file);
@@ -156,12 +194,31 @@ function App() {
           }));
           
           // Show success message
-          alert(`RFP uploaded successfully! Analysis complete.`);
+          setUploadStatus({ 
+            message: `✅ RFP uploaded successfully! Analysis complete.`, 
+            type: 'success' 
+          });
+          
+          // Clear status after 5 seconds
+          setTimeout(() => setUploadStatus({ message: '', type: '' }), 5000);
+        } else {
+          setUploadStatus({ 
+            message: `❌ RFP upload failed: ${result.error}`, 
+            type: 'error' 
+          });
         }
+      } else {
+        setUploadStatus({ 
+          message: `❌ RFP upload failed: HTTP ${response.status}`, 
+          type: 'error' 
+        });
       }
     } catch (error) {
       console.error('Error uploading RFP file:', error);
-      alert('Error uploading RFP file. Please try again.');
+      setUploadStatus({ 
+        message: `❌ Error uploading RFP file: ${error.message}`, 
+        type: 'error' 
+      });
     } finally {
       setLoading(false);
     }
@@ -473,6 +530,13 @@ function App() {
                     </div>
                   </label>
                   
+                  {/* Upload Status Display */}
+                  {uploadStatus.message && uploadStatus.type && (
+                    <div className={`upload-status ${uploadStatus.type}`}>
+                      {uploadStatus.message}
+                    </div>
+                  )}
+                  
                   {currentProject && currentProject.rfpAnalysis && (
                     <div className="rfp-analysis-section">
                       <h4>🎯 RFP Analysis Complete</h4>
@@ -521,6 +585,13 @@ function App() {
                       <p>Supported formats: PDF, DOCX, DOC, TXT, MD</p>
                     </div>
                   </label>
+                  
+                  {/* Upload Status Display */}
+                  {uploadStatus.message && uploadStatus.type && (
+                    <div className={`upload-status ${uploadStatus.type}`}>
+                      {uploadStatus.message}
+                    </div>
+                  )}
                 </div>
               </div>
               

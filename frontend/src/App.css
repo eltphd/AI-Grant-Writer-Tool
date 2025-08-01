@@ -1214,4 +1214,46 @@ body {
 
 .brainstorm-button:hover::before {
   opacity: 0.1;
+}
+
+/* Upload Status Styles */
+.upload-status {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: slideIn 0.3s ease-out;
+}
+
+.upload-status.success {
+  background: rgba(0, 230, 118, 0.1);
+  border: 1px solid rgba(0, 230, 118, 0.3);
+  color: #00E676;
+}
+
+.upload-status.warning {
+  background: rgba(255, 214, 0, 0.1);
+  border: 1px solid rgba(255, 214, 0, 0.3);
+  color: #FFD600;
+}
+
+.upload-status.error {
+  background: rgba(255, 82, 82, 0.1);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: #FF5252;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 } 

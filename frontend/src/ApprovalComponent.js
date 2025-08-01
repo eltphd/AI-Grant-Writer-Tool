@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './ApprovalComponent.css';
 
+const API_BASE = process.env.REACT_APP_API_BASE || 'https://ai-grant-writer-tool-production.up.railway.app';
+
 const ApprovalComponent = ({ projectId, onApprovalUpdate }) => {
     const [pendingApprovals, setPendingApprovals] = useState([]);
     const [selectedApproval, setSelectedApproval] = useState(null);
@@ -18,7 +20,7 @@ const ApprovalComponent = ({ projectId, onApprovalUpdate }) => {
     const fetchPendingApprovals = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`/approval/pending/${projectId}`);
+            const response = await fetch(`${API_BASE}/approval/pending/${projectId}`);
             const data = await response.json();
             
             if (data.success) {
@@ -35,7 +37,7 @@ const ApprovalComponent = ({ projectId, onApprovalUpdate }) => {
 
     const fetchApprovalStats = async () => {
         try {
-            const response = await fetch(`/approval/stats/${projectId}`);
+            const response = await fetch(`${API_BASE}/approval/stats/${projectId}`);
             const data = await response.json();
             
             if (data.success) {
@@ -49,7 +51,7 @@ const ApprovalComponent = ({ projectId, onApprovalUpdate }) => {
     const handleApprovalAction = async (approvalId, action, notes = '') => {
         try {
             setLoading(true);
-            const response = await fetch(`/approval/${approvalId}/${action}`, {
+            const response = await fetch(`${API_BASE}/approval/${approvalId}/${action}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -82,7 +84,7 @@ const ApprovalComponent = ({ projectId, onApprovalUpdate }) => {
 
     const handleViewDetails = async (approvalId) => {
         try {
-            const response = await fetch(`/approval/${approvalId}`);
+            const response = await fetch(`${API_BASE}/approval/${approvalId}`);
             const data = await response.json();
             
             if (data.success) {
