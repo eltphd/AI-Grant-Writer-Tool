@@ -164,13 +164,15 @@ async def analyze_rfp(project_id: str, request: dict):
 
 # File upload endpoint
 @app.post("/upload")
-async def upload_file(project_id: str, file: dict):
+async def upload_file(request: dict):
     """Upload file and extract content for advanced RAG processing"""
     try:
         from datetime import datetime
         
-        filename = file.get('filename', 'uploaded_file')
-        content = file.get('content', '')
+        project_id = request.get('project_id', 'test-project')
+        file_data = request.get('file', {})
+        filename = file_data.get('filename', 'uploaded_file')
+        content = file_data.get('content', '')
         
         # Determine file type and category with cultural context
         file_type = filename.split('.')[-1].lower()
