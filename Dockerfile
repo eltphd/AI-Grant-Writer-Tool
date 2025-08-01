@@ -46,6 +46,7 @@ RUN apk add --no-cache \
     musl-dev \
     make \
     cmake \
+    linux-headers \
     && rm -rf /var/cache/apk/*
 
 # Install Python dependencies
