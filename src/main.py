@@ -243,17 +243,37 @@ async def upload_file(request: dict):
             original_content = raw_content
 
         # Step 1: Redact PII from the content
-        redacted_content, redactions = pii_redactor.redact_text(original_content)
+        try:
+            redacted_content, redactions = pii_redactor.redact_text(original_content)
+            print(f"✅ PII redaction completed for {filename}")
+        except Exception as e:
+            print(f"⚠️ PII redaction failed for {filename}: {e}")
+            redacted_content, redactions = original_content, []
 
         # Step 2: Chunk the redacted content for the RAG system
-        chunks = chunk_text(redacted_content)
+        try:
+            chunks = chunk_text(redacted_content)
+            print(f"✅ Text chunking completed for {filename}: {len(chunks)} chunks")
+        except Exception as e:
+            print(f"⚠️ Text chunking failed for {filename}: {e}")
+            chunks = [redacted_content]
 
         # Save file metadata in Supabase
-        supa.save_uploaded_file(original_content.encode("utf-8"), filename, project_id)
+        try:
+            supa.save_uploaded_file(original_content.encode("utf-8"), filename, project_id)
+            print(f"✅ File metadata saved to Supabase for {filename}")
+        except Exception as e:
+            print(f"❌ Failed to save file metadata for {filename}: {e}")
+            return {"success": False, "error": f"Failed to save file metadata: {str(e)}"}
         
         # Insert chunks and embeddings into Supabase
-        chunk_pairs = [(filename, c) for c in chunks]
-        supa.insert_file_chunks_into_db(chunk_pairs, project_id)
+        try:
+            chunk_pairs = [(filename, c) for c in chunks]
+            supa.insert_file_chunks_into_db(chunk_pairs, project_id)
+            print(f"✅ File chunks and embeddings saved to Supabase for {filename}")
+        except Exception as e:
+            print(f"❌ Failed to save file chunks for {filename}: {e}")
+            return {"success": False, "error": f"Failed to save file chunks: {str(e)}"}
 
         return {
             "success": True,
