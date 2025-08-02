@@ -305,10 +305,10 @@ async def send_message(request: dict):
         # Save chat message to database
         try:
             supa.save_chat_message(project_id, {
-                "question": message,
-                "answer": ai_response,
+                "user_message": message,
+                "ai_response": ai_response,
                 "timestamp": datetime.now().isoformat(),
-                "relevant_snippets": relevant_snippets
+                "metadata": {"relevant_snippets": relevant_snippets}
             })
             print(f"✅ Chat message saved to database")
         except Exception as e:
@@ -514,6 +514,10 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
         return generate_content_access_response(context)
     
     # Check for specific section writing requests using specialized LLM
+    if specialized_llm is None:
+        print("⚠️ Specialized LLM not available, using fallback")
+        return generate_default_response(message, context, rfp_analysis)
+    
     if any(word in message.lower() for word in ['executive summary', 'summary']):
         return specialized_llm.generate_culturally_sensitive_response(
             "executive_summary", 

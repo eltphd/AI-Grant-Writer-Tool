@@ -10,11 +10,19 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 import re
 
-# Import the advanced RAG system
+# Import the advanced RAG system (optional)
 try:
     from .advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
+    ADVANCED_RAG_AVAILABLE = True
 except ImportError:
-    from advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
+    try:
+        from advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
+        ADVANCED_RAG_AVAILABLE = True
+    except ImportError:
+        print("⚠️ Advanced RAG not available for specialized LLM")
+        ADVANCED_RAG_AVAILABLE = False
+        advanced_rag_db = None
+        CulturalKnowledgeItem = None
 
 class SpecializedLLMApproach:
     """Specialized 7B-like approach with cultural competency"""
