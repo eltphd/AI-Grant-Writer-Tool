@@ -16,12 +16,14 @@ services:
       - ./doc_store:/doc_store
     environment:
       - DOCKER_RUNNING=true
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-your-openai-key-here}
       - USE_SUPABASE=${USE_SUPABASE:-true}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SUPABASE_URL=${SUPABASE_URL:-https://your-project.supabase.co}
+      - SUPABASE_KEY=${SUPABASE_KEY:-your-supabase-anon-key}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-your-supabase-service-key}
       - SINGLE_CLIENT_MODE=${SINGLE_CLIENT_MODE:-false}
+    env_file:
+      - .env.local
     depends_on:
       db:
         condition: service_healthy
