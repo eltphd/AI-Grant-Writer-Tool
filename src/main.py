@@ -291,19 +291,41 @@ async def upload_file(request: dict):
 # Context endpoint
 @app.get("/context/{project_id}")
 async def get_project_context(project_id: str):
-    """Get project context with uploaded files from RAG system"""
+    """Get project context with uploaded files from Supabase"""
     try:
-        # Get uploaded files from RAG system
+        # Get uploaded files from Supabase
         uploaded_files = []
-        knowledge_items = advanced_rag_db.search_knowledge("", limit=50)  # Get all items
-        for item in knowledge_items:
-            if item.source == "user_upload":
-                uploaded_files.append({
-                    "filename": item.title,
-                    "category": item.category,
-                    "content_length": len(item.content),
-                    "uploaded_at": item.created_at
-                })
+        
+        try:
+            # Query file_chunks table for this project
+            chunks_data = supa.query_data("file_chunks")
+            if chunks_data:
+                # Group by file_name to get unique files
+                files_dict = {}
+                for chunk in chunks_data:
+                    if chunk.get('project_id') == project_id:
+                        file_name = chunk.get('file_name', 'Unknown')
+                        chunk_text = chunk.get('chunk_text', '')
+                        
+                        if file_name not in files_dict:
+                            files_dict[file_name] = []
+                        
+                        files_dict[file_name].append(chunk_text)
+                
+                # Create file info for each unique file
+                for file_name, chunks in files_dict.items():
+                    uploaded_files.append({
+                        "filename": file_name,
+                        "category": "uploaded_document",
+                        "content_length": sum(len(chunk) for chunk in chunks),
+                        "uploaded_at": datetime.now().isoformat()
+                    })
+                
+                print(f"🔍 DEBUG: Found {len(uploaded_files)} uploaded files from Supabase")
+            else:
+                print("🔍 DEBUG: No file chunks found in Supabase")
+        except Exception as e:
+            print(f"⚠️ Error getting file chunks from Supabase: {e}")
         
         return {
             "success": True, 
@@ -573,13 +595,13 @@ def get_rfp_analysis_data(project_id: str) -> dict:
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict, relevant_snippets: list = None) -> str:
     """Generate culturally sensitive contextual AI response using specialized LLM approach with evaluation feedback loop"""
     
-    # Use provided relevant snippets or fall back to advanced RAG
+    # Use provided relevant snippets or create empty context
     if relevant_snippets and len(relevant_snippets) > 0:
         rag_context = {"relevant_chunks": relevant_snippets}
         print(f"🔍 DEBUG: Using {len(relevant_snippets)} relevant snippets from Supabase")
     else:
-        rag_context = advanced_rag_db.get_relevant_context(message, "grant_section", context.get('community_focus'))
-        print(f"🔍 DEBUG: No relevant snippets found, using fallback RAG")
+        rag_context = {"relevant_chunks": []}
+        print(f"🔍 DEBUG: No relevant snippets found, using empty context")
     
     # Build project context string with uploaded content
     uploaded_content_summary = ""
@@ -1730,42 +1752,58 @@ async def health_check():
 
 @app.get("/debug/rag-status")
 async def debug_rag_status():
-    """Debug endpoint to check RAG system status"""
+    """Debug endpoint to check Supabase RAG system status"""
     try:
-        if not RAG_AVAILABLE or advanced_rag_db is None:
+        # Test Supabase RAG system
+        chunks_data = supa.query_data("file_chunks")
+        if chunks_data:
+            # Group by file_name to get unique files
+            files_dict = {}
+            for chunk in chunks_data:
+                file_name = chunk.get('file_name', 'Unknown')
+                project_id = chunk.get('project_id', 'Unknown')
+                
+                if file_name not in files_dict:
+                    files_dict[file_name] = {
+                        'project_id': project_id,
+                        'chunks': []
+                    }
+                
+                files_dict[file_name]['chunks'].append(chunk.get('chunk_text', ''))
+            
+            uploaded_files = list(files_dict.keys())
+            total_chunks = sum(len(files_dict[file]['chunks']) for file in files_dict)
+            
             return {
-                "status": "error",
-                "error": "RAG system not available",
-                "rag_system": "not_initialized",
-                "rag_available": RAG_AVAILABLE
+                "status": "success",
+                "rag_system": "supabase_operational",
+                "total_files": len(uploaded_files),
+                "total_chunks": total_chunks,
+                "uploaded_files": uploaded_files,
+                "file_details": [
+                    {
+                        "filename": file_name,
+                        "project_id": file_info['project_id'],
+                        "chunk_count": len(file_info['chunks']),
+                        "total_content_length": sum(len(chunk) for chunk in file_info['chunks'])
+                    }
+                    for file_name, file_info in list(files_dict.items())[:5]  # Show first 5 files
+                ]
             }
-        
-        # Test RAG system
-        knowledge_items = advanced_rag_db.search_knowledge("", limit=10)
-        uploaded_files = [item.title for item in knowledge_items if item.source == "user_upload"]
-        
-        return {
-            "status": "success",
-            "rag_system": "operational",
-            "rag_available": RAG_AVAILABLE,
-            "total_knowledge_items": len(knowledge_items),
-            "uploaded_files": uploaded_files,
-            "rag_items": [
-                {
-                    "title": item.title,
-                    "source": item.source,
-                    "category": item.category,
-                    "content_length": len(item.content)
-                }
-                for item in knowledge_items[:5]  # Show first 5 items
-            ]
-        }
+        else:
+            return {
+                "status": "success",
+                "rag_system": "supabase_operational",
+                "total_files": 0,
+                "total_chunks": 0,
+                "uploaded_files": [],
+                "file_details": []
+            }
     except Exception as e:
         return {
             "status": "error",
             "error": str(e),
-            "rag_system": "failed",
-            "rag_available": RAG_AVAILABLE
+            "rag_system": "supabase_failed"
         }
 
 @app.get("/debug/test")
@@ -1857,9 +1895,10 @@ async def export_txt(request: dict):
 
 @app.get("/rag/context")
 async def get_relevant_context(query: str, section_type: str, community_context: str = None):
-    """Get culturally relevant context using advanced RAG"""
+    """Get culturally relevant context using Supabase RAG"""
     try:
-        context = advanced_rag_db.get_relevant_context(query, section_type, community_context)
+        # Use Supabase RAG context
+        context = supa.rag_context(query, [], None)  # Empty files list, no project_id
         return {"success": True, "context": context}
     except Exception as e:
         print(f"❌ Error getting relevant context: {e}")
@@ -1901,13 +1940,13 @@ async def get_advanced_features_status():
     """Get status of advanced RAG and LLM features"""
     try:
         status = {
-            "advanced_rag_available": hasattr(advanced_rag_db, 'use_advanced') and advanced_rag_db.use_advanced,
+            "supabase_rag_available": True,
             "specialized_llm_available": True,
             "cultural_competency_enabled": True,
             "multilingual_support": True,
-            "semantic_search_enabled": hasattr(advanced_rag_db, 'use_advanced') and advanced_rag_db.use_advanced,
+            "semantic_search_enabled": True,
             "features": [
-                "Advanced RAG with ChromaDB and sentence transformers",
+                "Supabase RAG with vector embeddings",
                 "Specialized 7B-like approach with cultural competency",
                 "Community-specific cultural contexts",
                 "Multilingual support and cultural sensitivity",
