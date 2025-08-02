@@ -64,11 +64,14 @@ async def read_root():
         return FileResponse("frontend/build/index.html")
     return {"message": "GET$ API is running. Frontend not built."}
 
-# Serve static files (frontend build) - moved to end to avoid route conflicts
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "GET$ API is running"}
+
+# Serve static files (frontend build) - only for static assets
 if os.path.exists("frontend/build"):
     app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
-    # Only mount frontend for non-API routes
-    app.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
 
 # Projects endpoint
 @app.get("/projects")
