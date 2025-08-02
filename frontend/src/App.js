@@ -5,7 +5,7 @@ import GrantSections from './GrantSections';
 import NavigationComponent from './NavigationComponent';
 import ApprovalComponent from './ApprovalComponent';
 
-const API_BASE = process.env.REACT_APP_API_BASE || (window.location.hostname === 'localhost' ? 'http://localhost:8080' : '');
+const API_BASE = process.env.REACT_APP_API_BASE || (window.location.hostname === 'localhost' ? 'http://localhost:8080' : 'https://ai-grant-writer-tool-production.up.railway.app');
 
 function App() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -47,12 +47,17 @@ function App() {
 
   const createProject = async () => {
     try {
+      console.log('Creating project...');
+      console.log('API_BASE:', API_BASE);
+      
       const newProject = {
         id: Date.now().toString(),
         name: `New Project ${projects.length + 1}`,
         description: 'A new grant writing project',
         created_at: new Date().toISOString()
       };
+      
+      console.log('Sending project data:', newProject);
       
       // Save to backend
       const response = await fetch(`${API_BASE}/projects`, {
@@ -63,17 +68,24 @@ function App() {
         body: JSON.stringify(newProject),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (response.ok) {
         const result = await response.json();
+        console.log('Response result:', result);
         if (result.success) {
           setProjects([...projects, result.project]);
           setCurrentProject(result.project);
           setCurrentStep(2);
+          console.log('Project created successfully');
         } else {
           console.error('Error creating project:', result.error);
         }
       } else {
         console.error('Error creating project:', response.status);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
     } catch (error) {
       console.error('Error creating project:', error);
