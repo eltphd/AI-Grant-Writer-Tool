@@ -410,52 +410,63 @@ async def send_message(request: dict):
         return {"success": False, "error": str(e)}
 
 def get_project_context_data(project_id: str) -> dict:
-    """Get project context data from advanced RAG system"""
+    """Get project context data from Supabase"""
     try:
-        if not RAG_AVAILABLE or advanced_rag_db is None:
-            print("⚠️ RAG system not available, returning empty context")
-            return {
-                "organization_info": "RAG system not available",
-                "initiative_description": "RAG system not available",
-                "uploaded_files": [],
-                "rfp_requirements": [],
-                "community_focus": None
-            }
-        
-        # Get uploaded documents from advanced RAG system
+        # Get uploaded files from Supabase
         uploaded_files = []
         uploaded_content = []
-        knowledge_items = advanced_rag_db.search_knowledge("", limit=50)  # Get all items
-        print(f"🔍 DEBUG: Found {len(knowledge_items)} knowledge items in RAG system")
         
-        for item in knowledge_items:
-            print(f"🔍 DEBUG: Item - Title: {item.title}, Source: {item.source}, Category: {item.category}")
-            if item.source == "user_upload" or item.source == "uploaded_document":
-                uploaded_files.append(item.title)
-                uploaded_content.append(f"Document: {item.title}\nContent: {item.content[:1000]}...")
-        
-        print(f"🔍 DEBUG: Found {len(uploaded_files)} uploaded files")
+        # Get file chunks from Supabase for this project
+        try:
+            # Query file_chunks table for this project
+            chunks_data = supa.query_data("file_chunks")
+            if chunks_data:
+                # Group by file_name to get unique files
+                files_dict = {}
+                for chunk in chunks_data:
+                    if chunk.get('project_id') == project_id:
+                        file_name = chunk.get('file_name', 'Unknown')
+                        chunk_text = chunk.get('chunk_text', '')
+                        
+                        if file_name not in files_dict:
+                            files_dict[file_name] = []
+                            uploaded_files.append(file_name)
+                        
+                        files_dict[file_name].append(chunk_text)
+                
+                # Create content summaries for each file
+                for file_name, chunks in files_dict.items():
+                    content_summary = f"Document: {file_name}\nContent: {' '.join(chunks[:3])}..."  # First 3 chunks
+                    uploaded_content.append(content_summary)
+                
+                print(f"🔍 DEBUG: Found {len(uploaded_files)} uploaded files from Supabase")
+                print(f"🔍 DEBUG: Files: {uploaded_files}")
+            else:
+                print("🔍 DEBUG: No file chunks found in Supabase")
+        except Exception as e:
+            print(f"⚠️ Error getting file chunks from Supabase: {e}")
         
         # Get organization info if available
-        org_items = advanced_rag_db.search_knowledge("organization", category="organization_profile", limit=5)
         organization_info = ""
-        if org_items:
-            organization_info = org_items[0].content[:500] + "..." if len(org_items[0].content) > 500 else org_items[0].content
-            print(f"🔍 DEBUG: Found organization info: {organization_info[:100]}...")
+        try:
+            org_data = supa.query_data("organizations")
+            if org_data:
+                organization_info = org_data[0].get('description', '')[:500] + "..."
+                print(f"🔍 DEBUG: Found organization info: {organization_info[:100]}...")
+        except Exception as e:
+            print(f"⚠️ Error getting organization info: {e}")
         
         # Get RFP requirements from uploaded documents
-        rfp_items = advanced_rag_db.search_knowledge("RFP", category="grant_narrative", limit=10)
         rfp_requirements = []
-        if rfp_items:
-            for item in rfp_items:
-                rfp_requirements.append(f"RFP Requirements from {item.title}: {item.content[:500]}...")
+        if uploaded_content:
+            rfp_requirements = ["Requirements from uploaded RFP documents"]
         
         context_data = {
             "organization_info": organization_info,
             "initiative_description": "Based on uploaded documents",
             "uploaded_files": uploaded_files,
             "uploaded_content": uploaded_content,
-            "rfp_requirements": rfp_requirements if rfp_requirements else ["Requirements from uploaded RFP documents"],
+            "rfp_requirements": rfp_requirements if rfp_requirements else ["No RFP documents uploaded yet"],
             "community_focus": "Based on uploaded community documents"
         }
         
@@ -467,6 +478,7 @@ def get_project_context_data(project_id: str) -> dict:
             "organization_info": "No organization information available",
             "initiative_description": "No initiative description available",
             "uploaded_files": [],
+            "uploaded_content": [],
             "rfp_requirements": [],
             "community_focus": None
         }
