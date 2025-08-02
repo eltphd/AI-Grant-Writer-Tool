@@ -2,10 +2,6 @@
   "version": 2,
   "builds": [
     {
-      "src": "src/main.py",
-      "use": "@vercel/python"
-    },
-    {
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
@@ -15,45 +11,11 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/src/main.py"
-    },
-    {
       "src": "/(.*)",
       "dest": "/frontend/$1"
     }
   ],
-  "functions": {
-    "src/main.py": {
-      "maxDuration": 60
-    }
-  },
   "env": {
-    "VERCEL_AI_KEY": "@vercel_ai_key"
-  },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/ai/(.*)",
-      "destination": "https://api.vercel.ai/v1/$1"
-    }
-  ]
+    "AI_GATEWAY_API_KEY": "@ai_gateway_api_key"
+  }
 } 
