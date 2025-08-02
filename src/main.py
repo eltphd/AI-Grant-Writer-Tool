@@ -588,13 +588,13 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
         rag_response = rag_db.get_relevant_context(message, context.get('uploaded_files', []), project_id)
         if rag_response:
             return rag_response
-            else:
-        # Use relevant snippets in the default response if available
-        if relevant_snippets and len(relevant_snippets) > 0:
-            snippets_context = "\n\n".join([f"From your documents: {snippet}" for snippet in relevant_snippets])
-            return f"Based on your uploaded documents:\n\n{snippets_context}\n\n{generate_default_response(message, context, rfp_analysis)}"
-        else:
-            return generate_default_response(message, context, rfp_analysis)
+    
+    # Use relevant snippets in the default response if available
+    if relevant_snippets and len(relevant_snippets) > 0:
+        snippets_context = "\n\n".join([f"From your documents: {snippet}" for snippet in relevant_snippets])
+        return f"Based on your uploaded documents:\n\n{snippets_context}\n\n{generate_default_response(message, context, rfp_analysis)}"
+    else:
+        return generate_default_response(message, context, rfp_analysis)
 
 def _evaluate_response_with_feedback_loop(response: str, community_context: str, context: dict) -> dict:
     """Evaluate response and determine if regeneration or approval is needed"""
