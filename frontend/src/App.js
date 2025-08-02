@@ -27,6 +27,14 @@ function App() {
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [showProjectForm, setShowProjectForm] = useState(false);
 
+  // Get current date for display
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
   // Load projects on app load (no auth required)
   useEffect(() => {
     loadProjects();
@@ -552,7 +560,7 @@ function App() {
         textAlign: 'center', 
         fontWeight: 'bold' 
       }}>
-        Friday, August 1, 2025
+        {currentDate}
       </div>
 
       <main className="app-main">

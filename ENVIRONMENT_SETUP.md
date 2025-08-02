@@ -10,8 +10,9 @@ Add these environment variables in your Railway project settings:
 ```
 OPENAI_API_KEY=your_openai_api_key_here
 SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_supabase_service_role_key
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key_here
+USE_SUPABASE=true
 ```
 
 ### Vercel (Frontend)
@@ -19,6 +20,11 @@ Add these environment variables in your Vercel project settings:
 
 ```
 REACT_APP_API_URL=https://ai-grant-writer-tool-production.up.railway.app
+AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key_here
+SUPABASE_SERVICE_KEY=your_supabase_service_role_key
+USE_SUPABASE=true
+OPENAI_API_KEY=your_openai_api_key
+SUPABASE_URL=your_supabase_project_url
 ```
 
 ## How to Get These Keys
