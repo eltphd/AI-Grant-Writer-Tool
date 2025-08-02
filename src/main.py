@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse
 try:
     from .utils.rag_utils import rag_db
     from .utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
-    from .utils.specialized_llm_utils import specialized_llm
+    from .utils.vercel_ai_utils import vercel_ai_gateway
     RAG_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ RAG import error: {e}")
@@ -19,14 +19,14 @@ except ImportError as e:
         # Fallback for direct import
         from utils.rag_utils import rag_db
         from utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
-        from utils.specialized_llm_utils import specialized_llm
+        from utils.vercel_ai_utils import vercel_ai_gateway
         RAG_AVAILABLE = True
     except ImportError as e2:
         print(f"❌ RAG fallback import error: {e2}")
         RAG_AVAILABLE = False
         # Create dummy objects for fallback
         advanced_rag_db = None
-        specialized_llm = None
+        vercel_ai_gateway = None
 
 # Import other utilities
 try:
@@ -45,6 +45,15 @@ try:
 except ImportError:
     # Fallback for direct import
     from utils.evaluation_utils import cognitive_evaluator, cultural_evaluator, performance_monitor
+
+# Import prompt logging middleware
+try:
+    from .middleware import prompt_logger
+except ImportError:
+    try:
+        from middleware import prompt_logger
+    except ImportError:
+        prompt_logger = None
 
 app = FastAPI(title="GET$ API", version="1.0.0")
 
@@ -593,56 +602,69 @@ def get_rfp_analysis_data(project_id: str) -> dict:
         }
 
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict, relevant_snippets: list = None) -> str:
-    """Generate culturally sensitive contextual AI response using specialized LLM approach with evaluation feedback loop"""
+    """Generate culturally sensitive contextual AI response using consolidated LLM approach"""
     
     # Use provided relevant snippets or create empty context
     if relevant_snippets and len(relevant_snippets) > 0:
-        rag_context = {"relevant_chunks": relevant_snippets}
         print(f"🔍 DEBUG: Using {len(relevant_snippets)} relevant snippets from Supabase")
+        # Add relevant snippets to context
+        context['uploaded_content'] = context.get('uploaded_content', []) + relevant_snippets
     else:
-        rag_context = {"relevant_chunks": []}
         print(f"🔍 DEBUG: No relevant snippets found, using empty context")
     
-    # Build project context string with uploaded content
-    uploaded_content_summary = ""
-    if context.get('uploaded_content'):
-        uploaded_content_summary = "\n".join(context.get('uploaded_content', []))
+    # Add RFP requirements to context
+    context['rfp_requirements'] = rfp_analysis.get('requirements', [])
     
-    project_context = f"""
-    Organization: {context.get('organization_info', 'Not provided')}
-    Initiative: {context.get('initiative_description', 'Not provided')}
-    Uploaded Files: {', '.join(context.get('uploaded_files', []))}
-    Uploaded Content: {uploaded_content_summary}
-    RFP Requirements: {', '.join(rfp_analysis.get('requirements', []))}
-    """
-    
-    # Get community context from RAG
+    # Get community context
     community_context = context.get('community_focus', '')
-    if rag_context and 'cultural_context' in rag_context:
-        community_context += f" {rag_context['cultural_context']}"
     
-    # Add relevant snippets to context if available
-    if relevant_snippets and len(relevant_snippets) > 0:
-        snippets_text = "\n\n".join([f"Relevant content: {snippet}" for snippet in relevant_snippets])
-        project_context += f"\n\nRelevant Document Content:\n{snippets_text}"
+    # Determine grant type based on RFP analysis
+    grant_type = "community"  # Default
+    if rfp_analysis.get('requirements'):
+        requirements_text = ' '.join(rfp_analysis.get('requirements', [])).lower()
+        if 'nih' in requirements_text or 'national institutes' in requirements_text:
+            grant_type = "nih"
+        elif 'nsf' in requirements_text or 'national science foundation' in requirements_text:
+            grant_type = "nsf"
+        elif 'federal' in requirements_text or 'government' in requirements_text:
+            grant_type = "federal"
     
-    # Generate initial response
-    initial_response = _generate_initial_response(message, context, rfp_analysis, rag_context, project_context, community_context)
-    
-    # Evaluate the response for cultural competency and sensitivity
-    evaluation_result = _evaluate_response_with_feedback_loop(initial_response, community_context, context)
-    
-    # If evaluation indicates issues, regenerate with improvements
-    if evaluation_result.get('needs_regeneration', False):
-        improved_response = _regenerate_with_evaluation_feedback(initial_response, evaluation_result, message, context, rfp_analysis, rag_context, project_context, community_context)
-        return improved_response
-    
-    # If evaluation indicates sensitive content, flag for approval
-    if evaluation_result.get('requires_approval', False):
-        approval_id = _flag_for_approval(initial_response, evaluation_result, context.get('project_id', 'unknown'))
-        return f"{initial_response}\n\n⚠️ **Content flagged for approval** (ID: {approval_id})\nThis response contains sensitive content that requires your review before use."
-    
-    return initial_response
+    # Generate response using Vercel AI Gateway
+    if vercel_ai_gateway:
+        try:
+            # Log prompt for debugging
+            if prompt_logger:
+                prompt_logger.log_prompt({
+                    "type": "grant_response",
+                    "message": message,
+                    "context": context,
+                    "grant_type": grant_type,
+                    "organization_id": context.get('project_id', 'unknown')
+                })
+            
+            response = vercel_ai_gateway.generate_grant_response(
+                message=message,
+                context=context,
+                grant_type=grant_type
+            )
+            
+            # Evaluate cultural alignment using the same gateway
+            evaluation = vercel_ai_gateway.evaluate_cultural_alignment(
+                content=response,
+                context=context
+            )
+            
+            # Add evaluation metadata to response if available
+            if evaluation and not evaluation.get('error'):
+                print(f"✅ Cultural evaluation completed - Overall Quality: {evaluation.get('scores', {}).get('overall_quality', 0)}%")
+            
+            return response
+            
+        except Exception as e:
+            print(f"❌ Error in Vercel AI Gateway: {e}")
+            return f"⚠️ Error generating response: {str(e)}"
+    else:
+        return "⚠️ Vercel AI Gateway not available. Please check configuration."
 
 def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, rag_context: dict, project_context: str, community_context: str) -> str:
     """Generate the initial AI response"""
