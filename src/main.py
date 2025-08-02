@@ -57,17 +57,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files (frontend build)
-if os.path.exists("frontend/build"):
-    app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
-    app.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
-
 # Root endpoint to serve the React app
 @app.get("/")
 async def read_root():
     if os.path.exists("frontend/build/index.html"):
         return FileResponse("frontend/build/index.html")
     return {"message": "GET$ API is running. Frontend not built."}
+
+# Serve static files (frontend build) - moved to end to avoid route conflicts
+if os.path.exists("frontend/build"):
+    app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
+    # Only mount frontend for non-API routes
+    app.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
 
 # Projects endpoint
 @app.get("/projects")
