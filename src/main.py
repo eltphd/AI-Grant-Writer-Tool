@@ -338,12 +338,35 @@ async def send_message(request: dict):
         start_time = performance_monitor.start_timer()
         
         # Get project context and RFP analysis
-        project_context = get_project_context_data(project_id)
-        rfp_analysis = get_rfp_analysis_data(project_id)
+        try:
+            project_context = get_project_context_data(project_id)
+            print(f"🔍 DEBUG: Project context retrieved successfully")
+        except Exception as e:
+            print(f"❌ Error getting project context: {e}")
+            project_context = {
+                "organization_info": "Error retrieving organization info",
+                "initiative_description": "Error retrieving initiative description",
+                "uploaded_files": [],
+                "uploaded_content": [],
+                "rfp_requirements": [],
+                "community_focus": None
+            }
+        
+        try:
+            rfp_analysis = get_rfp_analysis_data(project_id)
+            print(f"🔍 DEBUG: RFP analysis retrieved successfully")
+        except Exception as e:
+            print(f"❌ Error getting RFP analysis: {e}")
+            rfp_analysis = {
+                "requirements": ["Error retrieving RFP analysis"],
+                "eligibility_criteria": ["Error retrieving eligibility criteria"],
+                "funding_amount": "Error retrieving funding amount",
+                "deadline": "Error retrieving deadline",
+                "alignment_score": 0
+            }
         
         print(f"🔍 DEBUG: Chat request - Message: {message}")
-        print(f"🔍 DEBUG: Project context: {project_context}")
-        print(f"🔍 DEBUG: RFP analysis: {rfp_analysis}")
+        print(f"🔍 DEBUG: Project ID: {project_id}")
         print(f"🔍 DEBUG: Uploaded files: {project_context.get('uploaded_files', [])}")
         print(f"🔍 DEBUG: Uploaded content count: {len(project_context.get('uploaded_content', []))}")
         
@@ -484,24 +507,46 @@ def get_project_context_data(project_id: str) -> dict:
         }
 
 def get_rfp_analysis_data(project_id: str) -> dict:
-    """Get RFP analysis data from advanced RAG system"""
+    """Get RFP analysis data from Supabase"""
     try:
-        # Search for RFP-related documents
-        rfp_items = advanced_rag_db.search_knowledge("RFP funding requirements", category="grant_narrative", limit=5)
+        # Get RFP-related documents from Supabase
+        rfp_requirements = []
         
-        if rfp_items:
-            # Extract requirements from RFP content
-            rfp_content = rfp_items[0].content
-            requirements = []
-            if "non-profit" in rfp_content.lower():
-                requirements.append("Non-profit status required")
-            if "community" in rfp_content.lower():
-                requirements.append("Community focus required")
-            if "measurable" in rfp_content.lower():
-                requirements.append("Measurable outcomes required")
-            
+        try:
+            # Query file_chunks table for RFP documents in this project
+            chunks_data = supa.query_data("file_chunks")
+            if chunks_data:
+                rfp_content = ""
+                for chunk in chunks_data:
+                    if chunk.get('project_id') == project_id:
+                        file_name = chunk.get('file_name', '').lower()
+                        if 'rfp' in file_name or 'request' in file_name or 'proposal' in file_name:
+                            rfp_content += chunk.get('chunk_text', '') + " "
+                
+                if rfp_content:
+                    # Extract requirements from RFP content
+                    requirements = []
+                    if "non-profit" in rfp_content.lower():
+                        requirements.append("Non-profit status required")
+                    if "community" in rfp_content.lower():
+                        requirements.append("Community focus required")
+                    if "measurable" in rfp_content.lower():
+                        requirements.append("Measurable outcomes required")
+                    if "funding" in rfp_content.lower():
+                        requirements.append("Funding requirements specified")
+                    
+                    rfp_requirements = requirements
+                    print(f"🔍 DEBUG: Found RFP content, extracted {len(requirements)} requirements")
+                else:
+                    print("🔍 DEBUG: No RFP documents found in Supabase")
+            else:
+                print("🔍 DEBUG: No file chunks found in Supabase")
+        except Exception as e:
+            print(f"⚠️ Error getting RFP data from Supabase: {e}")
+        
+        if rfp_requirements:
             return {
-                "requirements": requirements,
+                "requirements": rfp_requirements,
                 "eligibility_criteria": ["Based on uploaded RFP documents"],
                 "funding_amount": "Based on uploaded RFP documents",
                 "deadline": "Based on uploaded RFP documents",
