@@ -54,9 +54,27 @@ function App() {
         created_at: new Date().toISOString()
       };
       
-      setProjects([...projects, newProject]);
-      setCurrentProject(newProject);
-      setCurrentStep(2);
+      // Save to backend
+      const response = await fetch(`${API_BASE}/projects`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newProject),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setProjects([...projects, result.project]);
+          setCurrentProject(result.project);
+          setCurrentStep(2);
+        } else {
+          console.error('Error creating project:', result.error);
+        }
+      } else {
+        console.error('Error creating project:', response.status);
+      }
     } catch (error) {
       console.error('Error creating project:', error);
     }

@@ -84,6 +84,29 @@ async def get_projects():
         print(f"❌ Error getting projects: {e}")
         return {"success": False, "error": str(e)}
 
+# Project creation endpoint
+@app.post("/projects")
+async def create_project(request: dict):
+    """Create a new project"""
+    try:
+        from datetime import datetime
+        
+        project_data = {
+            "id": request.get('id', f"project_{datetime.now().strftime('%Y%m%d_%H%M%S')}"),
+            "name": request.get('name', 'New Project'),
+            "description": request.get('description', 'A new grant writing project'),
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat()
+        }
+        
+        # Save project to Supabase
+        supa.create_project(project_data)
+        
+        return {"success": True, "project": project_data}
+    except Exception as e:
+        print(f"❌ Error creating project: {e}")
+        return {"success": False, "error": str(e)}
+
 # Organization management
 @app.post("/organization/create")
 async def create_organization(request: dict):
