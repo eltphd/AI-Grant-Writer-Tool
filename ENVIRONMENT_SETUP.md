@@ -11,7 +11,7 @@ Add these environment variables in your Railway project settings:
 OPENAI_API_KEY=your_openai_api_key_here
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_KEY=your_supabase_service_role_key
-VERCEL_AI_KEY=your_vercel_ai_key_here
+AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key_here
 ```
 
 ### Vercel (Frontend)
@@ -63,8 +63,8 @@ REACT_APP_API_BASE=https://your-railway-app-name.up.railway.app
 
 ## Troubleshooting
 
-### "VERCEL_AI_KEY not found" Error
-1. Make sure you've added the Vercel AI key to Railway environment variables
+### "AI_GATEWAY_API_KEY not found" Error
+1. Make sure you've added the Vercel AI Gateway key to Railway environment variables
 2. Verify the key is correct in Vercel AI Gateway
 3. Restart your Railway deployment after adding the variable
 
@@ -75,7 +75,7 @@ REACT_APP_API_BASE=https://your-railway-app-name.up.railway.app
 
 ### RFP Analysis Errors
 1. Ensure OPENAI_API_KEY is set correctly
-2. Check that VERCEL_AI_KEY is configured
+2. Check that AI_GATEWAY_API_KEY is configured
 3. Verify the API endpoints are working
 
 ## Security Notes
@@ -89,7 +89,7 @@ REACT_APP_API_BASE=https://your-railway-app-name.up.railway.app
 
 - [ ] OpenAI API key added to Railway
 - [ ] Supabase URL and key added to Railway  
-- [ ] Vercel AI key added to Railway
+- [ ] AI_GATEWAY_API_KEY added to Railway
 - [ ] API base URL added to Vercel
 - [ ] Railway deployment restarted
 - [ ] Test project creation

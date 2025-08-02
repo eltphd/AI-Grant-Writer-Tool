@@ -54,7 +54,7 @@ CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "1000"))
 OPENAI_EMBEDDING_MODEL: str = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002")
 
 # Vercel AI Gateway configuration
-VERCEL_AI_KEY: str = os.getenv("VERCEL_AI_KEY", "")
+AI_GATEWAY_API_KEY: str = os.getenv("AI_GATEWAY_API_KEY", "")
 
 # Generic error message to return to clients when an internal server error
 # occurs.  Keeping this in one place makes it easy to update.

@@ -14,7 +14,7 @@ class VercelAIGateway:
     """Vercel AI Gateway integration for unified model management"""
     
     def __init__(self):
-        self.api_key = os.getenv('VERCEL_AI_KEY')
+        self.api_key = os.getenv('AI_GATEWAY_API_KEY')
         self.base_url = "https://api.vercel.ai/v1"
         self.rate_limit = 3  # requests per minute (free tier)
         self.last_request_time = None
@@ -39,7 +39,7 @@ class VercelAIGateway:
         """Make chat completion request through Vercel AI Gateway"""
         
         if not self.api_key:
-            return {"error": "VERCEL_AI_KEY not configured"}
+            return {"error": "AI_GATEWAY_API_KEY not configured"}
         
         if not self._check_rate_limit():
             return {"error": "Rate limit exceeded. Please wait before making another request."}
