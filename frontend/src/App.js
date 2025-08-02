@@ -5,7 +5,7 @@ import GrantSections from './GrantSections';
 import NavigationComponent from './NavigationComponent';
 import ApprovalComponent from './ApprovalComponent';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8080';
+const API_BASE = process.env.REACT_APP_API_BASE || (window.location.hostname === 'localhost' ? 'http://localhost:8080' : '');
 
 function App() {
   const [currentStep, setCurrentStep] = useState(1);

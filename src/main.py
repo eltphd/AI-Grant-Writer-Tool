@@ -4,6 +4,8 @@ import json
 from datetime import datetime
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # Import RAG utilities
 try:
@@ -54,6 +56,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files (frontend build)
+if os.path.exists("frontend/build"):
+    app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
+    app.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
+
+# Root endpoint to serve the React app
+@app.get("/")
+async def read_root():
+    if os.path.exists("frontend/build/index.html"):
+        return FileResponse("frontend/build/index.html")
+    return {"message": "GET$ API is running. Frontend not built."}
 
 # Projects endpoint
 @app.get("/projects")
