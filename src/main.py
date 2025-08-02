@@ -179,7 +179,8 @@ async def upload_rfp(project_id: str, request: dict):
             os.unlink(tmp_path)
         else:
             content = raw_content
-        analysis = rfp_analyzer.analyze_rfp_content(content)
+        from .utils.rfp_analysis import analyze_rfp_content
+        analysis = analyze_rfp_content(content)
         
         # Create RFP document
         rfp = RFPDocument(
@@ -205,13 +206,30 @@ async def upload_rfp(project_id: str, request: dict):
         return {"success": False, "error": str(e)}
 
 @app.post("/rfp/analyze")
-async def analyze_rfp(project_id: str, request: dict):
+async def analyze_rfp(request: dict):
     """Analyze RFP content for requirements and alignment"""
     try:
-        content = request.get('content', '')
-        analysis = rfp_analyzer.analyze_rfp_content(content)
+        project_id = request.get('project_id')
+        org_id = request.get('org_id')
+        rfp_id = request.get('rfp_id')
         
-        return {"success": True, "analysis": analysis}
+        if not project_id or not org_id or not rfp_id:
+            return {"success": False, "error": "Missing required parameters: project_id, org_id, rfp_id"}
+        
+        # Get RFP analysis data
+        rfp_data = get_rfp_analysis_data(project_id)
+        
+        # Get organization data
+        org_data = get_project_context_data(project_id)
+        
+        # Perform alignment analysis
+        from .utils.rfp_analysis import analyze_organization_rfp_alignment
+        analysis_result = analyze_organization_rfp_alignment(
+            org_data=org_data,
+            rfp_data=rfp_data
+        )
+        
+        return {"success": True, "analysis": analysis_result}
     except Exception as e:
         print(f"❌ Error analyzing RFP: {e}")
         return {"success": False, "error": str(e)}

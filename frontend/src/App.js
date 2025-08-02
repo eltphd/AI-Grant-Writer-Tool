@@ -24,6 +24,8 @@ function App() {
     evaluation: ''
   });
   const [uploadStatus, setUploadStatus] = useState({ message: '', type: '' });
+  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const [showProjectForm, setShowProjectForm] = useState(false);
 
   // Load projects on app load (no auth required)
   useEffect(() => {
@@ -46,13 +48,18 @@ function App() {
   };
 
   const createProject = async () => {
+    if (!newProjectTitle.trim()) {
+      alert('Please enter a project title');
+      return;
+    }
+
     try {
       console.log('Creating project...');
       console.log('API_BASE:', API_BASE);
       
       const newProject = {
         id: Date.now().toString(),
-        name: `New Project ${projects.length + 1}`,
+        name: newProjectTitle.trim(),
         description: 'A new grant writing project',
         created_at: new Date().toISOString()
       };
@@ -78,6 +85,8 @@ function App() {
           setProjects([...projects, result.project]);
           setCurrentProject(result.project);
           setCurrentStep(2);
+          setNewProjectTitle('');
+          setShowProjectForm(false);
           console.log('Project created successfully');
         } else {
           console.error('Error creating project:', result.error);
@@ -572,7 +581,7 @@ function App() {
                 </div>
               ))}
               
-              <div className="project-card new-project" onClick={createProject}>
+              <div className="project-card new-project" onClick={() => setShowProjectForm(true)}>
                 <div className="project-icon">➕</div>
                 <div className="project-info">
                   <h3>Create New Project</h3>
@@ -580,6 +589,25 @@ function App() {
                 </div>
               </div>
             </div>
+
+            {showProjectForm && (
+              <div className="new-project-form">
+                <h3>Create New Grant Project</h3>
+                <input
+                  type="text"
+                  placeholder="Enter project title"
+                  value={newProjectTitle}
+                  onChange={(e) => setNewProjectTitle(e.target.value)}
+                  className="form-input"
+                />
+                <button className="btn btn-primary" onClick={createProject} disabled={loading}>
+                  {loading ? 'Creating...' : 'Create Project'}
+                </button>
+                <button className="btn btn-secondary" onClick={() => setShowProjectForm(false)}>
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         )}
 

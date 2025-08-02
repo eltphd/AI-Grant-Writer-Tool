@@ -1300,4 +1300,64 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* New Project Form Styles */
+.new-project-form {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 2rem auto;
+  max-width: 500px;
+  box-shadow: var(--glass-shadow);
+  animation: slideIn 0.3s ease-out;
+}
+
+.new-project-form h3 {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.new-project-form .form-input {
+  width: 100%;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.new-project-form .form-input:focus {
+  outline: none;
+  border-color: var(--neon-mint);
+  box-shadow: 0 0 0 3px rgba(0, 255, 209, 0.1);
+}
+
+.new-project-form .form-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.new-project-form .btn {
+  margin-right: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.new-project-form .btn-secondary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.new-project-form .btn-secondary:hover {
+  background: var(--surface-light);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 } 
