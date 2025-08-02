@@ -18,7 +18,7 @@ AI_GATEWAY_API_KEY=your_vercel_ai_gateway_key_here
 Add these environment variables in your Vercel project settings:
 
 ```
-REACT_APP_API_BASE=https://your-railway-app-name.up.railway.app
+REACT_APP_API_URL=https://ai-grant-writer-tool-production.up.railway.app
 ```
 
 ## How to Get These Keys
@@ -90,7 +90,7 @@ REACT_APP_API_BASE=https://your-railway-app-name.up.railway.app
 - [ ] OpenAI API key added to Railway
 - [ ] Supabase URL and key added to Railway  
 - [ ] AI_GATEWAY_API_KEY added to Railway
-- [ ] API base URL added to Vercel
+- [ ] REACT_APP_API_URL added to Vercel
 - [ ] Railway deployment restarted
 - [ ] Test project creation
 - [ ] Test RFP upload and analysis
