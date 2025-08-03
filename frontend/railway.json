@@ -1,0 +1,7 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "buildCommand": "./build.sh"
+  },
+  "start": "npm install -g serve && serve -s build -l $PORT"
+} 
