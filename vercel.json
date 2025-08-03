@@ -18,13 +18,5 @@
       "src": "/(.*)",
       "dest": "/frontend/$1"
     }
-  ],
-  "env": {
-    "AI_GATEWAY_API_KEY": "@ai_gateway_api_key",
-    "REACT_APP_API_URL": "https://ai-grant-writer-tool-production.up.railway.app",
-    "SUPABASE_SERVICE_KEY": "@supabase_service_key",
-    "USE_SUPABASE": "true",
-    "OPENAI_API_KEY": "@openai_api_key",
-    "SUPABASE_URL": "@supabase_url"
-  }
+  ]
 } 
