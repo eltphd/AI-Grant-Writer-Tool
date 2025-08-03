@@ -7,6 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+app = FastAPI(title="GET$ API", version="1.0.0")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Simple test endpoint - this should work even if other imports fail
+@app.get("/test")
+async def test_endpoint():
+    return {"message": "Basic FastAPI app is working!", "timestamp": datetime.now().isoformat()}
+
 # Import RAG utilities
 try:
     from .utils.rag_utils import rag_db
@@ -54,17 +70,6 @@ except ImportError:
         from middleware import prompt_logger
     except ImportError:
         prompt_logger = None
-
-app = FastAPI(title="GET$ API", version="1.0.0")
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Root endpoint to serve the React app
 @app.get("/")
