@@ -76,7 +76,12 @@ async def read_root():
 # Health check endpoint
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "message": "GET$ API is running"}
+    return {"status": "healthy", "message": "GET$ API is running", "timestamp": datetime.now().isoformat()}
+
+# Simple ping endpoint for testing
+@app.get("/ping")
+async def ping():
+    return {"message": "pong", "timestamp": datetime.now().isoformat()}
 
 # Serve static files (frontend build) - only for static assets
 if os.path.exists("frontend/build"):
@@ -87,11 +92,16 @@ if os.path.exists("frontend/build"):
 async def get_projects():
     """Get all projects from Supabase"""
     try:
+        print("🔍 Attempting to get projects from Supabase...")
         projects = supa.get_all_projects_from_db()
+        print(f"✅ Successfully retrieved {len(projects)} projects")
         return {"success": True, "projects": projects}
     except Exception as e:
         print(f"❌ Error getting projects: {e}")
-        return {"success": False, "error": str(e)}
+        print(f"❌ Error type: {type(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
+        return {"success": False, "error": str(e), "timestamp": datetime.now().isoformat()}
 
 # Project creation endpoint
 @app.post("/projects")
@@ -1783,12 +1793,6 @@ async def get_grant_sections(project_id: str):
     except Exception as e:
         print(f"❌ Error getting grant sections: {e}")
         return {"success": False, "error": str(e)}
-
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 @app.get("/debug/rag-status")
 async def debug_rag_status():
