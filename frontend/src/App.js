@@ -42,16 +42,21 @@ function App() {
 
   const loadProjects = async () => {
     try {
+      console.log('Loading projects from:', `${API_BASE}/projects`);
       const response = await fetch(`${API_BASE}/projects`);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Projects loaded:', data);
         setProjects(data.projects || []);
       } else {
         console.error('Failed to load projects:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
     } catch (error) {
       console.error('Error loading projects:', error);
+      console.error('API_BASE:', API_BASE);
     }
   };
 
@@ -633,20 +638,20 @@ function App() {
                 <h3>📄 Document Upload</h3>
                 
                 <div className="upload-section">
-                  <h4>📋 RFP Upload (Recommended)</h4>
-                  <p>Upload the Request for Proposal document to help me align your response with grant requirements.</p>
+                  <h4>📋 Upload Files</h4>
+                  <p>Upload any documents related to your grant project. All files will be embedded and analyzed to help with your proposal.</p>
                   <input
                     type="file"
                     accept=".pdf,.docx,.doc,.txt,.md"
                     onChange={(e) => handleRFPUpload(e.target.files[0])}
                     className="file-input"
-                    id="rfp-upload"
+                    id="file-upload"
                   />
-                  <label htmlFor="rfp-upload" className="upload-label rfp-upload">
+                  <label htmlFor="file-upload" className="upload-label file-upload">
                     <div className="upload-icon">📋</div>
                     <div className="upload-text">
-                      <h4>Upload RFP Document</h4>
-                      <p>Grant request with directions and requirements</p>
+                      <h4>Upload Documents</h4>
+                      <p>Grant documents, RFPs, organizational info, etc.</p>
                     </div>
                   </label>
                   
@@ -658,8 +663,8 @@ function App() {
                   )}
                   
                   {currentProject && currentProject.rfpAnalysis && (
-                    <div className="rfp-analysis-section">
-                      <h4>🎯 RFP Analysis Complete</h4>
+                    <div className="file-analysis-section">
+                      <h4>🎯 Document Analysis Complete</h4>
                       <p>Requirements found: {currentProject.rfpAnalysis.requirements?.length || 0}</p>
                       <p>Eligibility criteria: {currentProject.rfpAnalysis.eligibility_criteria?.length || 0}</p>
                       {currentProject.rfpAnalysis.funding_amount && (

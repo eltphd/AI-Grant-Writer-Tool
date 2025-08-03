@@ -1361,3 +1361,40 @@ body {
   border-color: var(--text-secondary);
   color: var(--text-primary);
 } 
+
+.upload-label.file-upload {
+  background: var(--gradient-primary);
+  border: 2px dashed var(--neon-mint);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.upload-label.file-upload:hover {
+  background: var(--gradient-mint);
+  border-color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 255, 209, 0.3);
+}
+
+.file-analysis-section {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  box-shadow: var(--glass-shadow);
+}
+
+.file-analysis-section h4 {
+  color: var(--neon-mint);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.file-analysis-section p {
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+} 
