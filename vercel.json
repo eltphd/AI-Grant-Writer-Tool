@@ -1,9 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/build",
-  "installCommand": "cd frontend && npm install",
-  "framework": "create-react-app",
   "builds": [
     {
       "src": "frontend/package.json",
@@ -16,11 +12,11 @@
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/frontend/build/static/$1"
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "/frontend/build/index.html"
+      "dest": "/index.html"
     }
   ]
 } 
