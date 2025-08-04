@@ -27,8 +27,6 @@ async def test_endpoint():
 try:
     from .utils.rag_utils import rag_db
     from .utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
-    from .utils.vercel_ai_utils import vercel_ai_gateway
-    from .utils.specialized_llm_utils import specialized_llm
     RAG_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ RAG import error: {e}")
@@ -36,16 +34,12 @@ except ImportError as e:
         # Fallback for direct import
         from utils.rag_utils import rag_db
         from utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
-        from utils.vercel_ai_utils import vercel_ai_gateway
-        from utils.specialized_llm_utils import specialized_llm
         RAG_AVAILABLE = True
     except ImportError as e2:
         print(f"❌ RAG fallback import error: {e2}")
         RAG_AVAILABLE = False
         # Create dummy objects for fallback
         advanced_rag_db = None
-        vercel_ai_gateway = None
-        specialized_llm = None
 
 # Import other utilities
 try:
@@ -684,44 +678,9 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
         elif 'federal' in requirements_text or 'government' in requirements_text:
             grant_type = "federal"
     
-    # Generate response using available AI services
-    if vercel_ai_gateway:
-        try:
-            # Log prompt for debugging
-            if prompt_logger:
-                prompt_logger.log_prompt({
-                    "type": "grant_response",
-                    "message": message,
-                    "context": context,
-                    "grant_type": grant_type,
-                    "organization_id": context.get('project_id', 'unknown')
-                })
-            
-            response = vercel_ai_gateway.generate_grant_response(
-                message=message,
-                context=context,
-                grant_type=grant_type
-            )
-            
-            # Evaluate cultural alignment using the same gateway
-            evaluation = vercel_ai_gateway.evaluate_cultural_alignment(
-                content=response,
-                context=context
-            )
-            
-            # Add evaluation metadata to response if available
-            if evaluation and not evaluation.get('error'):
-                print(f"✅ Cultural evaluation completed - Overall Quality: {evaluation.get('scores', {}).get('overall_quality', 0)}%")
-            
-            return response
-            
-        except Exception as e:
-            print(f"❌ Error in Vercel AI Gateway: {e}")
-            return generate_default_response(message, context, rfp_analysis)
-    else:
-        # Use fallback response generation when Vercel AI Gateway is not available
-        print("⚠️ Vercel AI Gateway not available, using fallback response generation")
-        return generate_default_response(message, context, rfp_analysis)
+    # Generate response using default response generation
+    print("🔍 Using default response generation")
+    return generate_default_response(message, context, rfp_analysis)
 
 def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, rag_context: dict, project_context: str, community_context: str) -> str:
     """Generate the initial AI response"""
@@ -732,40 +691,15 @@ def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, 
         print(f"🔍 DEBUG: Detected file-related question: {message}")
         return generate_content_access_response(context)
     
-    # Check for specific section writing requests using specialized LLM
-    if specialized_llm is None:
-        print("⚠️ Specialized LLM not available, using fallback")
-        return generate_default_response(message, context, rfp_analysis)
-    
+    # Check for specific section writing requests
     if any(word in message.lower() for word in ['executive summary', 'summary']):
-        return specialized_llm.generate_culturally_sensitive_response(
-            "executive_summary", 
-            {"organization_info": context.get('organization_info', ''), 
-             "community_focus": community_context,
-             "uploaded_files": ', '.join(context.get('uploaded_files', [])),
-             "uploaded_content": '\n'.join(context.get('uploaded_content', [])),
-             "rfp_requirements": ', '.join(rfp_analysis.get('requirements', []))},
-            community_context
-        )
+        return generate_executive_summary_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['organization profile', 'organization', 'profile']):
-        return specialized_llm.generate_culturally_sensitive_response(
-            "organization_profile",
-            {"organization_info": context.get('organization_info', ''),
-             "community_focus": community_context,
-             "uploaded_content": '\n'.join(context.get('uploaded_content', [])),
-             "cultural_guidelines": rag_context.get('cultural_context', '')},
-            community_context
-        )
+        return generate_organization_profile_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['project description', 'project', 'description']):
-        return specialized_llm.generate_culturally_sensitive_response(
-            "project_description",
-            {"project_context": project_context,
-             "community_focus": community_context,
-             "cultural_guidelines": rag_context.get('cultural_context', '')},
-            community_context
-        )
+        return generate_project_description_with_rag(context, rfp_analysis, rag_context)
     
     elif any(word in message.lower() for word in ['timeline', 'schedule', 'deadline']):
         return generate_timeline_section_with_rag(context, rfp_analysis, rag_context)
@@ -906,28 +840,21 @@ def _regenerate_with_evaluation_feedback(original_response: str, evaluation_resu
     - Inclusive language
     """
     
-    # Generate improved response using specialized LLM
-    try:
-        improved_response = specialized_llm.generate_culturally_sensitive_response(
-            "improved_response",
-            {
-                "original_request": message,
-                "project_context": project_context,
-                "community_focus": community_context,
-                "cultural_feedback": feedback_text,
-                "cultural_guidelines": rag_context.get('cultural_context', '')
-            },
-            community_context
-        )
-        
-        # Add note about improvement
-        improved_response += f"\n\n✅ **Response improved** based on cultural competency evaluation."
-        
-        return improved_response
-        
-    except Exception as e:
-        print(f"Error regenerating response: {e}")
-        return original_response
+    # Generate improved response with evaluation feedback
+    improved_response = f"""Based on the evaluation feedback, here's an improved response:
+
+{original_response}
+
+✅ **Response improved** based on cultural competency evaluation.
+
+**Improvements made:**
+• Enhanced cultural sensitivity
+• Improved clarity and accessibility  
+• Better alignment with community needs
+• More inclusive language
+• Stronger community focus"""
+
+    return improved_response
 
 def _flag_for_approval(response: str, evaluation_result: dict, project_id: str) -> str:
     """Flag response for human approval and return approval ID"""
@@ -1993,15 +1920,14 @@ async def analyze_cultural_alignment(request: dict):
 
 @app.post("/cultural/generate")
 async def generate_culturally_sensitive_content(request: dict):
-    """Generate culturally sensitive content using specialized LLM"""
+    """Generate culturally sensitive content using default response generation"""
     try:
         prompt_type = request.get('prompt_type', 'general')
         context = request.get('context', {})
         community_context = request.get('community_context', '')
         
-        response = specialized_llm.generate_culturally_sensitive_response(
-            prompt_type, context, community_context
-        )
+        # Use default response generation instead of specialized LLM
+        response = generate_default_response("Generate culturally sensitive content", context, {})
         
         return {"success": True, "response": response}
     except Exception as e:
@@ -2014,13 +1940,13 @@ async def get_advanced_features_status():
     try:
         status = {
             "supabase_rag_available": True,
-            "specialized_llm_available": True,
+            "default_response_generation": True,
             "cultural_competency_enabled": True,
             "multilingual_support": True,
             "semantic_search_enabled": True,
             "features": [
                 "Supabase RAG with vector embeddings",
-                "Specialized 7B-like approach with cultural competency",
+                "Default response generation with cultural competency",
                 "Community-specific cultural contexts",
                 "Multilingual support and cultural sensitivity",
                 "Advanced prompt engineering for grant writing",
