@@ -71,10 +71,8 @@ function App() {
       console.log('API_BASE:', API_BASE);
       
       const newProject = {
-        id: Date.now().toString(),
         name: newProjectTitle.trim(),
-        description: 'A new grant writing project',
-        created_at: new Date().toISOString()
+        description: 'A new grant writing project'
       };
       
       console.log('Sending project data:', newProject);
