@@ -671,7 +671,8 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
         # Add relevant snippets from Supabase embeddings
         if relevant_snippets and len(relevant_snippets) > 0:
             print(f"🔍 DEBUG: Using {len(relevant_snippets)} relevant snippets from Supabase")
-            project_context += f"Relevant Document Content:\n{'\n'.join(relevant_snippets)}\n\n"
+            snippet_text = '\n'.join(relevant_snippets)
+            project_context += f"Relevant Document Content:\n{snippet_text}\n\n"
         else:
             print(f"🔍 DEBUG: No relevant snippets found")
         
