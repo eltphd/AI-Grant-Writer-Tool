@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["pkgs.python3"]
+nixPkgs = ["pkgs.python3", "pkgs.stdenv.cc.cc.lib"]
 
 [phases.install]
 cmds = ["python3 -m venv /opt/venv", "source /opt/venv/bin/activate && pip install -r requirements.txt"]
@@ -8,7 +8,7 @@ cmds = ["python3 -m venv /opt/venv", "source /opt/venv/bin/activate && pip insta
 cmds = ["echo 'Backend build complete - frontend should be deployed separately'"]
 
 [start]
-cmd = "source /opt/venv/bin/activate && cd /app && PYTHONPATH=/app/src uvicorn main:app --host 0.0.0.0 --port $PORT"
+cmd = "source /opt/venv/bin/activate && cd /app && uvicorn src.main:app --host 0.0.0.0 --port $PORT"
 
 [variables]
 NIXPACKS_PYTHON_VERSION = "3.9" 
