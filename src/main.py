@@ -115,6 +115,34 @@ async def simple_test():
         "timestamp": datetime.now().isoformat()
     }
 
+# Test Supabase connection
+@app.get("/test-supabase")
+async def test_supabase():
+    """Test Supabase connection and configuration"""
+    try:
+        print(f"🔍 DEBUG: Testing Supabase connection")
+        print(f"🔍 DEBUG: SUPABASE_URL: {config.SUPABASE_URL}")
+        print(f"🔍 DEBUG: SUPABASE_KEY configured: {'Yes' if config.SUPABASE_KEY else 'No'}")
+        
+        # Test a simple query
+        test_response = supa._request("GET", "/rest/v1/files?limit=1")
+        
+        return {
+            "success": True,
+            "supabase_url": config.SUPABASE_URL,
+            "supabase_key_configured": bool(config.SUPABASE_KEY),
+            "test_query_result": test_response,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "supabase_url": config.SUPABASE_URL,
+            "supabase_key_configured": bool(config.SUPABASE_KEY),
+            "timestamp": datetime.now().isoformat()
+        }
+
 # Test endpoint moved to after function definitions
 
 # Serve static files (frontend build) - only for static assets
