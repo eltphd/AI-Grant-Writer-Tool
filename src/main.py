@@ -91,6 +91,25 @@ async def health_check():
 async def ping():
     return {"message": "pong", "timestamp": datetime.now().isoformat()}
 
+@app.get("/test-chat")
+async def test_chat():
+    """Test endpoint to verify chat functionality is working"""
+    try:
+        # Test the generate_default_response function directly
+        test_response = generate_default_response("hi", {}, {})
+        return {
+            "success": True,
+            "message": "Chat functionality test",
+            "response": test_response,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
 # Serve static files (frontend build) - only for static assets
 if os.path.exists("frontend/build"):
     app.mount("/static", StaticFiles(directory="frontend/build/static"), name="static")
