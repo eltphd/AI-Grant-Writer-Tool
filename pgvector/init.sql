@@ -57,6 +57,9 @@ CREATE TABLE IF NOT EXISTS questions (
 CREATE TABLE IF NOT EXISTS files (
   id SERIAL PRIMARY KEY,
   file_name TEXT,
+  project_id TEXT,
+  file_size INTEGER,
+  file_type TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -67,6 +70,7 @@ CREATE TABLE IF NOT EXISTS file_chunks (
   id SERIAL PRIMARY KEY,
   file_name TEXT,
   chunk_text TEXT,
+  project_id TEXT,
   embedding VECTOR,
   created_at TIMESTAMPTZ DEFAULT now()
 );
