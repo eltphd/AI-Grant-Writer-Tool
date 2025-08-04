@@ -28,6 +28,7 @@ try:
     from .utils.rag_utils import rag_db
     from .utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
     from .utils.vercel_ai_utils import vercel_ai_gateway
+    from .utils.specialized_llm_utils import specialized_llm
     RAG_AVAILABLE = True
 except ImportError as e:
     print(f"⚠️ RAG import error: {e}")
@@ -36,6 +37,7 @@ except ImportError as e:
         from utils.rag_utils import rag_db
         from utils.advanced_rag_utils import advanced_rag_db, CulturalKnowledgeItem
         from utils.vercel_ai_utils import vercel_ai_gateway
+        from utils.specialized_llm_utils import specialized_llm
         RAG_AVAILABLE = True
     except ImportError as e2:
         print(f"❌ RAG fallback import error: {e2}")
@@ -43,6 +45,7 @@ except ImportError as e:
         # Create dummy objects for fallback
         advanced_rag_db = None
         vercel_ai_gateway = None
+        specialized_llm = None
 
 # Import other utilities
 try:
