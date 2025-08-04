@@ -48,12 +48,12 @@ except ImportError as e:
 try:
     from .utils.storage_utils import OrganizationInfo, RFPDocument, ProjectResponse
     from .utils import supabase_utils as supa
-    from .utils.rfp_analysis import rfp_analyzer
+    from .utils.rfp_analysis import analyze_rfp_content, analyze_organization_rfp_alignment
 except ImportError:
     # Fallback for direct import
     from utils.storage_utils import OrganizationInfo, RFPDocument, ProjectResponse
     from utils import supabase_utils as supa
-    from utils.rfp_analysis import rfp_analyzer
+    from utils.rfp_analysis import analyze_rfp_content, analyze_organization_rfp_alignment
 
 # Import evaluation utilities
 try:
