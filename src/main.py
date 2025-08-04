@@ -96,24 +96,7 @@ async def health_check():
 async def ping():
     return {"message": "pong", "timestamp": datetime.now().isoformat()}
 
-@app.get("/test-chat")
-async def test_chat():
-    """Test endpoint to verify chat functionality is working"""
-    try:
-        # Test the generate_default_response function directly
-        test_response = generate_default_response("hi", {}, {})
-        return {
-            "success": True,
-            "message": "Chat functionality test",
-            "response": test_response,
-            "timestamp": datetime.now().isoformat()
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }
+# Test endpoint moved to after function definitions
 
 # Serve static files (frontend build) - only for static assets
 if os.path.exists("frontend/build"):
@@ -1498,6 +1481,25 @@ I'm ready to help you create a strong grant proposal using your uploaded informa
 • "Help me plan the budget section"
 
 I'm here to make your grant writing process easier and more successful! 😊"""
+
+@app.get("/test-chat")
+async def test_chat():
+    """Test endpoint to verify chat functionality is working"""
+    try:
+        # Test the generate_default_response function directly
+        test_response = generate_default_response("hi", {}, {})
+        return {
+            "success": True,
+            "message": "Chat functionality test",
+            "response": test_response,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 @app.get("/chat/history/{project_id}")
 async def get_chat_history(project_id: str):
