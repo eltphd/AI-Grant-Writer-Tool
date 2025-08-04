@@ -120,6 +120,9 @@ async def simple_test():
 async def test_supabase():
     """Test Supabase connection and configuration"""
     try:
+        from .utils import config
+        from .utils import supabase_utils as supa
+        
         print(f"🔍 DEBUG: Testing Supabase connection")
         print(f"🔍 DEBUG: SUPABASE_URL: {config.SUPABASE_URL}")
         print(f"🔍 DEBUG: SUPABASE_KEY configured: {'Yes' if config.SUPABASE_KEY else 'No'}")
@@ -138,8 +141,6 @@ async def test_supabase():
         return {
             "success": False,
             "error": str(e),
-            "supabase_url": config.SUPABASE_URL,
-            "supabase_key_configured": bool(config.SUPABASE_KEY),
             "timestamp": datetime.now().isoformat()
         }
 
