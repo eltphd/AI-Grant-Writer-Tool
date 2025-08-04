@@ -651,36 +651,58 @@ def get_rfp_analysis_data(project_id: str) -> dict:
         }
 
 def generate_contextual_response(message: str, context: dict, rfp_analysis: dict, relevant_snippets: list = None) -> str:
-    """Generate culturally sensitive contextual AI response using consolidated LLM approach"""
+    """Generate AI response using Supabase embeddings, specialized prompts, and OpenAI"""
     
-    # Use provided relevant snippets or create empty context
-    if relevant_snippets and len(relevant_snippets) > 0:
-        print(f"🔍 DEBUG: Using {len(relevant_snippets)} relevant snippets from Supabase")
-        # Add relevant snippets to context
-        context['uploaded_content'] = context.get('uploaded_content', []) + relevant_snippets
-    else:
-        print(f"🔍 DEBUG: No relevant snippets found, using empty context")
-    
-    # Add RFP requirements to context
-    context['rfp_requirements'] = rfp_analysis.get('requirements', [])
-    
-    # Get community context
-    community_context = context.get('community_focus', '')
-    
-    # Determine grant type based on RFP analysis
-    grant_type = "community"  # Default
-    if rfp_analysis.get('requirements'):
-        requirements_text = ' '.join(rfp_analysis.get('requirements', [])).lower()
-        if 'nih' in requirements_text or 'national institutes' in requirements_text:
-            grant_type = "nih"
-        elif 'nsf' in requirements_text or 'national science foundation' in requirements_text:
-            grant_type = "nsf"
-        elif 'federal' in requirements_text or 'government' in requirements_text:
-            grant_type = "federal"
-    
-    # Generate response using default response generation
-    print("🔍 Using default response generation")
-    return generate_default_response(message, context, rfp_analysis)
+    try:
+        from utils.openai_utils import chat_grant_assistant
+        
+        # Build comprehensive context from Supabase data
+        project_context = ""
+        
+        # Add organization information
+        if context.get('organization_info'):
+            project_context += f"Organization Information: {context.get('organization_info')}\n\n"
+        
+        # Add uploaded files and content
+        uploaded_files = context.get('uploaded_files', [])
+        if uploaded_files:
+            project_context += f"Uploaded Documents: {', '.join(uploaded_files)}\n\n"
+        
+        # Add relevant snippets from Supabase embeddings
+        if relevant_snippets and len(relevant_snippets) > 0:
+            print(f"🔍 DEBUG: Using {len(relevant_snippets)} relevant snippets from Supabase")
+            project_context += f"Relevant Document Content:\n{'\n'.join(relevant_snippets)}\n\n"
+        else:
+            print(f"🔍 DEBUG: No relevant snippets found")
+        
+        # Add RFP requirements
+        rfp_requirements = rfp_analysis.get('requirements', [])
+        if rfp_requirements:
+            project_context += f"RFP Requirements:\n{chr(10).join(rfp_requirements)}\n\n"
+        
+        # Add funding and deadline information
+        if rfp_analysis.get('funding_amount'):
+            project_context += f"Funding Amount: {rfp_analysis.get('funding_amount')}\n"
+        if rfp_analysis.get('deadline'):
+            project_context += f"Deadline: {rfp_analysis.get('deadline')}\n\n"
+        
+        # Get community context
+        community_context = context.get('community_focus', '')
+        
+        # Use OpenAI with specialized prompt for grant writing
+        print("🔍 Using OpenAI with Supabase context and specialized prompts")
+        response = chat_grant_assistant(
+            message=message,
+            project_context=project_context,
+            community_context=community_context
+        )
+        
+        return response
+        
+    except Exception as e:
+        print(f"❌ Error in OpenAI response generation: {e}")
+        # Fallback to default response
+        return generate_default_response(message, context, rfp_analysis)
 
 def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, rag_context: dict, project_context: str, community_context: str) -> str:
     """Generate the initial AI response"""
