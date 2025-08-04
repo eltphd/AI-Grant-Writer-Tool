@@ -59,6 +59,17 @@ except ImportError:
     # Fallback for direct import
     from utils.evaluation_utils import cognitive_evaluator, cultural_evaluator, performance_monitor
 
+# Import OpenAI utilities
+try:
+    from .utils.openai_utils import chat_grant_assistant, get_culturally_sensitive_response
+except ImportError:
+    # Fallback for direct import
+    try:
+        from utils.openai_utils import chat_grant_assistant, get_culturally_sensitive_response
+    except ImportError:
+        chat_grant_assistant = None
+        get_culturally_sensitive_response = None
+
 # Import prompt logging middleware
 try:
     from .middleware import prompt_logger
@@ -654,7 +665,10 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
     """Generate AI response using Supabase embeddings, specialized prompts, and OpenAI"""
     
     try:
-        from utils.openai_utils import chat_grant_assistant
+        # Check if OpenAI utilities are available
+        if chat_grant_assistant is None:
+            print("⚠️ OpenAI utilities not available, using fallback")
+            return generate_default_response(message, context, rfp_analysis)
         
         # Build comprehensive context from Supabase data
         project_context = ""
