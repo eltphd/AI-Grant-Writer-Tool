@@ -413,7 +413,7 @@ def save_uploaded_file(file_content: bytes, filename: str, project_id: str) -> d
         # In a full implementation, you'd want to store the file content
         # in Supabase Storage and reference it here
         data = {
-            "filename": filename,
+            "file_name": filename,
             "project_id": project_id,
             "file_size": len(file_content),
             "file_type": filename.split('.')[-1].lower() if '.' in filename else "unknown"
@@ -483,7 +483,7 @@ def get_project_context(project_id: str) -> dict[str, Any]:
     # Get files for this project
     files_res = _request(
         "GET",
-        f"/rest/v1/files?project_id=eq.{project_id}&select=filename,created_at&order=created_at.desc"
+        f"/rest/v1/files?project_id=eq.{project_id}&select=file_name,created_at&order=created_at.desc"
     )
     print(f"🔍 DEBUG: Files response: {files_res}")
     
@@ -491,7 +491,7 @@ def get_project_context(project_id: str) -> dict[str, Any]:
     files = []
     if files_res:
         for file_data in files_res:
-            files.append(file_data.get("filename", ""))
+            files.append(file_data.get("file_name", ""))
     
     print(f"🔍 DEBUG: Files list: {files}")
     
