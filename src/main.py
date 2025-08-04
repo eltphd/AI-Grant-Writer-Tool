@@ -127,14 +127,18 @@ async def test_supabase():
         print(f"🔍 DEBUG: SUPABASE_URL: {config.SUPABASE_URL}")
         print(f"🔍 DEBUG: SUPABASE_KEY configured: {'Yes' if config.SUPABASE_KEY else 'No'}")
         
-        # Test a simple query
-        test_response = supa._request("GET", "/rest/v1/files?limit=1")
+        # Test a simple query to check if files table exists
+        test_response = supa._request("GET", "/rest/v1/files?limit=5")
+        
+        # Test project_contexts table
+        context_response = supa._request("GET", "/rest/v1/project_contexts?limit=5")
         
         return {
             "success": True,
             "supabase_url": config.SUPABASE_URL,
             "supabase_key_configured": bool(config.SUPABASE_KEY),
-            "test_query_result": test_response,
+            "files_table": test_response,
+            "contexts_table": context_response,
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
