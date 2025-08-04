@@ -40,6 +40,7 @@ except ImportError as e:
         RAG_AVAILABLE = False
         # Create dummy objects for fallback
         advanced_rag_db = None
+        rag_db = None
 
 # Import other utilities
 try:
@@ -48,9 +49,18 @@ try:
     from .utils.rfp_analysis import analyze_rfp_content, analyze_organization_rfp_alignment
 except ImportError:
     # Fallback for direct import
-    from utils.storage_utils import OrganizationInfo, RFPDocument, ProjectResponse
-    from utils import supabase_utils as supa
-    from utils.rfp_analysis import analyze_rfp_content, analyze_organization_rfp_alignment
+    try:
+        from utils.storage_utils import OrganizationInfo, RFPDocument, ProjectResponse
+        from utils import supabase_utils as supa
+        from utils.rfp_analysis import analyze_rfp_content, analyze_organization_rfp_alignment
+    except ImportError:
+        # Create dummy objects if imports fail
+        OrganizationInfo = None
+        RFPDocument = None
+        ProjectResponse = None
+        supa = None
+        analyze_rfp_content = None
+        analyze_organization_rfp_alignment = None
 
 # Import evaluation utilities
 try:
@@ -95,6 +105,15 @@ async def health_check():
 @app.get("/ping")
 async def ping():
     return {"message": "pong", "timestamp": datetime.now().isoformat()}
+
+# Simple test endpoint that doesn't depend on imports
+@app.get("/simple-test")
+async def simple_test():
+    return {
+        "message": "Simple test endpoint working!",
+        "imports_working": True,
+        "timestamp": datetime.now().isoformat()
+    }
 
 # Test endpoint moved to after function definitions
 
