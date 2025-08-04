@@ -469,23 +469,31 @@ def get_project_context(project_id: str) -> dict[str, Any]:
     Returns:
         Dictionary with project context
     """
+    print(f"🔍 DEBUG: Getting project context for {project_id}")
+    print(f"🔍 DEBUG: Supabase URL: {config.SUPABASE_URL}")
+    print(f"🔍 DEBUG: Supabase Key configured: {'Yes' if config.SUPABASE_KEY else 'No'}")
+    
     # Get project context
     res = _request(
         "GET",
         f"/rest/v1/project_contexts?project_id=eq.{project_id}&select=*"
     )
+    print(f"🔍 DEBUG: Project context response: {res}")
     
     # Get files for this project
     files_res = _request(
         "GET",
         f"/rest/v1/files?project_id=eq.{project_id}&select=filename,created_at&order=created_at.desc"
     )
+    print(f"🔍 DEBUG: Files response: {files_res}")
     
     # Build files list
     files = []
     if files_res:
         for file_data in files_res:
             files.append(file_data.get("filename", ""))
+    
+    print(f"🔍 DEBUG: Files list: {files}")
     
     if res and len(res) > 0:
         context = res[0]
