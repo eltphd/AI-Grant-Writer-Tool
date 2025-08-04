@@ -469,10 +469,23 @@ def get_project_context(project_id: str) -> dict[str, Any]:
     Returns:
         Dictionary with project context
     """
+    # Get project context
     res = _request(
         "GET",
         f"/rest/v1/project_contexts?project_id=eq.{project_id}&select=*"
     )
+    
+    # Get files for this project
+    files_res = _request(
+        "GET",
+        f"/rest/v1/files?project_id=eq.{project_id}&select=filename,created_at&order=created_at.desc"
+    )
+    
+    # Build files list
+    files = []
+    if files_res:
+        for file_data in files_res:
+            files.append(file_data.get("filename", ""))
     
     if res and len(res) > 0:
         context = res[0]
@@ -482,7 +495,8 @@ def get_project_context(project_id: str) -> dict[str, Any]:
             "initiative_description": context.get("initiative_description", ""),
             "created_at": context.get("created_at"),
             "updated_at": context.get("updated_at"),
-            "files": []  # Would need separate query for files
+            "files": files,
+            "total_files": len(files)
         }
     else:
         return {
@@ -491,7 +505,8 @@ def get_project_context(project_id: str) -> dict[str, Any]:
             "initiative_description": "",
             "created_at": None,
             "updated_at": None,
-            "files": []
+            "files": files,
+            "total_files": len(files)
         }
 
 def update_project_info(project_id: str, organization_info: str = "", initiative_description: str = "") -> bool:
