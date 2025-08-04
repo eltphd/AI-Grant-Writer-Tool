@@ -86,4 +86,7 @@ jspm_packages/
 .railway/
 
 # Build artifacts
-frontend/build/ 
+frontend/build/
+
+# Frontend directory (should be deployed separately)
+frontend/ 

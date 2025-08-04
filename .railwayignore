@@ -1,0 +1,15 @@
+# Exclude frontend from Railway backend deployment
+frontend/
+frontend/*
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tgz
+.yarn-integrity
+
+# Keep only Python backend files
+src/
+requirements.txt
+nixpacks.toml
+railway.json 
