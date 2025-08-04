@@ -662,7 +662,7 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
         elif 'federal' in requirements_text or 'government' in requirements_text:
             grant_type = "federal"
     
-    # Generate response using Vercel AI Gateway
+    # Generate response using available AI services
     if vercel_ai_gateway:
         try:
             # Log prompt for debugging
@@ -695,9 +695,11 @@ def generate_contextual_response(message: str, context: dict, rfp_analysis: dict
             
         except Exception as e:
             print(f"❌ Error in Vercel AI Gateway: {e}")
-            return f"⚠️ Error generating response: {str(e)}"
+            return generate_default_response(message, context, rfp_analysis)
     else:
-        return "⚠️ Vercel AI Gateway not available. Please check configuration."
+        # Use fallback response generation when Vercel AI Gateway is not available
+        print("⚠️ Vercel AI Gateway not available, using fallback response generation")
+        return generate_default_response(message, context, rfp_analysis)
 
 def _generate_initial_response(message: str, context: dict, rfp_analysis: dict, rag_context: dict, project_context: str, community_context: str) -> str:
     """Generate the initial AI response"""
