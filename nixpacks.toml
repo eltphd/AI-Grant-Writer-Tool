@@ -8,7 +8,7 @@ cmds = ["python3 -m venv /opt/venv", "source /opt/venv/bin/activate && pip insta
 cmds = ["echo 'Backend build complete - frontend should be deployed separately'"]
 
 [start]
-cmd = "source /opt/venv/bin/activate && uvicorn src.main:app --host 0.0.0.0 --port $PORT"
+cmd = "source /opt/venv/bin/activate && cd /app && PYTHONPATH=/app uvicorn src.main:app --host 0.0.0.0 --port $PORT"
 
 [variables]
 NIXPACKS_PYTHON_VERSION = "3.9" 
