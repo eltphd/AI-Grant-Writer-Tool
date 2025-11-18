@@ -1,0 +1,104 @@
+{
+  "id": "arkbuilders_001",
+  "organization_name": "ArkBuilders",
+  "legal_name": "NAMI ArkBuilders",
+  "organization_type": "Nonprofit",
+  "mission": "Empower men to reach men through intergenerational mental health support, reducing stigma and building community capacity for men's mental health",
+  "description": "ArkBuilders partners with NAMI Franklin County and NAMI Allen County to deliver men-led mental health support programs through barbershop partnerships, intergenerational conversations, and community-based training.",
+  "key_programs": [
+    {
+      "name": "Barbershop Mental Health Partnerships",
+      "description": "Partner with 5-8 barbershops to facilitate men-to-men mental health conversations",
+      "target_population": "Fathers, grandfathers, future fathers"
+    },
+    {
+      "name": "Train-the-Trainer Program",
+      "description": "Train elders, fathers, and young people in Ending the Silence and QPR (Question, Persuade, Refer)",
+      "focus": "Mental health stigma reduction in faith communities"
+    },
+    {
+      "name": "Intergenerational Community Conversations",
+      "description": "Facilitate conversations between elders, fathers, and youth to bridge generational gaps",
+      "outcomes": [
+        "Elders understand their value and wisdom is needed",
+        "Youth feel heard and supported",
+        "Faith community reduces mental health stigma"
+      ]
+    }
+  ],
+  "partnerships": [
+    {
+      "partner_name": "NAMI Franklin County",
+      "role": "Fiscal agent, lead partner",
+      "relationship": "Receives grant funds, distributes to partners, takes 10% administrative fee"
+    },
+    {
+      "partner_name": "NAMI Allen County",
+      "role": "Local implementation partner",
+      "location": "Harding County, Ohio"
+    },
+    {
+      "partner_name": "NAMI A",
+      "role": "Administrative partner",
+      "contact": "Elisa Lisa Bradley, Interim Executive Director"
+    }
+  ],
+  "target_populations": [
+    "Fathers",
+    "Grandfathers",
+    "Future fathers",
+    "Faith community leaders",
+    "Youth (intergenerational component)"
+  ],
+  "geographic_focus": [
+    "Franklin County, Ohio",
+    "Allen County, Ohio",
+    "Harding County, Ohio"
+  ],
+  "core_values": [
+    "Men-to-men mental health support",
+    "Intergenerational connection",
+    "Community ownership",
+    "Cultural competency",
+    "Faith community integration"
+  ],
+  "key_insights": [
+    "Men need to train and support men - women cannot effectively facilitate men's mental health groups",
+    "Intergenerational approach bridges wisdom of elders with needs of youth",
+    "Faith communities are critical entry points for mental health support",
+    "Barbershops serve as trusted community spaces for men's conversations",
+    "Pilot model designed for replication and sustainability"
+  ],
+  "budget_capacity": {
+    "typical_grant_range": "$100,000 - $200,000",
+    "current_grant": {
+      "amount": 150000,
+      "funder": "Ohio Commission for Prosecution",
+      "grant_name": "NAMI Grant"
+    }
+  },
+  "staffing": {
+    "program_director": {
+      "fte": 0.5,
+      "salary_range": "$25,000 - $30,000"
+    },
+    "community_outreach_coordinator": {
+      "fte": 1.0,
+      "salary_range": "$17,000 - $20,000"
+    },
+    "training_coordinator": {
+      "fte": 0.5,
+      "salary_range": "$20,000 - $25,000"
+    }
+  },
+  "program_outcomes": {
+    "for_elders": "Understanding their value and wisdom is needed",
+    "for_faith_community": "Stigma reduction and understanding of mental health",
+    "for_youth": "Conversation, support, and feeling heard - 'If adults would listen, what would you tell them?'"
+  },
+  "sustainability_model": "Pilot program designed for replication, foundation for larger funding requests, community ownership",
+  "created_at": "2024-11-17T12:00:00Z",
+  "last_updated": "2024-11-17T12:00:00Z",
+  "source": "Grant proposal meeting transcript with George, November 15, 2025"
+}
+
