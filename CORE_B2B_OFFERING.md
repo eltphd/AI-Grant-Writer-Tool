@@ -434,3 +434,4 @@ It addresses a **real market need** (cultural competency in grant writing) that 
 *Target Market: B2B Grant Writing & Cultural Competency*
 
 
+
